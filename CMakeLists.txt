@@ -7,8 +7,8 @@ cage_default_init()
 
 add_subdirectory(externals/cage)
 
-file(GLOB_RECURSE unplanets-sources "sources/*")
-add_executable(unplanets ${unplanets-sources})
-target_link_libraries(unplanets cage-client)
-cage_ide_groups(unplanets unplanets)
-cage_ide_working_dir_in_place(unplanets)
+file(GLOB_RECURSE unnatural-planets-sources "sources/*")
+add_executable(unnatural-planets ${unnatural-planets-sources})
+target_link_libraries(unnatural-planets cage-client)
+cage_ide_groups(unnatural-planets unnatural-planets)
+cage_ide_working_dir_in_place(unnatural-planets)
