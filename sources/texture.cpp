@@ -105,9 +105,8 @@ namespace generator
 		static const vec3 dark = vec3(113, 101, 77) / 255;
 		static const vec3 light = vec3(208, 194, 165) / 255;
 		vec3 p1 = p * 3.5;
-		real v2 = noiseCell(uint32(globalSeed) + 10, p1, 2, noiseDistanceEnum::EuclideanSquared);
-		real v3 = noiseCell(uint32(globalSeed) + 10, p1, 3, noiseDistanceEnum::EuclideanSquared);
-		real v = pow(abs(v3 - v2), 0.1);
+		vec4 vv = noiseCell(uint32(globalSeed) + 10, p1, noiseDistanceEnum::EuclideanSquared);
+		real v = pow(abs(v[2] - v[1]), 0.1);
 		vec3 p2 = p * 5;
 		real v4 = noiseClouds(uint32(globalSeed) + 11, p2, 2);
 		albedo = interpolate(cranny, interpolate(dark, light, v4), v);
@@ -139,9 +138,8 @@ namespace generator
 		static const vec3 dark = vec3(139, 137, 88) / 255;
 		static const vec3 light = vec3(250, 247, 255) / 255;
 		vec3 p1 = p * 0.1;
-		real v1 = noiseCell(uint32(globalSeed) + 20, p1, 1, noiseDistanceEnum::EuclideanSquared);
-		real v2 = noiseCell(uint32(globalSeed) + 20, p1, 2, noiseDistanceEnum::EuclideanSquared);
-		real v = pow(1 - abs(v2 - v1), 10);
+		vec4 vv = noiseCell(uint32(globalSeed) + 20, p1, noiseDistanceEnum::EuclideanSquared);
+		real v = pow(1 - abs(vv[1] - vv[0]), 10);
 		power = smootherstep(scaleClamp(v, 0.93, 1));
 		vec3 p2 = p * 250;
 		real v3 = noiseClouds(uint32(globalSeed) + 21, p2, 1);
