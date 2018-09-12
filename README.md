@@ -15,14 +15,17 @@ The algorithm works mostly in global scale and is therefore unsuitable for proce
 # Algorithm Overview
 
 - Rough Terrain
-  - continents, islands and mountains are computed by tectonic plates simulation
-  - 3D noise functions are used to change terrain density, this adds unnatural features
   - based on configuration, the terrain may be very earth-like or extremely unnatural with eg. floating patches of land and tunnels throught the core
+  - the overal shape of the planet is defined as a sum of implicitly defined shape function and a 3d noise functions
+    - use sphere and no noise to produce natural planets
+	- use different base shape: cube, cone, torus, tetrahedr etc
+  - convert the implicit function into surface representation (marching cubes/tetrahedrons)
+  - continents, islands and mountains are computed by tectonic plates simulation
 
 - Climate Simulation
   - finer terrain details are added based on climate simulation
   - temperature levels are computed based on average sunlight impact
-  - whole water cycle is simulated: precipitation, evaporation, sea levels, rivers, etc.
+  - whole water cycle is simulated: precipitation, evaporation, rivers, etc.
   - wind simulation
   - land deposition
 
