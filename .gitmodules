@@ -1,3 +1,6 @@
 [submodule "externals/cage"]
 	path = externals/cage
 	url = https://github.com/ucpu/cage.git
+[submodule "externals/dualmc"]
+	path = externals/dualmc
+	url = https://github.com/dominikwodniok/dualmc.git
