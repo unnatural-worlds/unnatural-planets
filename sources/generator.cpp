@@ -42,6 +42,7 @@ namespace
 	std::vector<vertexStruct> vertices;
 	holder<pngImageClass> albedo;
 	holder<pngImageClass> special;
+	real planetScale;
 
 	void genDensities()
 	{
@@ -141,6 +142,23 @@ namespace
 		}
 	}
 
+	void computeScale()
+	{
+		real sum = 0;
+		uint32 cnt = numeric_cast<uint32>(vertices.size() / 4);
+		for (uint32 i = 0; i < cnt; i++)
+		{
+			vec3 p = vertices[i * 4 + 3].position;
+			for (uint32 j = 0; j < 4; j++)
+			{
+				vec3 c = vertices[i * 4 + j].position;
+				sum += c.distance(p);
+				p = c;
+			}
+		}
+		planetScale = cnt * 4 / sum;
+	}
+
 	void genTextures()
 	{
 		uint32 quadsCount = numeric_cast<uint32>(quadPositions.size() / 4);
@@ -168,7 +186,7 @@ namespace
 					interpolate(quadPositions[quadIndex * 4 + 3], quadPositions[quadIndex * 4 + 2], f[0]),
 					f[1]);
 				vec3 alb, spc;
-				terrainMaterial(pos, alb, spc);
+				terrainMaterial(pos * planetScale, alb, spc);
 				for (uint32 i = 0; i < 3; i++)
 					albedo->value(x, y, i, alb[i].value);
 				for (uint32 i = 0; i < 3; i++)
@@ -194,6 +212,9 @@ void generateTerrain()
 	if (vertices.size() == 0)
 		CAGE_THROW_ERROR(exception, "generated empty mesh");
 
+	computeScale();
+	CAGE_LOG(severityEnum::Info, "generator", string() + "scaling factor " + planetScale);
+
 	// generate textures
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating textures");
 	genTextures();
@@ -208,12 +229,45 @@ void exportTerrain()
 	fs->changeDir(string() + "output/" + globalSeed);
 	fs->remove("."); // remove previous output
 
-	{ // write file with current seed
-		holder<fileClass> f = fs->openFile("info.txt", fileMode(false, true));
-		f->writeLine(string() + "seed: " + globalSeed);
+	{ // write unnatural-map
+		holder<fileClass> f = fs->openFile("unnatural-map.ini", fileMode(false, true));
+		f->writeLine("[map]");
+		f->writeLine(string() + "name = " + globalSeed);
+		f->writeLine("version = 0");
+		f->writeLine("base = true");
+		f->writeLine("[description]");
+		f->writeLine(string() + globalSeed);
+		f->writeLine("[authors]");
+		f->writeLine("unnatural-planets");
+		f->writeLine("[assets]");
+		f->writeLine("pack = planet.pack");
+		f->writeLine("navigation = planet.obj");
+		f->writeLine("collider = planet.obj;collider");
+		f->writeLine("[camera]");
+		f->writeLine("position = 0,0,100");
+		f->writeLine("[generator]");
+		f->writeLine("name = unnatural-planets");
+		f->writeLine("url = https://github.com/ucpu/unnatural-planets.git");
+		f->writeLine(string() + "seed = " + globalSeed);
+		f->writeLine("feel free to edit this file to your needs");
+		f->writeLine("but leave the generator section intact, thanks");
 	}
 
-	{ // write obj file with geometry
+	{ // write scene file
+		holder<fileClass> f = fs->openFile("scene.ini", fileMode(false, true));
+		f->writeLine("[]");
+		f->writeLine("object = planet.object");
+	}
+
+	// go to the data subdirectory
+	fs->changeDir("data");
+
+	{ // write textures
+		fs->openFile("planet-albedo.png", fileMode(false, true))->writeBuffer(albedo->encodeBuffer());
+		fs->openFile("planet-special.png", fileMode(false, true))->writeBuffer(special->encodeBuffer());
+	}
+
+	{ // write geometry
 		holder<fileClass> f = fs->openFile("planet.obj", fileMode(false, true));
 		f->writeLine("mtllib planet.mtl");
 		f->writeLine("o planet");
@@ -238,22 +292,17 @@ void exportTerrain()
 		}
 	}
 
-	{ // write textures
-		fs->openFile("albedo.png", fileMode(false, true))->writeBuffer(albedo->encodeBuffer());
-		fs->openFile("special.png", fileMode(false, true))->writeBuffer(special->encodeBuffer());
-	}
-
 	{ // write mtl file with link to albedo texture
 		holder<fileClass> f = fs->openFile("planet.mtl", fileMode(false, true));
 		f->writeLine("newmtl planet");
-		f->writeLine("map_Kd albedo.png");
+		f->writeLine("map_Kd planet-albedo.png");
 	}
 
 	{ // write cpm material file
 		holder<fileClass> f = fs->openFile("planet.cpm", fileMode(false, true));
 		f->writeLine("[textures]");
-		f->writeLine("albedo = albedo.png");
-		f->writeLine("special = special.png");
+		f->writeLine("albedo = planet-albedo.png");
+		f->writeLine("special = planet-special.png");
 	}
 
 	{ // object file
@@ -262,20 +311,34 @@ void exportTerrain()
 		f->writeLine("planet.obj");
 	}
 
+	{ // pack file
+		holder<fileClass> f = fs->openFile("planet.pack", fileMode(false, true));
+		f->writeLine("[]");
+		f->writeLine("planet.object");
+	}
+
 	{ // generate asset configuration
 		holder<fileClass> f = fs->openFile("planet.asset", fileMode(false, true));
 		f->writeLine("[]");
 		f->writeLine("scheme = texture");
 		f->writeLine("srgb = true");
-		f->writeLine("albedo.png");
+		f->writeLine("planet-albedo.png");
 		f->writeLine("[]");
 		f->writeLine("scheme = texture");
-		f->writeLine("special.png");
+		f->writeLine("planet-special.png");
 		f->writeLine("[]");
 		f->writeLine("scheme = mesh");
+		f->writeLine(string() + "scale = " + planetScale);
 		f->writeLine("planet.obj");
+		f->writeLine("[]");
+		f->writeLine("scheme = collider");
+		f->writeLine(string() + "scale = " + planetScale);
+		f->writeLine("planet.obj;collider");
 		f->writeLine("[]");
 		f->writeLine("scheme = object");
 		f->writeLine("planet.object");
+		f->writeLine("[]");
+		f->writeLine("scheme = pack");
+		f->writeLine("planet.pack");
 	}
 }

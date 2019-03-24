@@ -54,7 +54,7 @@ void terrainMaterial(const vec3 &pos, vec3 &albedo, vec3 &special)
 	};
 
 	static holder<noiseClass> clouds1 = newClouds(globalSeed + 300, 8);
-	real c = ((clouds1->evaluate(pos * 4.2) * 0.5 + 0.5) * 16) % 8;
+	real c = ((clouds1->evaluate(pos * 0.042) * 0.5 + 0.5) * 16) % 8;
 	uint32 i = numeric_cast<uint32>(c);
 	real f = sharpEdge(c - i);
 	albedo = interpolate(colors[i], colors[(i + 1) % 8], f);
