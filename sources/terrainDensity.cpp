@@ -17,7 +17,7 @@ namespace
 
 	real sphereDensity(const vec3 &pos)
 	{
-		return 0.7 - pos.length();
+		return real(0.7) - pos.length();
 	}
 }
 

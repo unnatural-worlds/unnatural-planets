@@ -156,7 +156,7 @@ namespace
 				p = c;
 			}
 		}
-		planetScale = cnt * 4 / sum;
+		planetScale = real(cnt * 4) / sum;
 	}
 
 	void genTextures()
@@ -279,7 +279,7 @@ void exportTerrain()
 			f->writeLine(string() + "vn " + c(v.normal));
 		for (const vertexStruct &v : vertices)
 			f->writeLine(string() + "vt " + c(v.uv));
-		uint32 cnt = vertices.size() / 4;
+		uint32 cnt = numeric_cast<uint32>(vertices.size()) / 4;
 		for (uint32 i = 0; i < cnt; i++)
 		{
 			string s = "f ";
