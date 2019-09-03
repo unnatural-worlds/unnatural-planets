@@ -1,28 +1,25 @@
-
 #include "main.h"
 
-#include <cage-core/log.h>
-#include <cage-core/noise.h>
-#include <cage-core/png.h>
-#include <cage-core/filesystem.h>
+#include <cage-core/geometry.h>
+#include <cage-core/noiseFunction.h>
+#include <cage-core/color.h>
+#include <cage-core/random.h>
+#include <cage-core/image.h>
+#include <cage-core/enumerate.h>
+#include <cage-core/files.h>
+#include <cage-core/fileUtils.h>
 #include <cage-core/memoryBuffer.h>
+#include <cage-client/core.h>
 
 #include "dualmc.h"
+#include "xatlas.h"
+#include <optick.h>
 
-#include <initializer_list>
+#include <cstdarg>
+#include <algorithm>
 
 namespace
 {
-#ifdef CAGE_DEBUG
-	const uint32 verticesPerSide = 70;
-	const uint32 texelsPerSegment = 3;
-#else
-	const uint32 verticesPerSide = 200;
-	const uint32 texelsPerSegment = 5;
-#endif // CAGE_DEBUG
-
-	const real uvBorderFraction = 0.2;
-
 	struct vertexStruct
 	{
 		vec3 position;
@@ -30,23 +27,105 @@ namespace
 		vec2 uv;
 	};
 
-	// temporary data
-	std::vector<dualmc::Vertex> quadVertices; // model space, indexed
-	std::vector<dualmc::Quad> quadIndices;
-	std::vector<vec3> quadPositions; // world space, NOT indexed
-	std::vector<vec3> quadNormals;
-	std::vector<float> densities;
-	uint32 quadsPerLine;
-
-	// output data
-	std::vector<vertexStruct> vertices;
-	holder<pngImageClass> albedo;
-	holder<pngImageClass> special;
+	std::vector<real> densities;
+	std::vector<dualmc::Vertex> mcVertices;
+	std::vector<dualmc::Quad> mcIndices;
+	std::vector<vertexStruct> meshVertices;
+	std::vector<uint32> meshIndices;
+	holder<xatlas::Atlas> atlas;
+	holder<image> albedo;
+	holder<image> special;
 	real planetScale;
+
+#ifdef CAGE_DEBUG
+	const uint32 verticesPerSide = 50;
+	const real texelsPerSegment = 0.2;
+#else
+	const uint32 verticesPerSide = 200;
+	const real texelsPerSegment = 2;
+#endif // CAGE_DEBUG
+
+	inline void destroyAtlas(void *ptr)
+	{
+		xatlas::Destroy((xatlas::Atlas*)ptr);
+	}
+
+	inline holder<xatlas::Atlas> newAtlas()
+	{
+		xatlas::Atlas *a = xatlas::Create();
+		return holder<xatlas::Atlas>(a, a, delegate<void(void*)>().bind<&destroyAtlas>());
+	}
+
+	inline vec2 barycoord(const triangle &t, const vec2 &p)
+	{
+		vec2 a = vec2(t[0]);
+		vec2 b = vec2(t[1]);
+		vec2 c = vec2(t[2]);
+		vec2 v0 = b - a;
+		vec2 v1 = c - a;
+		vec2 v2 = p - a;
+		real d00 = dot(v0, v0);
+		real d01 = dot(v0, v1);
+		real d11 = dot(v1, v1);
+		real d20 = dot(v2, v0);
+		real d21 = dot(v2, v1);
+		real invDenom = 1.0 / (d00 * d11 - d01 * d01);
+		real v = (d11 * d20 - d01 * d21) * invDenom;
+		real w = (d00 * d21 - d01 * d20) * invDenom;
+		real u = 1 - v - w;
+		return vec2(u, v);
+	}
+
+	inline vec3 interpolate(const triangle &t, const vec2 &p)
+	{
+		vec3 a = t[0];
+		vec3 b = t[1];
+		vec3 c = t[2];
+		return p[0] * a + p[1] * b + (1 - p[0] - p[1]) * c;
+	}
+
+	inline bool inside(const vec2 &b)
+	{
+		return b[0] >= 0 && b[1] >= 0 && b[0] + b[1] <= 1;
+	}
+
+	inline ivec2 operator + (const ivec2 &a, const ivec2 &b)
+	{
+		return ivec2(a.x + b.x, a.y + b.y);
+	}
+
+	inline ivec2 operator - (const ivec2 &a, const ivec2 &b)
+	{
+		return ivec2(a.x - b.x, a.y - b.y);
+	}
+
+	inline ivec2 operator * (const ivec2 &a, float b)
+	{
+		return ivec2(sint32(a.x * b), sint32(a.y * b));
+	}
+
+	template<class T>
+	inline void turnLeft(T &a, T &b, T &c)
+	{
+		std::swap(a, b); // bac
+		std::swap(b, c); // bca
+	}
+
+	inline void get(holder<image> &img, uint32 x, uint32 y, real &result) { result = img->get1(x, y); }
+	inline void get(holder<image> &img, uint32 x, uint32 y, vec2 &result) { result = img->get2(x, y); }
+	inline void get(holder<image> &img, uint32 x, uint32 y, vec3 &result) { result = img->get3(x, y); }
+	inline void get(holder<image> &img, uint32 x, uint32 y, vec4 &result) { result = img->get4(x, y); }
+
+	vec3 mc2c(const dualmc::Vertex &v)
+	{
+		return vec3(v.x, v.y, v.z) * 2 / verticesPerSide - 1;
+	}
 
 	void genDensities()
 	{
-		densities.reserve(verticesPerSide * verticesPerSide * verticesPerSide);
+		OPTICK_EVENT("genDensities");
+		std::vector<vec3> positions;
+		densities.reserve(positions.size());
 		for (uint32 z = 0; z < verticesPerSide; z++)
 		{
 			for (uint32 y = 0; y < verticesPerSide; y++)
@@ -54,7 +133,7 @@ namespace
 				for (uint32 x = 0; x < verticesPerSide; x++)
 				{
 					vec3 d = vec3(x, y, z) * 2 / verticesPerSide - 1;
-					densities.push_back(terrainDensity(d).value);
+					densities.push_back(terrainDensity(d));
 				}
 			}
 		}
@@ -62,175 +141,368 @@ namespace
 
 	void genSurface()
 	{
+		OPTICK_EVENT("genSurface");
 		dualmc::DualMC<float> mc;
-		mc.build(densities.data(), verticesPerSide, verticesPerSide, verticesPerSide, 0, true, false, quadVertices, quadIndices);
+		mc.build((float*)densities.data(), verticesPerSide, verticesPerSide, verticesPerSide, 0, true, false, mcVertices, mcIndices);
+		std::vector<real>().swap(densities);
 	}
 
-	vec3 mc2c(const dualmc::Vertex &v)
+	void genTriangles()
 	{
-		return vec3(v.x, v.y, v.z) * 2 / verticesPerSide - 1;
-	}
-
-	void genNormals()
-	{
-		quadNormals.resize(quadVertices.size());
-		for (dualmc::Quad q : quadIndices)
+		OPTICK_EVENT("genTriangles");
+		CAGE_ASSERT(meshVertices.empty());
+		CAGE_ASSERT(meshIndices.empty());
+		meshVertices.reserve(mcVertices.size());
+		for (const auto &it : mcVertices)
 		{
-			vec3 p[4] = {
-				mc2c(quadVertices[q.i0]),
-				mc2c(quadVertices[q.i1]),
-				mc2c(quadVertices[q.i2]),
-				mc2c(quadVertices[q.i3])
-			};
-			vec3 n = cross(p[1] - p[0], p[3] - p[0]).normalize();
-			for (uint32 i : { q.i0, q.i1, q.i2, q.i3 })
-				quadNormals[i] += n;
+			vertexStruct v;
+			v.position = mc2c(it);
+			meshVertices.push_back(v);
 		}
-		for (vec3 &n : quadNormals)
-			n = n.normalize();
+		meshIndices.reserve(mcIndices.size() * 6 / 4);
+		for (const auto &q : mcIndices)
+		{
+			const uint32 is[4] = { q.i0, q.i1, q.i2, q.i3 };
+#define P(I) meshVertices[is[I]].position
+			bool which = distanceSquared(P(0), P(2)) < distanceSquared(P(1), P(3)); // split the quad by shorter diagonal
+#undef P
+			static const int first[6] = { 0,1,2, 0,2,3 };
+			static const int second[6] = { 1,2,3, 1,3,0 };
+			for (uint32 i : (which ? first : second))
+				meshIndices.push_back(is[i]);
+			vec3 n;
+			{
+				vec3 a = meshVertices[is[0]].position;
+				vec3 b = meshVertices[is[1]].position;
+				vec3 c = meshVertices[is[2]].position;
+				n = normalize(cross(b - a, c - a));
+			}
+			for (uint32 i : is)
+				meshVertices[i].normal += n;
+		}
+		for (auto &it : meshVertices)
+			it.normal = normalize(it.normal);
+		std::vector<dualmc::Vertex>().swap(mcVertices);
+		std::vector<dualmc::Quad>().swap(mcIndices);
 	}
 
-	void genGeometry()
+	void genUvs()
 	{
-		CAGE_ASSERT_RUNTIME(vertices.empty());
-		vertices.reserve(quadIndices.size() * 6 / 4);
-		quadPositions.reserve(vertices.capacity());
-		uint32 quadsCount = numeric_cast<uint32>(quadIndices.size());
-		quadsPerLine = numeric_cast<uint32>(sqrt(quadsCount));
-		if (quadsPerLine * quadsPerLine < quadsCount)
-			quadsPerLine++;
-		uint32 quadIndex = 0;
-		real uvw = real(1) / quadsPerLine;
-		for (const auto &q : quadIndices)
+		OPTICK_EVENT("genUvs");
+		atlas = newAtlas();
+
 		{
-			vec3 p[4] = {
-				mc2c(quadVertices[q.i0]),
-				mc2c(quadVertices[q.i1]),
-				mc2c(quadVertices[q.i2]),
-				mc2c(quadVertices[q.i3])
-			};
-			for (const vec3 &pi : p)
-				quadPositions.push_back(pi);
-			vec3 n[4] = {
-				quadNormals[q.i0],
-				quadNormals[q.i1],
-				quadNormals[q.i2],
-				quadNormals[q.i3]
-			};
-			uint32 qx = quadIndex % quadsPerLine;
-			uint32 qy = quadIndex / quadsPerLine;
-			vec2 uv[4] = {
-				vec2(0, 0),
-				vec2(1, 0),
-				vec2(1, 1),
-				vec2(0, 1)
-			};
-			for (vec2 &u : uv)
+			OPTICK_EVENT("AddMesh");
+			xatlas::MeshDecl decl;
+			decl.indexCount = numeric_cast<uint32>(meshIndices.size());
+			decl.indexData = meshIndices.data();
+			decl.indexFormat = xatlas::IndexFormat::UInt32;
+			decl.vertexCount = numeric_cast<uint32>(meshVertices.size());
+			decl.vertexPositionData = &meshVertices[0].position;
+			decl.vertexNormalData = &meshVertices[0].normal;
+			decl.vertexPositionStride = sizeof(vertexStruct);
+			decl.vertexNormalStride = sizeof(vertexStruct);
+			xatlas::AddMesh(atlas.get(), decl);
+		}
+
+		{
 			{
-				u = rescale(u, 0, 1, uvBorderFraction, 1 - uvBorderFraction);
-				u = (vec2(qx, qy) + u) * uvw;
+				OPTICK_EVENT("ComputeCharts");
+				xatlas::ChartOptions chart;
+				xatlas::ComputeCharts(atlas.get(), chart);
 			}
-			for (uint32 i : { 0,1,2,3 })
 			{
+				OPTICK_EVENT("ParameterizeCharts");
+				xatlas::ParameterizeCharts(atlas.get());
+			}
+			{
+				OPTICK_EVENT("PackCharts");
+				xatlas::PackOptions pack;
+				pack.texelsPerUnit = (texelsPerSegment * planetScale).value;
+				pack.padding = 2;
+				pack.bilinear = true;
+				pack.blockAlign = true;
+				xatlas::PackCharts(atlas.get(), pack);
+			}
+			CAGE_ASSERT(atlas->meshCount == 1);
+			CAGE_ASSERT(atlas->atlasCount == 1);
+		}
+
+		{
+			OPTICK_EVENT("apply");
+			std::vector<vertexStruct> vs;
+			xatlas::Mesh *m = atlas->meshes;
+			vs.reserve(m->vertexCount);
+			const vec2 whInv = 1 / vec2(atlas->width - 1, atlas->height - 1);
+			for (uint32 i = 0; i < m->vertexCount; i++)
+			{
+				const xatlas::Vertex &a = m->vertexArray[i];
 				vertexStruct v;
-				v.position = p[i];
-				v.normal = n[i];
-				v.uv = uv[i];
-				vertices.push_back(v);
+				v.position = meshVertices[a.xref].position;
+				v.normal = meshVertices[a.xref].normal;
+				v.uv = vec2(a.uv[0], a.uv[1]) * whInv;
+				vs.push_back(v);
 			}
-			quadIndex++;
+			meshVertices.swap(vs);
+			std::vector<uint32> is(m->indexArray, m->indexArray + m->indexCount);
+			meshIndices.swap(is);
 		}
+	}
+
+	void genTextures()
+	{
+		OPTICK_EVENT("genTextures");
+		static const uint32 textureScale = 2;
+		const uint32 w = atlas->width * textureScale;
+		const uint32 h = atlas->height * textureScale;
+
+		albedo = newImage();
+		albedo->empty(w, h, 3);
+		special = newImage();
+		special->empty(w, h, 2);
+
+		std::vector<triangle> triPos;
+		std::vector<triangle> triNorms;
+		std::vector<triangle> triUvs;
+		{
+			OPTICK_EVENT("prepTris");
+			const xatlas::Mesh *m = atlas->meshes;
+			const uint32 triCount = m->indexCount / 3;
+			triPos.reserve(triCount);
+			triNorms.reserve(triCount);
+			triUvs.reserve(triCount);
+			for (uint32 triIdx = 0; triIdx < triCount; triIdx++)
+			{
+				triangle p;
+				triangle n;
+				triangle u;
+				const uint32 *ids = m->indexArray + triIdx * 3;
+				for (uint32 i = 0; i < 3; i++)
+				{
+					const vertexStruct &v = meshVertices[ids[i]];
+					p[i] = v.position;
+					n[i] = v.normal;
+					u[i] = vec3(v.uv, 0);
+				}
+				triPos.push_back(p);
+				triNorms.push_back(n);
+				triUvs.push_back(u);
+			}
+		}
+
+		std::vector<vec3> positions;
+		std::vector<vec3> normals;
+		std::vector<uint32> xs;
+		std::vector<uint32> ys;
+		{
+			OPTICK_EVENT("prepNoise");
+			positions.reserve(w * h);
+			normals.reserve(w * h);
+			xs.reserve(w * h);
+			ys.reserve(w * h);
+			const vec2 whInv = 1 / vec2(w - 1, h - 1);
+
+			const xatlas::Mesh *m = atlas->meshes;
+			const uint32 triCount = m->indexCount / 3;
+			for (uint32 triIdx = 0; triIdx < triCount; triIdx++)
+			{
+				const uint32 *vertIds = m->indexArray + triIdx * 3;
+				const float *vertUvs[3] = {
+					m->vertexArray[vertIds[0]].uv,
+					m->vertexArray[vertIds[1]].uv,
+					m->vertexArray[vertIds[2]].uv
+				};
+				ivec2 t0 = ivec2(sint32(vertUvs[0][0] * textureScale), sint32(vertUvs[0][1] * textureScale));
+				ivec2 t1 = ivec2(sint32(vertUvs[1][0] * textureScale), sint32(vertUvs[1][1] * textureScale));
+				ivec2 t2 = ivec2(sint32(vertUvs[2][0] * textureScale), sint32(vertUvs[2][1] * textureScale));
+				// inspired by https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling
+				if (t0.y > t1.y)
+					std::swap(t0, t1);
+				if (t0.y > t2.y)
+					std::swap(t0, t2);
+				if (t1.y > t2.y)
+					std::swap(t1, t2);
+				sint32 totalHeight = t2.y - t0.y;
+				float totalHeightInv = 1.f / totalHeight;
+				for (sint32 i = 0; i < totalHeight; i++)
+				{
+					bool secondHalf = i > t1.y - t0.y || t1.y == t0.y;
+					uint32 segmentHeight = secondHalf ? t2.y - t1.y : t1.y - t0.y;
+					float alpha = i * totalHeightInv;
+					float beta = (float)(i - (secondHalf ? t1.y - t0.y : 0)) / segmentHeight;
+					ivec2 A = t0 + (t2 - t0) * alpha;
+					ivec2 B = secondHalf ? t1 + (t2 - t1) * beta : t0 + (t1 - t0) * beta;
+					if (A.x > B.x)
+						std::swap(A, B);
+					for (sint32 x = A.x; x <= B.x; x++)
+					{
+						sint32 y = t0.y + i;
+						vec2 uv = vec2(x, y) * whInv;
+						vec2 b = barycoord(triUvs[triIdx], uv);
+						positions.push_back(interpolate(triPos[triIdx], b));
+						normals.push_back(normalize(interpolate(triNorms[triIdx], b)));
+						xs.push_back(x);
+						ys.push_back(y);
+					}
+				}
+			}
+		}
+
+		{
+			OPTICK_EVENT("pixelColors");
+			uint32 *xi = xs.data();
+			uint32 *yi = ys.data();
+			for (const vec3 &p : positions)
+			{
+				vec3 a;
+				vec2 s;
+				terrainMaterial(p, a, s);
+				albedo->set(*xi, *yi, a);
+				special->set(*xi, *yi, s);
+				xi++;
+				yi++;
+			}
+		}
+
+		albedo->verticalFlip();
+		special->verticalFlip();
+	}
+
+	template<class T>
+	void inpaintProcess(holder<image> &src, holder<image> &dst)
+	{
+		uint32 w = src->width();
+		uint32 h = src->height();
+		for (uint32 y = 0; y < h; y++)
+		{
+			for (uint32 x = 0; x < w; x++)
+			{
+				T m;
+				get(src, x, y, m);
+				if (m == T())
+				{
+					uint32 cnt = 0;
+					const sint32 k = 3;
+					uint32 sy = numeric_cast<uint32>(clamp(sint32(y) - k, 0, sint32(h) - 1));
+					uint32 ey = numeric_cast<uint32>(clamp(sint32(y) + k, 0, sint32(h) - 1));
+					uint32 sx = numeric_cast<uint32>(clamp(sint32(x) - k, 0, sint32(w) - 1));
+					uint32 ex = numeric_cast<uint32>(clamp(sint32(x) + k, 0, sint32(w) - 1));
+					T a;
+					for (uint32 yy = sy; yy <= ey; yy++)
+					{
+						for (uint32 xx = sx; xx <= ex; xx++)
+						{
+							get(src, xx, yy, a);
+							if (a != T())
+							{
+								m += a;
+								cnt++;
+							}
+						}
+					}
+					if (cnt > 0)
+						dst->set(x, y, m / cnt);
+				}
+				else
+					dst->set(x, y, m);
+			}
+		}
+	}
+
+	void inpaint(holder<image> &img)
+	{
+		if (!img)
+			return;
+
+		OPTICK_EVENT("inpaint");
+		uint32 w = img->width();
+		uint32 h = img->height();
+		uint32 c = img->channels();
+		holder<image> tmp = newImage();
+		tmp->empty(w, h, c, img->bytesPerChannel());
+		switch (c)
+		{
+		case 1: inpaintProcess<real>(img, tmp); break;
+		case 2: inpaintProcess<vec2>(img, tmp); break;
+		case 3: inpaintProcess<vec3>(img, tmp); break;
+		case 4: inpaintProcess<vec4>(img, tmp); break;
+		}
+		std::swap(img, tmp);
+	}
+
+	int xAtlasPrint(const char *format, ...)
+	{
+		char buffer[1000];
+		va_list arg;
+		va_start(arg, format);
+		auto result = vsprintf(buffer, format, arg);
+		va_end(arg);
+		CAGE_LOG_DEBUG(severityEnum::Warning, "xatlas", buffer);
+		return result;
 	}
 
 	void computeScale()
 	{
 		real sum = 0;
-		uint32 cnt = numeric_cast<uint32>(vertices.size() / 4);
-		for (uint32 i = 0; i < cnt; i++)
+		uint32 tc = numeric_cast<uint32>(meshIndices.size() / 3);
+		for (uint32 t = 0; t < tc; t++)
 		{
-			vec3 p = vertices[i * 4 + 3].position;
-			for (uint32 j = 0; j < 4; j++)
+			for (uint32 e1 = 0; e1 < 3; e1++)
 			{
-				vec3 c = vertices[i * 4 + j].position;
-				sum += c.distance(p);
-				p = c;
+				uint32 e2 = (e1 + 1) % 3;
+				vec3 p1 = meshVertices[meshIndices[t * 3 + e1]].position;
+				vec3 p2 = meshVertices[meshIndices[t * 3 + e2]].position;
+				real d = distance(p1, p2);
+				sum += d;
 			}
 		}
-		planetScale = real(cnt * 4) / sum;
+		planetScale = tc * 3 / sum;
 	}
 
-	void genTextures()
+	inline string v2s(const vec3 &v)
 	{
-		uint32 quadsCount = numeric_cast<uint32>(quadPositions.size() / 4);
-		uint32 res = quadsPerLine * texelsPerSegment;
-		albedo = newPngImage();
-		albedo->empty(res, res, 3);
-		special = newPngImage();
-		special->empty(res, res, 3);
-		for (uint32 y = 0; y < res; y++)
-		{
-			for (uint32 x = 0; x < res; x++)
-			{
-				uint32 xx = x / texelsPerSegment;
-				uint32 yy = y / texelsPerSegment;
-				CAGE_ASSERT_RUNTIME(xx < quadsPerLine && yy < quadsPerLine, x, y, xx, yy, texelsPerSegment, quadsPerLine, res);
-				uint32 quadIndex = yy * quadsPerLine + xx;
-				if (quadIndex >= quadsCount)
-					break;
-				vec2 f = vec2(x % texelsPerSegment, y % texelsPerSegment) / texelsPerSegment;
-				CAGE_ASSERT_RUNTIME(f[0] >= 0 && f[0] <= 1 && f[1] >= 0 && f[1] <= 1, f);
-				f = rescale(f, uvBorderFraction, 1 - uvBorderFraction, 0, 1);
-				//f = (f - uvBorderFraction) / (1 - uvBorderFraction * 2);
-				vec3 pos = interpolate(
-					interpolate(quadPositions[quadIndex * 4 + 0], quadPositions[quadIndex * 4 + 1], f[0]),
-					interpolate(quadPositions[quadIndex * 4 + 3], quadPositions[quadIndex * 4 + 2], f[0]),
-					f[1]);
-				vec3 alb, spc;
-				terrainMaterial(pos * planetScale, alb, spc);
-				for (uint32 i = 0; i < 3; i++)
-					albedo->value(x, y, i, alb[i].value);
-				for (uint32 i = 0; i < 3; i++)
-					special->value(x, y, i, spc[i].value);
-			}
-		}
+		return string() + v[0] + " " + v[1] + " " + v[2];
+	}
+
+	inline string v2s(const vec2 &v)
+	{
+		return string() + v[0] + " " + v[1];
 	}
 }
 
 void generateTerrain()
 {
-	// generate mesh
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating densities");
 	genDensities();
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating surface");
 	genSurface();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "generating normals");
-	genNormals();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "generating geometry");
-	genGeometry();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "generated mesh with " + vertices.size() + " vertices");
-
-	if (vertices.size() == 0)
+	CAGE_LOG(severityEnum::Info, "generator", string() + "vertices count: " + mcVertices.size() + ", indices count: " + mcIndices.size());
+	if (mcVertices.size() == 0 || mcIndices.size() == 0)
 		CAGE_THROW_ERROR(exception, "generated empty mesh");
-
+	CAGE_LOG(severityEnum::Info, "generator", string() + "generating triangles");
+	genTriangles();
+	CAGE_LOG(severityEnum::Info, "generator", string() + "compute scale");
 	computeScale();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "scaling factor " + planetScale);
-
-	// generate textures
+	CAGE_LOG(severityEnum::Info, "generator", string() + "planet scale: " + planetScale);
+	CAGE_LOG(severityEnum::Info, "generator", string() + "generating uvs");
+	genUvs();
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating textures");
 	genTextures();
-	albedo->verticalFlip();
-	special->verticalFlip();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "generated textures with " + albedo->width() + "*" + albedo->height() + " pixels");
+	CAGE_LOG(severityEnum::Info, "generator", string() + "inpainting albedo");
+	inpaint(albedo);
+	CAGE_LOG(severityEnum::Info, "generator", string() + "inpainting special");
+	inpaint(special);
+	CAGE_LOG(severityEnum::Info, "generator", string() + "generating done");
 }
 
 void exportTerrain()
 {
-	holder<filesystemClass> fs = newFilesystem();
+	holder<filesystem> fs = newFilesystem();
 	fs->changeDir(string() + "output/" + globalSeed);
 	fs->remove("."); // remove previous output
 
 	{ // write unnatural-map
-		holder<fileClass> f = fs->openFile("unnatural-map.ini", fileMode(false, true));
+		holder<fileHandle> f = fs->openFile("unnatural-map.ini", fileMode(false, true));
 		f->writeLine("[map]");
 		f->writeLine(string() + "name = " + globalSeed);
 		f->writeLine("version = 0");
@@ -254,7 +526,7 @@ void exportTerrain()
 	}
 
 	{ // write scene file
-		holder<fileClass> f = fs->openFile("scene.ini", fileMode(false, true));
+		holder<fileHandle> f = fs->openFile("scene.ini", fileMode(false, true));
 		f->writeLine("[]");
 		f->writeLine("object = planet.object");
 	}
@@ -268,24 +540,23 @@ void exportTerrain()
 	}
 
 	{ // write geometry
-		holder<fileClass> f = fs->openFile("planet.obj", fileMode(false, true));
+		holder<fileHandle> f = fs->openFile("planet.obj", fileMode(false, true));
 		f->writeLine("mtllib planet.mtl");
 		f->writeLine("o planet");
 		f->writeLine("usemtl planet");
-		const auto &c = [](const string &s) { return s.replace(",", " ").replace("(", " ").replace(")", " "); };
-		for (const vertexStruct &v : vertices)
-			f->writeLine(string() + "v " + c(v.position));
-		for (const vertexStruct &v : vertices)
-			f->writeLine(string() + "vn " + c(v.normal));
-		for (const vertexStruct &v : vertices)
-			f->writeLine(string() + "vt " + c(v.uv));
-		uint32 cnt = numeric_cast<uint32>(vertices.size()) / 4;
+		for (const vertexStruct &v : meshVertices)
+			f->writeLine(string() + "v " + v2s(v.position));
+		for (const vertexStruct &v : meshVertices)
+			f->writeLine(string() + "vn " + v2s(v.normal));
+		for (const vertexStruct &v : meshVertices)
+			f->writeLine(string() + "vt " + v2s(v.uv));
+		uint32 cnt = numeric_cast<uint32>(meshIndices.size()) / 3;
 		for (uint32 i = 0; i < cnt; i++)
 		{
 			string s = "f ";
-			for (uint32 j = 0; j < 4; j++)
+			for (uint32 j = 0; j < 3; j++)
 			{
-				uint32 k = i * 4 + j + 1;
+				uint32 k = meshIndices[i * 3 + j] + 1;
 				s += string() + k + "/" + k + "/" + k + " ";
 			}
 			f->writeLine(s);
@@ -293,32 +564,32 @@ void exportTerrain()
 	}
 
 	{ // write mtl file with link to albedo texture
-		holder<fileClass> f = fs->openFile("planet.mtl", fileMode(false, true));
+		holder<fileHandle> f = fs->openFile("planet.mtl", fileMode(false, true));
 		f->writeLine("newmtl planet");
 		f->writeLine("map_Kd planet-albedo.png");
 	}
 
 	{ // write cpm material file
-		holder<fileClass> f = fs->openFile("planet.cpm", fileMode(false, true));
+		holder<fileHandle> f = fs->openFile("planet.cpm", fileMode(false, true));
 		f->writeLine("[textures]");
 		f->writeLine("albedo = planet-albedo.png");
 		f->writeLine("special = planet-special.png");
 	}
 
 	{ // object file
-		holder<fileClass> f = fs->openFile("planet.object", fileMode(false, true));
+		holder<fileHandle> f = fs->openFile("planet.object", fileMode(false, true));
 		f->writeLine("[]");
 		f->writeLine("planet.obj");
 	}
 
 	{ // pack file
-		holder<fileClass> f = fs->openFile("planet.pack", fileMode(false, true));
+		holder<fileHandle> f = fs->openFile("planet.pack", fileMode(false, true));
 		f->writeLine("[]");
 		f->writeLine("planet.object");
 	}
 
 	{ // generate asset configuration
-		holder<fileClass> f = fs->openFile("planet.asset", fileMode(false, true));
+		holder<fileHandle> f = fs->openFile("planet.asset", fileMode(false, true));
 		f->writeLine("[]");
 		f->writeLine("scheme = texture");
 		f->writeLine("srgb = true");

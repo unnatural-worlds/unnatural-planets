@@ -10,7 +10,7 @@ using namespace cage;
 extern uint32 globalSeed;
 
 real terrainDensity(const vec3 &pos);
-void terrainMaterial(const vec3 &pos, vec3 &albedo, vec3 &special);
+void terrainMaterial(const vec3 &pos, vec3 &albedo, vec2 &special);
 
 void generateTerrain();
 void exportTerrain();

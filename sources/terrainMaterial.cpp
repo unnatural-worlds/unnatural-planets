@@ -1,19 +1,19 @@
 
 #include "main.h"
 
-#include <cage-core/noise.h>
+#include <cage-core/noiseFunction.h>
 #include <cage-core/color.h>
 #include <cage-core/random.h>
 
 namespace
 {
-	holder<noiseClass> newClouds(uint32 seed, uint32 octaves)
+	holder<noiseFunction> newClouds(uint32 seed, uint32 octaves)
 	{
-		noiseCreateConfig cfg;
+		noiseFunctionCreateConfig cfg;
 		cfg.octaves = octaves;
 		cfg.type = noiseTypeEnum::Value;
 		cfg.seed = seed;
-		return newNoise(cfg);
+		return newNoiseFunction(cfg);
 	}
 
 	vec3 pdnToRgb(real h, real s, real v)
@@ -23,8 +23,8 @@ namespace
 
 	vec3 recolor(const vec3 &color, real deviation, uint32 seed, const vec3 &pos)
 	{
-		static holder<noiseClass> value1 = newClouds(globalSeed + 100, 1);
-		static holder<noiseClass> value2 = newClouds(globalSeed + 101, 1);
+		static holder<noiseFunction> value1 = newClouds(globalSeed + 100, 1);
+		static holder<noiseFunction> value2 = newClouds(globalSeed + 101, 1);
 		real h = (value1->evaluate(pos * 3) * 0.5 + 0.5) * 0.5 + 0.25;
 		real v = (value2->evaluate(pos * 4) * 0.5 + 0.5);
 		vec3 hsv = convertRgbToHsv(color) + (vec3(h, 1 - v, v) - 0.5) * deviation;
@@ -40,7 +40,7 @@ namespace
 	}
 }
 
-void terrainMaterial(const vec3 &pos, vec3 &albedo, vec3 &special)
+void terrainMaterial(const vec3 &pos, vec3 &albedo, vec2 &special)
 {
 	static const vec3 colors[] = {
 		pdnToRgb(240, 1, 45),
@@ -53,11 +53,11 @@ void terrainMaterial(const vec3 &pos, vec3 &albedo, vec3 &special)
 		pdnToRgb(21, 69, 55)
 	};
 
-	static holder<noiseClass> clouds1 = newClouds(globalSeed + 300, 8);
+	static holder<noiseFunction> clouds1 = newClouds(globalSeed + 300, 8);
 	real c = ((clouds1->evaluate(pos * 0.042) * 0.5 + 0.5) * 16) % 8;
 	uint32 i = numeric_cast<uint32>(c);
 	real f = sharpEdge(c - i);
 	albedo = interpolate(colors[i], colors[(i + 1) % 8], f);
 	albedo = recolor(albedo, 0.1, globalSeed + 548, pos);
-	special = vec3(0.5, 0.02, 0);
+	special = vec2(0.5, 0.02);
 }

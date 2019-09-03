@@ -4,3 +4,6 @@
 [submodule "externals/dualmc"]
 	path = externals/dualmc
 	url = https://github.com/dominikwodniok/dualmc.git
+[submodule "externals/xatlas"]
+	path = externals/xatlas
+	url = https://github.com/jpcy/xatlas.git
