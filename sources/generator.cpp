@@ -486,7 +486,7 @@ namespace
 		{
 			uint32 type;
 			real difficulty;
-			terrainProperties(it.position, it.normal, type, difficulty);
+			terrainPathProperties(it.position, it.normal, type, difficulty);
 			pathProperties.push_back(vec2(difficulty, (type + 0.5) / 8));
 		}
 	}

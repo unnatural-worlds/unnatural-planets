@@ -12,14 +12,14 @@ extern real planetScale;
 
 real terrainDensity(const vec3 &pos);
 void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special);
-void terrainProperties(const vec3 &pos, const vec3 &normal, uint32 &type, real &difficulty);
+void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, real &difficulty);
 
 void generateTerrain();
 void exportTerrain();
 
 
 template <class T>
-T rescale(const T &v, real ia, real ib, real oa, real ob)
+inline T rescale(const T &v, real ia, real ib, real oa, real ob)
 {
 	return (v - ia) / (ib - ia) * (ob - oa) + oa;
 }

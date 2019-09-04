@@ -5,8 +5,11 @@
 #include <cage-core/color.h>
 #include <cage-core/random.h>
 
+
 namespace
 {
+	real waterline = 0.03;
+
 	holder<noiseFunction> newClouds(uint32 seed, uint32 octaves)
 	{
 		noiseFunctionCreateConfig cfg;
@@ -32,7 +35,7 @@ namespace
 
 	real terrainElevation(const vec3 &pos)
 	{
-		return terrainElevationImpl(pos / planetScale) * planetScale;
+		return terrainElevationImpl(pos / planetScale);
 	}
 
 	vec3 pdnToRgb(real h, real s, real v)
@@ -62,11 +65,22 @@ namespace
 real terrainDensity(const vec3 &pos)
 {
 	vec3 p1 = pos / planetScale;
-	return (sphereDensity(p1) + terrainElevationImpl(p1) * 0.15) * planetScale;
+	real e = terrainElevationImpl(p1);
+	return (sphereDensity(p1) + e * 0.15);
 }
 
 void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special)
 {
+	uint32 type;
+	real difficulty;
+	terrainPathProperties(pos, normal, type, difficulty);
+	if (type == 3)
+	{ // water
+		albedo = interpolate(pdnToRgb(199, 78, 78), pdnToRgb(235, 85, 48), difficulty);
+		special = vec2(0.7, 0.3);
+		return;
+	}
+
 	static const vec3 colors[] = {
 		pdnToRgb(240, 1, 45),
 		pdnToRgb(230, 6, 35),
@@ -87,9 +101,17 @@ void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &sp
 	special = vec2(0.5, 0.02);
 }
 
-void terrainProperties(const vec3 &pos, const vec3 &normal, uint32 &type, real &difficulty)
+void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, real &difficulty)
 {
-	type = 0;
-	difficulty = 0;
-	// todo
+	real elev = terrainElevation(pos);
+	if (elev < waterline)
+	{
+		type = 3;
+		difficulty = 1 - elev / waterline;
+	}
+	else
+	{
+		type = 0;
+		difficulty = 0;
+	}
 }
