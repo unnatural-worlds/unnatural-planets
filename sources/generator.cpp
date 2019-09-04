@@ -18,6 +18,8 @@
 #include <cstdarg>
 #include <algorithm>
 
+real planetScale = 1;
+
 namespace
 {
 	struct vertexStruct
@@ -32,14 +34,14 @@ namespace
 	std::vector<dualmc::Quad> mcIndices;
 	std::vector<vertexStruct> meshVertices;
 	std::vector<uint32> meshIndices;
+	std::vector<vec2> pathProperties;
 	holder<xatlas::Atlas> atlas;
 	holder<image> albedo;
 	holder<image> special;
-	real planetScale;
 
 #ifdef CAGE_DEBUG
-	const uint32 verticesPerSide = 50;
-	const real texelsPerSegment = 0.2;
+	const uint32 verticesPerSide = 40;
+	const real texelsPerSegment = 0.1;
 #else
 	const uint32 verticesPerSide = 200;
 	const real texelsPerSegment = 2;
@@ -132,8 +134,10 @@ namespace
 			{
 				for (uint32 x = 0; x < verticesPerSide; x++)
 				{
-					vec3 d = vec3(x, y, z) * 2 / verticesPerSide - 1;
-					densities.push_back(terrainDensity(d));
+					vec3 p = vec3(x, y, z) * 2 / verticesPerSide - 1;
+					real d = terrainDensity(p);
+					CAGE_ASSERT(d.valid());
+					densities.push_back(d);
 				}
 			}
 		}
@@ -145,6 +149,9 @@ namespace
 		dualmc::DualMC<float> mc;
 		mc.build((float*)densities.data(), verticesPerSide, verticesPerSide, verticesPerSide, 0, true, false, mcVertices, mcIndices);
 		std::vector<real>().swap(densities);
+		CAGE_LOG(severityEnum::Info, "generator", string() + "vertices count: " + mcVertices.size() + ", indices count: " + mcIndices.size());
+		if (mcVertices.size() == 0 || mcIndices.size() == 0)
+			CAGE_THROW_ERROR(exception, "generated empty mesh");
 	}
 
 	void genTriangles()
@@ -186,6 +193,27 @@ namespace
 		std::vector<dualmc::Quad>().swap(mcIndices);
 	}
 
+	void computeScale()
+	{
+		real sum = 0;
+		uint32 tc = numeric_cast<uint32>(meshIndices.size() / 3);
+		for (uint32 t = 0; t < tc; t++)
+		{
+			for (uint32 e1 = 0; e1 < 3; e1++)
+			{
+				uint32 e2 = (e1 + 1) % 3;
+				vec3 p1 = meshVertices[meshIndices[t * 3 + e1]].position;
+				vec3 p2 = meshVertices[meshIndices[t * 3 + e2]].position;
+				real d = distance(p1, p2);
+				sum += d;
+			}
+		}
+		planetScale = tc * 3 / sum;
+		CAGE_LOG(severityEnum::Info, "generator", string() + "planet scale: " + planetScale);
+		for (auto &it : meshVertices)
+			it.position *= planetScale;
+	}
+
 	void genUvs()
 	{
 		OPTICK_EVENT("genUvs");
@@ -218,7 +246,7 @@ namespace
 			{
 				OPTICK_EVENT("PackCharts");
 				xatlas::PackOptions pack;
-				pack.texelsPerUnit = (texelsPerSegment * planetScale).value;
+				pack.texelsPerUnit = texelsPerSegment.value;
 				pack.padding = 2;
 				pack.bilinear = true;
 				pack.blockAlign = true;
@@ -255,6 +283,7 @@ namespace
 		static const uint32 textureScale = 2;
 		const uint32 w = atlas->width * textureScale;
 		const uint32 h = atlas->height * textureScale;
+		CAGE_LOG(severityEnum::Info, "generator", string() + "texture resolution: " + w + "x" + h);
 
 		albedo = newImage();
 		albedo->empty(w, h, 3);
@@ -339,6 +368,7 @@ namespace
 						sint32 y = t0.y + i;
 						vec2 uv = vec2(x, y) * whInv;
 						vec2 b = barycoord(triUvs[triIdx], uv);
+						CAGE_ASSERT(b.valid());
 						positions.push_back(interpolate(triPos[triIdx], b));
 						normals.push_back(normalize(interpolate(triNorms[triIdx], b)));
 						xs.push_back(x);
@@ -352,11 +382,12 @@ namespace
 			OPTICK_EVENT("pixelColors");
 			uint32 *xi = xs.data();
 			uint32 *yi = ys.data();
-			for (const vec3 &p : positions)
+			uint32 cnt = numeric_cast<uint32>(positions.size());
+			for (uint32 i = 0; i < cnt; i++)
 			{
 				vec3 a;
 				vec2 s;
-				terrainMaterial(p, a, s);
+				terrainMaterial(positions[i], normals[i], a, s);
 				albedo->set(*xi, *yi, a);
 				special->set(*xi, *yi, s);
 				xi++;
@@ -382,11 +413,10 @@ namespace
 				if (m == T())
 				{
 					uint32 cnt = 0;
-					const sint32 k = 3;
-					uint32 sy = numeric_cast<uint32>(clamp(sint32(y) - k, 0, sint32(h) - 1));
-					uint32 ey = numeric_cast<uint32>(clamp(sint32(y) + k, 0, sint32(h) - 1));
-					uint32 sx = numeric_cast<uint32>(clamp(sint32(x) - k, 0, sint32(w) - 1));
-					uint32 ex = numeric_cast<uint32>(clamp(sint32(x) + k, 0, sint32(w) - 1));
+					uint32 sy = numeric_cast<uint32>(clamp(sint32(y) - 1, 0, sint32(h) - 1));
+					uint32 ey = numeric_cast<uint32>(clamp(sint32(y) + 1, 0, sint32(h) - 1));
+					uint32 sx = numeric_cast<uint32>(clamp(sint32(x) - 1, 0, sint32(w) - 1));
+					uint32 ex = numeric_cast<uint32>(clamp(sint32(x) + 1, 0, sint32(w) - 1));
 					T a;
 					for (uint32 yy = sy; yy <= ey; yy++)
 					{
@@ -415,11 +445,9 @@ namespace
 			return;
 
 		OPTICK_EVENT("inpaint");
-		uint32 w = img->width();
-		uint32 h = img->height();
 		uint32 c = img->channels();
 		holder<image> tmp = newImage();
-		tmp->empty(w, h, c, img->bytesPerChannel());
+		tmp->empty(img->width(), img->height(), c, img->bytesPerChannel());
 		switch (c)
 		{
 		case 1: inpaintProcess<real>(img, tmp); break;
@@ -441,24 +469,6 @@ namespace
 		return result;
 	}
 
-	void computeScale()
-	{
-		real sum = 0;
-		uint32 tc = numeric_cast<uint32>(meshIndices.size() / 3);
-		for (uint32 t = 0; t < tc; t++)
-		{
-			for (uint32 e1 = 0; e1 < 3; e1++)
-			{
-				uint32 e2 = (e1 + 1) % 3;
-				vec3 p1 = meshVertices[meshIndices[t * 3 + e1]].position;
-				vec3 p2 = meshVertices[meshIndices[t * 3 + e2]].position;
-				real d = distance(p1, p2);
-				sum += d;
-			}
-		}
-		planetScale = tc * 3 / sum;
-	}
-
 	inline string v2s(const vec3 &v)
 	{
 		return string() + v[0] + " " + v[1] + " " + v[2];
@@ -468,6 +478,18 @@ namespace
 	{
 		return string() + v[0] + " " + v[1];
 	}
+
+	void generatePathProperties()
+	{
+		pathProperties.reserve(meshVertices.size());
+		for (const auto &it : meshVertices)
+		{
+			uint32 type;
+			real difficulty;
+			terrainProperties(it.position, it.normal, type, difficulty);
+			pathProperties.push_back(vec2(difficulty, (type + 0.5) / 8));
+		}
+	}
 }
 
 void generateTerrain()
@@ -476,22 +498,22 @@ void generateTerrain()
 	genDensities();
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating surface");
 	genSurface();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "vertices count: " + mcVertices.size() + ", indices count: " + mcIndices.size());
-	if (mcVertices.size() == 0 || mcIndices.size() == 0)
-		CAGE_THROW_ERROR(exception, "generated empty mesh");
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating triangles");
 	genTriangles();
 	CAGE_LOG(severityEnum::Info, "generator", string() + "compute scale");
 	computeScale();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "planet scale: " + planetScale);
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating uvs");
 	genUvs();
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating textures");
 	genTextures();
 	CAGE_LOG(severityEnum::Info, "generator", string() + "inpainting albedo");
-	inpaint(albedo);
+	for (uint32 k = 0; k < 5; k++)
+		inpaint(albedo);
 	CAGE_LOG(severityEnum::Info, "generator", string() + "inpainting special");
-	inpaint(special);
+	for (uint32 k = 0; k < 5; k++)
+		inpaint(special);
+	CAGE_LOG(severityEnum::Info, "generator", string() + "generating path properties");
+	generatePathProperties();
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating done");
 }
 
@@ -504,19 +526,17 @@ void exportTerrain()
 	{ // write unnatural-map
 		holder<fileHandle> f = fs->openFile("unnatural-map.ini", fileMode(false, true));
 		f->writeLine("[map]");
-		f->writeLine(string() + "name = " + globalSeed);
+		f->writeLine(string() + "name = Unnatural Planet: " + globalSeed);
 		f->writeLine("version = 0");
 		f->writeLine("base = true");
 		f->writeLine("[description]");
-		f->writeLine(string() + globalSeed);
+		f->writeLine(string() + "Unnatural Planet: " + globalSeed);
 		f->writeLine("[authors]");
 		f->writeLine("unnatural-planets");
 		f->writeLine("[assets]");
 		f->writeLine("pack = planet.pack");
-		f->writeLine("navigation = planet.obj");
-		f->writeLine("collider = planet.obj;collider");
-		f->writeLine("[camera]");
-		f->writeLine("position = 0,0,100");
+		f->writeLine("navigation = planet-navigation.obj");
+		f->writeLine("collider = planet-collider.obj");
 		f->writeLine("[generator]");
 		f->writeLine("name = unnatural-planets");
 		f->writeLine("url = https://github.com/ucpu/unnatural-planets.git");
@@ -539,10 +559,10 @@ void exportTerrain()
 		fs->openFile("planet-special.png", fileMode(false, true))->writeBuffer(special->encodeBuffer());
 	}
 
-	{ // write geometry
-		holder<fileHandle> f = fs->openFile("planet.obj", fileMode(false, true));
+	{ // write geometry for rendering
+		holder<fileHandle> f = fs->openFile("planet-render.obj", fileMode(false, true));
 		f->writeLine("mtllib planet.mtl");
-		f->writeLine("o planet");
+		f->writeLine("o render");
 		f->writeLine("usemtl planet");
 		for (const vertexStruct &v : meshVertices)
 			f->writeLine(string() + "v " + v2s(v.position));
@@ -558,6 +578,46 @@ void exportTerrain()
 			{
 				uint32 k = meshIndices[i * 3 + j] + 1;
 				s += string() + k + "/" + k + "/" + k + " ";
+			}
+			f->writeLine(s);
+		}
+	}
+
+	{ // write geometry for navigation
+		holder<fileHandle> f = fs->openFile("planet-navigation.obj", fileMode(false, true));
+		f->writeLine("o navigation");
+		for (const vertexStruct &v : meshVertices)
+			f->writeLine(string() + "v " + v2s(v.position));
+		for (const vertexStruct &v : meshVertices)
+			f->writeLine(string() + "vn " + v2s(v.normal));
+		for (const vec2 &v : pathProperties)
+			f->writeLine(string() + "vt " + v2s(v));
+		uint32 cnt = numeric_cast<uint32>(meshIndices.size()) / 3;
+		for (uint32 i = 0; i < cnt; i++)
+		{
+			string s = "f ";
+			for (uint32 j = 0; j < 3; j++)
+			{
+				uint32 k = meshIndices[i * 3 + j] + 1;
+				s += string() + k + "/" + k + "/" + k + " ";
+			}
+			f->writeLine(s);
+		}
+	}
+
+	{ // write geometry for navigation
+		holder<fileHandle> f = fs->openFile("planet-collider.obj", fileMode(false, true));
+		f->writeLine("o collider");
+		for (const vertexStruct &v : meshVertices)
+			f->writeLine(string() + "v " + v2s(v.position));
+		uint32 cnt = numeric_cast<uint32>(meshIndices.size()) / 3;
+		for (uint32 i = 0; i < cnt; i++)
+		{
+			string s = "f ";
+			for (uint32 j = 0; j < 3; j++)
+			{
+				uint32 k = meshIndices[i * 3 + j] + 1;
+				s += string() + k + " ";
 			}
 			f->writeLine(s);
 		}
@@ -579,7 +639,7 @@ void exportTerrain()
 	{ // object file
 		holder<fileHandle> f = fs->openFile("planet.object", fileMode(false, true));
 		f->writeLine("[]");
-		f->writeLine("planet.obj");
+		f->writeLine("planet-render.obj");
 	}
 
 	{ // pack file
@@ -599,12 +659,13 @@ void exportTerrain()
 		f->writeLine("planet-special.png");
 		f->writeLine("[]");
 		f->writeLine("scheme = mesh");
-		f->writeLine(string() + "scale = " + planetScale);
-		f->writeLine("planet.obj");
+		f->writeLine("planet-render.obj");
+		f->writeLine("[]");
+		f->writeLine("scheme = mesh");
+		f->writeLine("planet-navigation.obj");
 		f->writeLine("[]");
 		f->writeLine("scheme = collider");
-		f->writeLine(string() + "scale = " + planetScale);
-		f->writeLine("planet.obj;collider");
+		f->writeLine("planet-collider.obj");
 		f->writeLine("[]");
 		f->writeLine("scheme = object");
 		f->writeLine("planet.object");

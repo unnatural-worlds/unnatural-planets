@@ -16,6 +16,25 @@ namespace
 		return newNoiseFunction(cfg);
 	}
 
+	real sphereDensity(const vec3 &pos)
+	{
+		return real(0.7) - length(pos);
+	}
+
+	real terrainElevationImpl(const vec3 &pos)
+	{
+		vec3 p1 = pos;
+		vec3 p2(p1[1], -p1[2], p1[0]);
+		static holder<noiseFunction> clouds1 = newClouds(globalSeed + 200, 3);
+		static holder<noiseFunction> clouds2 = newClouds(globalSeed + 201, 4);
+		return pow(clouds1->evaluate(p1 * 5) * 0.5 + 0.5, 1.8) * pow(clouds2->evaluate(p2 * 8) * 0.5 + 0.5, 1.5);
+	}
+
+	real terrainElevation(const vec3 &pos)
+	{
+		return terrainElevationImpl(pos / planetScale) * planetScale;
+	}
+
 	vec3 pdnToRgb(real h, real s, real v)
 	{
 		return convertHsvToRgb(vec3(h / 360, s / 100, v / 100));
@@ -40,7 +59,13 @@ namespace
 	}
 }
 
-void terrainMaterial(const vec3 &pos, vec3 &albedo, vec2 &special)
+real terrainDensity(const vec3 &pos)
+{
+	vec3 p1 = pos / planetScale;
+	return (sphereDensity(p1) + terrainElevationImpl(p1) * 0.15) * planetScale;
+}
+
+void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special)
 {
 	static const vec3 colors[] = {
 		pdnToRgb(240, 1, 45),
@@ -60,4 +85,11 @@ void terrainMaterial(const vec3 &pos, vec3 &albedo, vec2 &special)
 	albedo = interpolate(colors[i], colors[(i + 1) % 8], f);
 	albedo = recolor(albedo, 0.1, globalSeed + 548, pos);
 	special = vec2(0.5, 0.02);
+}
+
+void terrainProperties(const vec3 &pos, const vec3 &normal, uint32 &type, real &difficulty)
+{
+	type = 0;
+	difficulty = 0;
+	// todo
 }
