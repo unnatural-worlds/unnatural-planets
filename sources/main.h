@@ -11,8 +11,8 @@ extern uint32 globalSeed;
 extern real planetScale;
 
 real terrainDensity(const vec3 &pos);
-void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special);
 void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, real &difficulty);
+void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height);
 
 void generateTerrain();
 void exportTerrain();

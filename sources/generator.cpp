@@ -38,14 +38,34 @@ namespace
 	holder<xatlas::Atlas> atlas;
 	holder<image> albedo;
 	holder<image> special;
+	holder<image> heightMap;
 
 #ifdef CAGE_DEBUG
 	const uint32 verticesPerSide = 40;
 	const real texelsPerSegment = 0.1;
+	const uint32 textureUpscale = 1;
 #else
 	const uint32 verticesPerSide = 200;
-	const real texelsPerSegment = 2;
+	const real texelsPerSegment = 3;
+	const uint32 textureUpscale = 2;
 #endif // CAGE_DEBUG
+
+	int xAtlasPrint(const char *format, ...)
+	{
+		char buffer[1000];
+		va_list arg;
+		va_start(arg, format);
+		auto result = vsprintf(buffer, format, arg);
+		va_end(arg);
+		CAGE_LOG_DEBUG(severityEnum::Warning, "xatlas", buffer);
+		return result;
+	}
+
+	bool xAtlasProgress(xatlas::ProgressCategory::Enum category, int progress, void *userData)
+	{
+		CAGE_LOG(severityEnum::Info, "xatlas", string() + "category: " + category + ", progress: " + progress);
+		return true; // continue processing
+	}
 
 	inline void destroyAtlas(void *ptr)
 	{
@@ -54,7 +74,9 @@ namespace
 
 	inline holder<xatlas::Atlas> newAtlas()
 	{
+		xatlas::SetPrint(&xAtlasPrint, false);
 		xatlas::Atlas *a = xatlas::Create();
+		xatlas::SetProgressCallback(a, &xAtlasProgress);
 		return holder<xatlas::Atlas>(a, a, delegate<void(void*)>().bind<&destroyAtlas>());
 	}
 
@@ -280,15 +302,9 @@ namespace
 	void genTextures()
 	{
 		OPTICK_EVENT("genTextures");
-		static const uint32 textureScale = 2;
-		const uint32 w = atlas->width * textureScale;
-		const uint32 h = atlas->height * textureScale;
+		const uint32 w = atlas->width * textureUpscale;
+		const uint32 h = atlas->height * textureUpscale;
 		CAGE_LOG(severityEnum::Info, "generator", string() + "texture resolution: " + w + "x" + h);
-
-		albedo = newImage();
-		albedo->empty(w, h, 3);
-		special = newImage();
-		special->empty(w, h, 2);
 
 		std::vector<triangle> triPos;
 		std::vector<triangle> triNorms;
@@ -324,7 +340,7 @@ namespace
 		std::vector<uint32> xs;
 		std::vector<uint32> ys;
 		{
-			OPTICK_EVENT("prepNoise");
+			OPTICK_EVENT("prepCoords");
 			positions.reserve(w * h);
 			normals.reserve(w * h);
 			xs.reserve(w * h);
@@ -341,9 +357,9 @@ namespace
 					m->vertexArray[vertIds[1]].uv,
 					m->vertexArray[vertIds[2]].uv
 				};
-				ivec2 t0 = ivec2(sint32(vertUvs[0][0] * textureScale), sint32(vertUvs[0][1] * textureScale));
-				ivec2 t1 = ivec2(sint32(vertUvs[1][0] * textureScale), sint32(vertUvs[1][1] * textureScale));
-				ivec2 t2 = ivec2(sint32(vertUvs[2][0] * textureScale), sint32(vertUvs[2][1] * textureScale));
+				ivec2 t0 = ivec2(sint32(vertUvs[0][0] * textureUpscale), sint32(vertUvs[0][1] * textureUpscale));
+				ivec2 t1 = ivec2(sint32(vertUvs[1][0] * textureUpscale), sint32(vertUvs[1][1] * textureUpscale));
+				ivec2 t2 = ivec2(sint32(vertUvs[2][0] * textureUpscale), sint32(vertUvs[2][1] * textureUpscale));
 				// inspired by https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling
 				if (t0.y > t1.y)
 					std::swap(t0, t1);
@@ -378,6 +394,12 @@ namespace
 			}
 		}
 
+		albedo = newImage();
+		albedo->empty(w, h, 3);
+		special = newImage();
+		special->empty(w, h, 2);
+		heightMap = newImage();
+		heightMap->empty(w, h, 1);
 		{
 			OPTICK_EVENT("pixelColors");
 			uint32 *xi = xs.data();
@@ -387,9 +409,11 @@ namespace
 			{
 				vec3 a;
 				vec2 s;
-				terrainMaterial(positions[i], normals[i], a, s);
+				real h;
+				terrainMaterial(positions[i], normals[i], a, s, h);
 				albedo->set(*xi, *yi, a);
 				special->set(*xi, *yi, s);
+				heightMap->set(*xi, *yi, h);
 				xi++;
 				yi++;
 			}
@@ -397,6 +421,7 @@ namespace
 
 		albedo->verticalFlip();
 		special->verticalFlip();
+		heightMap->verticalFlip();
 	}
 
 	template<class T>
@@ -458,17 +483,6 @@ namespace
 		std::swap(img, tmp);
 	}
 
-	int xAtlasPrint(const char *format, ...)
-	{
-		char buffer[1000];
-		va_list arg;
-		va_start(arg, format);
-		auto result = vsprintf(buffer, format, arg);
-		va_end(arg);
-		CAGE_LOG_DEBUG(severityEnum::Warning, "xatlas", buffer);
-		return result;
-	}
-
 	inline string v2s(const vec3 &v)
 	{
 		return string() + v[0] + " " + v[1] + " " + v[2];
@@ -506,12 +520,13 @@ void generateTerrain()
 	genUvs();
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating textures");
 	genTextures();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "inpainting albedo");
-	for (uint32 k = 0; k < 5; k++)
+	CAGE_LOG(severityEnum::Info, "generator", string() + "inpainting textures");
+	for (uint32 k = 0; k < 7; k++)
 		inpaint(albedo);
-	CAGE_LOG(severityEnum::Info, "generator", string() + "inpainting special");
-	for (uint32 k = 0; k < 5; k++)
+	for (uint32 k = 0; k < 7; k++)
 		inpaint(special);
+	for (uint32 k = 0; k < 7; k++)
+		inpaint(heightMap);
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating path properties");
 	generatePathProperties();
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating done");
@@ -557,6 +572,7 @@ void exportTerrain()
 	{ // write textures
 		fs->openFile("planet-albedo.png", fileMode(false, true))->writeBuffer(albedo->encodeBuffer());
 		fs->openFile("planet-special.png", fileMode(false, true))->writeBuffer(special->encodeBuffer());
+		fs->openFile("planet-height.png", fileMode(false, true))->writeBuffer(heightMap->encodeBuffer());
 	}
 
 	{ // write geometry for rendering
@@ -627,6 +643,7 @@ void exportTerrain()
 		holder<fileHandle> f = fs->openFile("planet.mtl", fileMode(false, true));
 		f->writeLine("newmtl planet");
 		f->writeLine("map_Kd planet-albedo.png");
+		f->writeLine("map_bump planet-height.png");
 	}
 
 	{ // write cpm material file
@@ -634,6 +651,7 @@ void exportTerrain()
 		f->writeLine("[textures]");
 		f->writeLine("albedo = planet-albedo.png");
 		f->writeLine("special = planet-special.png");
+		f->writeLine("normal = planet-height.png");
 	}
 
 	{ // object file
@@ -658,7 +676,12 @@ void exportTerrain()
 		f->writeLine("scheme = texture");
 		f->writeLine("planet-special.png");
 		f->writeLine("[]");
+		f->writeLine("scheme = texture");
+		f->writeLine("convert = height_to_normal");
+		f->writeLine("planet-height.png");
+		f->writeLine("[]");
 		f->writeLine("scheme = mesh");
+		f->writeLine("override_material = planet.cpm");
 		f->writeLine("planet-render.obj");
 		f->writeLine("[]");
 		f->writeLine("scheme = mesh");
