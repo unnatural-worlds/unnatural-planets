@@ -205,7 +205,7 @@ namespace
 		meshIndices.reserve(mcIndices.size() * 6 / 4);
 		for (const auto &q : mcIndices)
 		{
-			const uint32 is[4] = { q.i0, q.i1, q.i2, q.i3 };
+			const uint32 is[4] = { numeric_cast<uint32>(q.i0), numeric_cast<uint32>(q.i1), numeric_cast<uint32>(q.i2), numeric_cast<uint32>(q.i3) };
 #define P(I) meshVertices[is[I]].position
 			bool which = distanceSquared(P(0), P(2)) < distanceSquared(P(1), P(3)); // split the quad by shorter diagonal
 #undef P
