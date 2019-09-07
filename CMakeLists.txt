@@ -15,7 +15,9 @@ target_sources(unnatural-planets PRIVATE
 	"externals/xatlas/xatlas.h" "externals/xatlas/xatlas.cpp"
 	"externals/ng_mesh/ng_mesh.cpp" "externals/ng_mesh/ng_mesh.h" "externals/ng_mesh/qef_simd.h"
 )
-#set_source_files_properties("externals/xatlas/xatlas.cpp" PROPERTIES COMPILE_DEFINITIONS "XA_MULTITHREADED=0")
+if(NOT MSVC)
+	target_link_libraries(unnatural-planets pthread)
+endif()
 target_link_libraries(unnatural-planets cage-core cage-client)
 cage_ide_category(unnatural-planets unnatural-planets)
 cage_ide_sort_files(unnatural-planets)

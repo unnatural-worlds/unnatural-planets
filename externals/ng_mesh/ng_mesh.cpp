@@ -18,19 +18,18 @@
 
 namespace ng_mesh
 {
-	using cage::min;
-	using cage::max;
+	using namespace cage;
 
 	namespace
 	{
-		inline void *ng_alloc(cage::uintPtr size)
+		inline void *ng_alloc(uintPtr size)
 		{
-			return cage::detail::systemArena().allocate(size, 16);
+			return detail::systemArena().allocate(size, 16);
 		}
 
 		inline void ng_free(void *ptr)
 		{
-			cage::detail::systemArena().deallocate(ptr);
+			detail::systemArena().deallocate(ptr);
 		}
 
 		const int COLLAPSE_MAX_DEGREE = 16;
@@ -71,7 +70,7 @@ namespace ng_mesh
 
 			void copy(const T* data, const int count)
 			{
-				memcpy(base_, data, sizeof(T) * count);
+				detail::memcpy(base_, data, sizeof(T) * count);
 				size_ = count;
 			}
 
@@ -242,7 +241,7 @@ namespace ng_mesh
 			int validCollapses = 0;
 
 			std::mt19937 prng;
-			prng.seed(cage::randomRange(0u, (cage::uint32)cage::m));
+			prng.seed(randomRange(0u, (uint32)m));
 
 			const int numRandomEdges = edges.size() * options.edgeFraction;
 			std::uniform_int_distribution<int> distribution(0, (int)(edges.size() - 1));
@@ -258,7 +257,7 @@ namespace ng_mesh
 			std::sort(begin(randomEdges), end(randomEdges));
 
 			LinearBuffer<float> minEdgeCost(vertices.size());
-			minEdgeCost.resize(vertices.size(), FLT_MAX);
+			minEdgeCost.resize(vertices.size(), real::Infinity().value);
 
 			for (int i : randomEdges)
 			{
@@ -266,7 +265,7 @@ namespace ng_mesh
 				const auto& vMin = vertices[edge.min_];
 				const auto& vMax = vertices[edge.max_];
 
-				if (cage::distance(cage::vec3(vMax.xyz), cage::vec3(vMin.xyz)) > 0.5)
+				if (distance(vec3(vMax.xyz), vec3(vMin.xyz)) > 0.5)
 					continue;
 
 				const int degree = vertexTriangleCounts[edge.min_] + vertexTriangleCounts[edge.max_];
@@ -275,10 +274,10 @@ namespace ng_mesh
 					continue;
 				}
 
-				__declspec(align(16)) float pos[4];
+				alignas(16) vec4 pos;
 				MeshVertex data[2] = { vMin, vMax };
 
-				float error = qef_solve_from_points_4d_interleaved(&data[0].xyz[0].value, sizeof(MeshVertex) / sizeof(float), 2, pos);
+				float error = qef_solve_from_points_4d_interleaved(&data[0].xyz[0].value, sizeof(MeshVertex) / sizeof(float), 2, &pos.data[0].value);
 				if (error > 0.f)
 				{
 					error = 1.f / error;
