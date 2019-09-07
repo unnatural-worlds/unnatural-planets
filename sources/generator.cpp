@@ -13,6 +13,7 @@
 
 #include "dualmc.h"
 #include "xatlas.h"
+#include "ng_mesh.h"
 #include <optick.h>
 
 #include <cstdarg>
@@ -140,13 +141,24 @@ namespace
 	inline void get(holder<image> &img, uint32 x, uint32 y, vec3 &result) { result = img->get3(x, y); }
 	inline void get(holder<image> &img, uint32 x, uint32 y, vec4 &result) { result = img->get4(x, y); }
 
-	vec3 mc2c(const dualmc::Vertex &v)
+	inline vec3 mc2c(const dualmc::Vertex &v)
 	{
 		return vec3(v.x, v.y, v.z) * 2 / verticesPerSide - 1;
 	}
 
+	inline string v2s(const vec3 &v)
+	{
+		return string() + v[0] + " " + v[1] + " " + v[2];
+	}
+
+	inline string v2s(const vec2 &v)
+	{
+		return string() + v[0] + " " + v[1];
+	}
+
 	void genDensities()
 	{
+		CAGE_LOG(severityEnum::Info, "generator", string() + "generating densities");
 		OPTICK_EVENT("genDensities");
 		std::vector<vec3> positions;
 		densities.reserve(positions.size());
@@ -167,17 +179,19 @@ namespace
 
 	void genSurface()
 	{
+		CAGE_LOG(severityEnum::Info, "generator", string() + "generating surface");
 		OPTICK_EVENT("genSurface");
 		dualmc::DualMC<float> mc;
 		mc.build((float*)densities.data(), verticesPerSide, verticesPerSide, verticesPerSide, 0, true, false, mcVertices, mcIndices);
 		std::vector<real>().swap(densities);
-		CAGE_LOG(severityEnum::Info, "generator", string() + "vertices count: " + mcVertices.size() + ", indices count: " + mcIndices.size());
+		CAGE_LOG(severityEnum::Info, "generator", string() + "vertices count: " + mcVertices.size() + ", quads count: " + mcIndices.size());
 		if (mcVertices.size() == 0 || mcIndices.size() == 0)
 			CAGE_THROW_ERROR(exception, "generated empty mesh");
 	}
 
 	void genTriangles()
 	{
+		CAGE_LOG(severityEnum::Info, "generator", string() + "generating triangles");
 		OPTICK_EVENT("genTriangles");
 		CAGE_ASSERT(meshVertices.empty());
 		CAGE_ASSERT(meshIndices.empty());
@@ -213,10 +227,13 @@ namespace
 			it.normal = normalize(it.normal);
 		std::vector<dualmc::Vertex>().swap(mcVertices);
 		std::vector<dualmc::Quad>().swap(mcIndices);
+		CAGE_LOG(severityEnum::Info, "generator", string() + "vertices count: " + meshVertices.size() + ", triangles count: " + meshIndices.size() / 3);
 	}
 
 	void computeScale()
 	{
+		CAGE_LOG(severityEnum::Info, "generator", string() + "compute scale");
+		OPTICK_EVENT("computeScale");
 		real sum = 0;
 		uint32 tc = numeric_cast<uint32>(meshIndices.size() / 3);
 		for (uint32 t = 0; t < tc; t++)
@@ -230,14 +247,78 @@ namespace
 				sum += d;
 			}
 		}
-		planetScale = tc * 3 / sum;
-		CAGE_LOG(severityEnum::Info, "generator", string() + "planet scale: " + planetScale);
+		real scale = tc * 3 / sum;
 		for (auto &it : meshVertices)
-			it.position *= planetScale;
+			it.position *= scale;
+		planetScale *= scale;
+		CAGE_LOG(severityEnum::Info, "generator", string() + "current scale: " + scale + ", total scale: " + planetScale);
+	}
+
+	void simplifyMesh()
+	{
+		CAGE_LOG(severityEnum::Info, "generator", string() + "simplifying mesh");
+		OPTICK_EVENT("simplifyMesh");
+		std::vector<ng_mesh::MeshVertex> vs;
+		vs.reserve(meshVertices.size());
+		for (const auto &it : meshVertices)
+		{
+			ng_mesh::MeshVertex v;
+			v.xyz = vec4(it.position, 1);
+			v.normal = vec4(it.normal, 0);
+			v.colour = vec4(it.uv, 0, 0);
+			vs.push_back(v);
+		}
+
+		uint32 tc = numeric_cast<uint32>(meshIndices.size() / 3);
+		std::vector<ng_mesh::MeshTriangle> ts;
+		ts.reserve(tc);
+		for (uint32 ti = 0; ti < tc; ti++)
+		{
+			ng_mesh::MeshTriangle t;
+			t.indices_[0] = meshIndices[ti * 3 + 0];
+			t.indices_[1] = meshIndices[ti * 3 + 1];
+			t.indices_[2] = meshIndices[ti * 3 + 2];
+			ts.push_back(t);
+		}
+
+		ng_mesh::MeshBuffer mb;
+		mb.vertices = vs.data();
+		mb.numVertices = vs.size();
+		mb.triangles = ts.data();
+		mb.numTriangles = ts.size();
+
+		ng_mesh::MeshSimplificationOptions opts;
+		ng_mesh::simplify(&mb, opts);
+
+		CAGE_ASSERT(mb.numVertices <= vs.size());
+		CAGE_ASSERT(mb.numTriangles <= ts.size());
+		vs.resize(mb.numVertices);
+		ts.resize(mb.numTriangles);
+
+		meshVertices.clear();
+		for (const auto &it : vs)
+		{
+			vertexStruct v;
+			v.position = vec3(it.xyz);
+			v.normal = vec3(it.normal);
+			v.uv = vec2(it.colour);
+			meshVertices.push_back(v);
+		}
+
+		meshIndices.clear();
+		for (const auto &it : ts)
+		{
+			meshIndices.push_back(it.indices_[0]);
+			meshIndices.push_back(it.indices_[1]);
+			meshIndices.push_back(it.indices_[2]);
+		}
+
+		CAGE_LOG(severityEnum::Info, "generator", string() + "vertices count: " + meshVertices.size() + ", triangles count: " + meshIndices.size() / 3);
 	}
 
 	void genUvs()
 	{
+		CAGE_LOG(severityEnum::Info, "generator", string() + "generating uvs");
 		OPTICK_EVENT("genUvs");
 		atlas = newAtlas();
 
@@ -301,6 +382,7 @@ namespace
 
 	void genTextures()
 	{
+		CAGE_LOG(severityEnum::Info, "generator", string() + "generating textures");
 		OPTICK_EVENT("genTextures");
 		const uint32 w = atlas->width * textureUpscale;
 		const uint32 h = atlas->height * textureUpscale;
@@ -483,18 +565,9 @@ namespace
 		std::swap(img, tmp);
 	}
 
-	inline string v2s(const vec3 &v)
-	{
-		return string() + v[0] + " " + v[1] + " " + v[2];
-	}
-
-	inline string v2s(const vec2 &v)
-	{
-		return string() + v[0] + " " + v[1];
-	}
-
 	void generatePathProperties()
 	{
+		CAGE_LOG(severityEnum::Info, "generator", string() + "generating path properties");
 		pathProperties.reserve(meshVertices.size());
 		for (const auto &it : meshVertices)
 		{
@@ -508,17 +581,13 @@ namespace
 
 void generateTerrain()
 {
-	CAGE_LOG(severityEnum::Info, "generator", string() + "generating densities");
 	genDensities();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "generating surface");
 	genSurface();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "generating triangles");
 	genTriangles();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "compute scale");
 	computeScale();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "generating uvs");
+	simplifyMesh();
+	computeScale();
 	genUvs();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "generating textures");
 	genTextures();
 	CAGE_LOG(severityEnum::Info, "generator", string() + "inpainting textures");
 	for (uint32 k = 0; k < 7; k++)
@@ -527,7 +596,6 @@ void generateTerrain()
 		inpaint(special);
 	for (uint32 k = 0; k < 7; k++)
 		inpaint(heightMap);
-	CAGE_LOG(severityEnum::Info, "generator", string() + "generating path properties");
 	generatePathProperties();
 	CAGE_LOG(severityEnum::Info, "generator", string() + "generating done");
 }

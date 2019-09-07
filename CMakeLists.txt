@@ -9,8 +9,12 @@ add_subdirectory(externals/cage)
 
 file(GLOB_RECURSE unnatural-planets-sources "sources/*")
 add_executable(unnatural-planets ${unnatural-planets-sources})
-target_include_directories(unnatural-planets PRIVATE "externals/dualmc/include" "externals/xatlas")
-target_sources(unnatural-planets PRIVATE "externals/dualmc/include/dualmc.h" "externals/xatlas/xatlas.h" "externals/xatlas/xatlas.cpp")
+target_include_directories(unnatural-planets PRIVATE "externals/dualmc/include" "externals/xatlas" "externals/ng_mesh")
+target_sources(unnatural-planets PRIVATE
+	"externals/dualmc/include/dualmc.h"
+	"externals/xatlas/xatlas.h" "externals/xatlas/xatlas.cpp"
+	"externals/ng_mesh/ng_mesh.cpp" "externals/ng_mesh/ng_mesh.h" "externals/ng_mesh/qef_simd.h"
+)
 #set_source_files_properties("externals/xatlas/xatlas.cpp" PROPERTIES COMPILE_DEFINITIONS "XA_MULTITHREADED=0")
 target_link_libraries(unnatural-planets cage-core cage-client)
 cage_ide_category(unnatural-planets unnatural-planets)
