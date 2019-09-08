@@ -265,7 +265,7 @@ namespace ng_mesh
 				const auto& vMin = vertices[edge.min_];
 				const auto& vMax = vertices[edge.max_];
 
-				if (distance(vec3(vMax.xyz), vec3(vMin.xyz)) > 0.5)
+				if (distance(vec3(vMax.xyz), vec3(vMin.xyz)) > options.edgeLengthLimitHigh)
 					continue;
 
 				const int degree = vertexTriangleCounts[edge.min_] + vertexTriangleCounts[edge.max_];

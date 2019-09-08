@@ -19,6 +19,9 @@ namespace ng_mesh
 		// Stop simplifying after a given number of iterations
 		int maxIterations = 200;
 
+		// collapse edges shorter than this limit only
+		float edgeLengthLimitHigh = 0.6;
+
 		// And/or stop simplifying when we've reached a percentage of the input triangles
 		float targetPercentage = 0.5f;
 

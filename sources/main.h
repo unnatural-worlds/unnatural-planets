@@ -17,16 +17,4 @@ void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &sp
 void generateTerrain();
 void exportTerrain();
 
-
-template <class T>
-inline T rescale(const T &v, real ia, real ib, real oa, real ob)
-{
-	return (v - ia) / (ib - ia) * (ob - oa) + oa;
-}
-
-inline real sharpEdge(real v, real p = 0.05)
-{
-	return rescale(clamp(v, 0.5 - p, 0.5 + p), 0.5 - p, 0.5 + p, 0, 1);
-}
-
 #endif

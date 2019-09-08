@@ -9,6 +9,7 @@
 #include <cage-core/files.h>
 #include <cage-core/fileUtils.h>
 #include <cage-core/memoryBuffer.h>
+#include <cage-core/threadPool.h>
 #include <cage-client/core.h>
 
 #include "dualmc.h"
@@ -48,7 +49,7 @@ namespace
 #else
 	const uint32 verticesPerSide = 200;
 	const real texelsPerSegment = 3;
-	const uint32 textureUpscale = 2;
+	const uint32 textureUpscale = 4;
 #endif // CAGE_DEBUG
 
 	int xAtlasPrint(const char *format, ...)
@@ -300,7 +301,7 @@ namespace
 		{
 			vertexStruct v;
 			v.position = vec3(it.xyz);
-			v.normal = vec3(it.normal);
+			v.normal = normalize(vec3(it.normal));
 			v.uv = vec2(it.colour);
 			meshVertices.push_back(v);
 		}
@@ -546,12 +547,11 @@ namespace
 		}
 	}
 
-	void inpaint(holder<image> &img)
+	void inpaintImage(holder<image> &img)
 	{
 		if (!img)
 			return;
-
-		OPTICK_EVENT("inpaint");
+		OPTICK_EVENT("inpaintImage");
 		uint32 c = img->channels();
 		holder<image> tmp = newImage();
 		tmp->empty(img->width(), img->height(), c, img->bytesPerChannel());
@@ -565,15 +565,45 @@ namespace
 		std::swap(img, tmp);
 	}
 
+	void inpaintEntry(uint32 idx, uint32)
+	{
+		switch (idx)
+		{
+		case 0:
+			for (uint32 i = 0; i < 7; i++)
+				inpaintImage(albedo);
+			break;
+		case 1:
+			for (uint32 i = 0; i < 7; i++)
+				inpaintImage(special);
+			break;
+		case 2:
+			for (uint32 i = 0; i < 7; i++)
+				inpaintImage(heightMap);
+			break;
+		}
+	}
+
+	void inpaintTextures()
+	{
+		CAGE_LOG(severityEnum::Info, "generator", string() + "inpainting textures");
+		OPTICK_EVENT("inpaintTextures");
+		holder<threadPool> thr = newThreadPool("inpaint_", 3);
+		thr->function.bind<&inpaintEntry>();
+		thr->run();
+	}
+
 	void generatePathProperties()
 	{
 		CAGE_LOG(severityEnum::Info, "generator", string() + "generating path properties");
+		OPTICK_EVENT("generatePathProperties");
 		pathProperties.reserve(meshVertices.size());
 		for (const auto &it : meshVertices)
 		{
 			uint32 type;
 			real difficulty;
 			terrainPathProperties(it.position, it.normal, type, difficulty);
+			difficulty = clamp(difficulty, 0, 1);
 			pathProperties.push_back(vec2(difficulty, (type + 0.5) / 8));
 		}
 	}
@@ -581,6 +611,8 @@ namespace
 
 void generateTerrain()
 {
+	CAGE_LOG(severityEnum::Info, "generator", "generating");
+	OPTICK_EVENT("generateTerrain");
 	genDensities();
 	genSurface();
 	genTriangles();
@@ -589,19 +621,15 @@ void generateTerrain()
 	computeScale();
 	genUvs();
 	genTextures();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "inpainting textures");
-	for (uint32 k = 0; k < 7; k++)
-		inpaint(albedo);
-	for (uint32 k = 0; k < 7; k++)
-		inpaint(special);
-	for (uint32 k = 0; k < 7; k++)
-		inpaint(heightMap);
+	inpaintTextures();
 	generatePathProperties();
-	CAGE_LOG(severityEnum::Info, "generator", string() + "generating done");
 }
 
 void exportTerrain()
 {
+	CAGE_LOG(severityEnum::Info, "generator", string() + "exporting");
+	OPTICK_EVENT("exportTerrain");
+
 	holder<filesystem> fs = newFilesystem();
 	fs->changeDir(string() + "output/" + globalSeed);
 	fs->remove("."); // remove previous output
@@ -750,9 +778,11 @@ void exportTerrain()
 		f->writeLine("[]");
 		f->writeLine("scheme = mesh");
 		f->writeLine("override_material = planet.cpm");
+		//f->writeLine("pass_invalid_normal = true");
 		f->writeLine("planet-render.obj");
 		f->writeLine("[]");
 		f->writeLine("scheme = mesh");
+		f->writeLine("export_tangent = false");
 		f->writeLine("planet-navigation.obj");
 		f->writeLine("[]");
 		f->writeLine("scheme = collider");
