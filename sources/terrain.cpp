@@ -28,20 +28,14 @@ namespace
 
 	vec3 pdnToRgb(real h, real s, real v)
 	{
-		return convertHsvToRgb(vec3(h / 360, s / 100, v / 100));
-	}
-
-	vec3 colorInterpolate(const vec3 &rgb1, const vec3 &rgb2, real f)
-	{
-		// todo Hue should interpolate along the shorter path
-		return convertHsvToRgb(interpolate(convertRgbToHsv(rgb1), convertRgbToHsv(rgb2), f));
+		return colorHsvToRgb(vec3(h / 360, s / 100, v / 100));
 	}
 
 	vec3 colorDeviation(const vec3 &color, real deviation = 0.05)
 	{
-		vec3 hsv = convertRgbToHsv(color) + (randomChance3() - 0.5) * deviation;
+		vec3 hsv = colorRgbToHsv(color) + (randomChance3() - 0.5) * deviation;
 		hsv[0] = (hsv[0] + 1) % 1;
-		return convertHsvToRgb(clamp(hsv, vec3(0), vec3(1)));
+		return colorHsvToRgb(clamp(hsv, vec3(0), vec3(1)));
 	}
 
 	vec3 normalDeviation(const vec3 &normal, real strength)
@@ -230,7 +224,7 @@ void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &sp
 		// todo
 		break; //return;
 	case 1: // sand
-		albedo = colorDeviation(colorInterpolate(pdnToRgb(55, 99, 97), pdnToRgb(44, 70, 74), difficulty), 0.02);
+		albedo = colorDeviation(interpolateColor(pdnToRgb(55, 99, 97), pdnToRgb(44, 70, 74), difficulty), 0.02);
 		special = vec2(randomRange(0.4, 0.8), randomRange(0.01, 0.2));
 		height = randomRange(0.47, 0.53);
 		return;
@@ -238,7 +232,7 @@ void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &sp
 		vegetationMaterial(pos, normal, albedo, special, height);
 		return;
 	case 3: // sea water
-		albedo = colorDeviation(colorInterpolate(pdnToRgb(235, 85, 48), pdnToRgb(199, 78, 78), difficulty));
+		albedo = colorDeviation(interpolateColor(pdnToRgb(235, 85, 48), pdnToRgb(199, 78, 78), difficulty));
 		special = vec2(randomRange(0.2, 0.3), 0.02);
 		height = 0.05 * (1 - 0.7 * difficulty) * (randomChance() - 0.5) + 0.5;
 		return;
