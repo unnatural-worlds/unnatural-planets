@@ -33,9 +33,9 @@ namespace
 
 	vec3 colorDeviation(const vec3 &color, real deviation = 0.05)
 	{
-		vec3 hsv = colorRgbToHsv(color) + (randomChance3() - 0.5) * deviation;
-		hsv[0] = (hsv[0] + 1) % 1;
-		return colorHsvToRgb(clamp(hsv, vec3(0), vec3(1)));
+		vec3 hsl = colorRgbToHsluv(color) + (randomChance3() - 0.5) * deviation;
+		hsl[0] = (hsl[0] + 1) % 1;
+		return colorHsluvToRgb(clamp(hsl, 0, 1));
 	}
 
 	vec3 normalDeviation(const vec3 &normal, real strength)
@@ -200,7 +200,7 @@ void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, re
 		{
 			type = 1;
 			static const holder<noiseFunction> sandCloud3 = newClouds(globalSeed + 688879, 5);
-			difficulty = pow(sandCloud3->evaluate(pos * 0.274), 1.3);
+			difficulty = pow(max(sandCloud3->evaluate(pos * 0.274), 0), 1.3);
 			return;
 		}
 	}
@@ -208,7 +208,7 @@ void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, re
 	{ // vegetation
 		static const holder<noiseFunction> vegetationClouds = newClouds(globalSeed + 3547746, 5);
 		type = 2;
-		difficulty = pow(vegetationClouds->evaluate(pos * 0.1374), 1.3);
+		difficulty = pow(max(vegetationClouds->evaluate(pos * 0.1374), 0), 1.3);
 	}
 }
 
@@ -217,6 +217,7 @@ void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &sp
 	uint32 type;
 	real difficulty;
 	terrainPathProperties(pos, normal, type, difficulty);
+	CAGE_ASSERT(difficulty.valid() && difficulty >= 0 && difficulty <= 1);
 	static const holder<noiseFunction> rocksClouds = newClouds(globalSeed + 68971, 4);
 	switch (type)
 	{
@@ -224,7 +225,7 @@ void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &sp
 		// todo
 		break; //return;
 	case 1: // sand
-		albedo = colorDeviation(interpolateColor(pdnToRgb(55, 99, 97), pdnToRgb(44, 70, 74), difficulty), 0.02);
+		albedo = colorDeviation(interpolateColor(pdnToRgb(55, 99, 97), pdnToRgb(44, 70, 74), difficulty));
 		special = vec2(randomRange(0.4, 0.8), randomRange(0.01, 0.2));
 		height = randomRange(0.47, 0.53);
 		return;
