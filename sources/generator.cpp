@@ -637,11 +637,11 @@ void exportTerrain()
 	{ // write unnatural-map
 		holder<fileHandle> f = fs->openFile("unnatural-map.ini", fileMode(false, true));
 		f->writeLine("[map]");
-		f->writeLine(string() + "name = Unnatural Planet: " + globalSeed);
+		f->writeLine(string() + "name = Unnatural Planet");
 		f->writeLine("version = 0");
 		f->writeLine("base = true");
 		f->writeLine("[description]");
-		f->writeLine(string() + "Unnatural Planet: " + globalSeed);
+		f->writeLine(string() + "Seed: " + globalSeed);
 		f->writeLine("[authors]");
 		f->writeLine("unnatural-planets");
 		f->writeLine("[assets]");
@@ -763,7 +763,7 @@ void exportTerrain()
 	}
 
 	{ // generate asset configuration
-		holder<fileHandle> f = fs->openFile("planet.asset", fileMode(false, true));
+		holder<fileHandle> f = fs->openFile("planet.assets", fileMode(false, true));
 		f->writeLine("[]");
 		f->writeLine("scheme = texture");
 		f->writeLine("srgb = true");
@@ -773,16 +773,15 @@ void exportTerrain()
 		f->writeLine("planet-special.png");
 		f->writeLine("[]");
 		f->writeLine("scheme = texture");
-		f->writeLine("convert = height_to_normal");
+		f->writeLine("convert = heightToNormal");
 		f->writeLine("planet-height.png");
 		f->writeLine("[]");
 		f->writeLine("scheme = mesh");
-		f->writeLine("override_material = planet.cpm");
-		//f->writeLine("pass_invalid_normal = true");
+		f->writeLine("material = planet.cpm");
+		f->writeLine("tangents = true");
 		f->writeLine("planet-render.obj");
 		f->writeLine("[]");
 		f->writeLine("scheme = mesh");
-		f->writeLine("export_tangent = false");
 		f->writeLine("planet-navigation.obj");
 		f->writeLine("[]");
 		f->writeLine("scheme = collider");
@@ -794,4 +793,6 @@ void exportTerrain()
 		f->writeLine("scheme = pack");
 		f->writeLine("planet.pack");
 	}
+
+	CAGE_LOG(severityEnum::Info, "generator", string() + "exported ok");
 }
