@@ -18,7 +18,7 @@ target_sources(unnatural-planets PRIVATE
 if(NOT MSVC)
 	target_link_libraries(unnatural-planets pthread)
 endif()
-target_link_libraries(unnatural-planets cage-core cage-client)
+target_link_libraries(unnatural-planets cage-core cage-engine)
 cage_ide_category(unnatural-planets unnatural-planets)
 cage_ide_sort_files(unnatural-planets)
 cage_ide_working_dir_in_place(unnatural-planets)

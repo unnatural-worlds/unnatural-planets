@@ -10,7 +10,7 @@
 #include <cage-core/fileUtils.h>
 #include <cage-core/memoryBuffer.h>
 #include <cage-core/threadPool.h>
-#include <cage-client/core.h>
+#include <cage-engine/core.h> // ivec2
 
 #include "dualmc.h"
 #include "xatlas.h"
