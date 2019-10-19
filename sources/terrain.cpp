@@ -5,14 +5,6 @@
 #include <cage-core/color.h>
 #include <cage-core/random.h>
 
-namespace cage
-{
-	namespace detail
-	{
-		CAGE_API uint32 hash(uint32 key);
-	}
-}
-
 namespace
 {
 	template <class T>
@@ -153,7 +145,7 @@ void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, re
 	CAGE_ASSERT(elev >= 0 && elev <= 1);
 	
 	{ // sea water
-		static const real waterlineGlobal = (detail::hash(globalSeed + 15674) % 100) * 0.01 * 0.07 + 0.005;
+		static const real waterlineGlobal = (hash(globalSeed + 15674) % 100) * 0.01 * 0.07 + 0.005;
 		real waterline = waterlineGlobal;
 		if (elev < waterline)
 		{
@@ -166,7 +158,7 @@ void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, re
 	}
 
 	{ // snow
-		static const real snowlineGlobal = (detail::hash(globalSeed + 7154) % 100) * 0.01 * 0.25 + 0.2;
+		static const real snowlineGlobal = (hash(globalSeed + 7154) % 100) * 0.01 * 0.25 + 0.2;
 		static const holder<noiseFunction> snowlineClouds = newClouds(globalSeed + 44798, 5);
 		real snowline = snowlineGlobal + (snowlineClouds->evaluate(pos * 1.345) - 0.5) * 0.03;
 		if (elev > snowline)
@@ -180,7 +172,7 @@ void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, re
 	}
 
 	{ // mountain rocks
-		static const real mountainGlobal = (detail::hash(globalSeed + 674) % 100) * 0.01 * 0.4 + 0.6;
+		static const real mountainGlobal = (hash(globalSeed + 674) % 100) * 0.01 * 0.4 + 0.6;
 		static const holder<noiseFunction> mountainClouds = newClouds(globalSeed + 789499, 3);
 		real mountainline = mountainGlobal + (mountainClouds->evaluate(pos * 0.0954) - 0.5) * 0.2;
 		if (elev > mountainline)
