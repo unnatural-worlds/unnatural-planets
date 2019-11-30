@@ -9,7 +9,10 @@ add_subdirectory(externals/cage)
 
 file(GLOB_RECURSE unnatural-planets-sources "sources/*")
 add_executable(unnatural-planets ${unnatural-planets-sources})
-target_include_directories(unnatural-planets PRIVATE "externals/dualmc/include" "externals/xatlas" "externals/ng_mesh")
+target_include_directories(unnatural-planets PRIVATE
+	"externals/dualmc/include"
+	"externals/xatlas"
+	"externals/ng_mesh")
 target_sources(unnatural-planets PRIVATE
 	"externals/dualmc/include/dualmc.h"
 	"externals/xatlas/xatlas.h" "externals/xatlas/xatlas.cpp"

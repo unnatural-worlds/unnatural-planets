@@ -3,6 +3,7 @@
 #include "main.h"
 
 #include <cage-core/random.h>
+#include <cage-core/logger.h>
 
 uint32 globalSeed;
 

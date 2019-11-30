@@ -10,6 +10,7 @@
 #include <cage-core/fileUtils.h>
 #include <cage-core/memoryBuffer.h>
 #include <cage-core/threadPool.h>
+#include <cage-core/timer.h> // formatDateTime
 #include <cage-engine/core.h> // ivec2
 
 #include "dualmc.h"
@@ -65,7 +66,7 @@ namespace
 
 	bool xAtlasProgress(xatlas::ProgressCategory::Enum category, int progress, void *userData)
 	{
-		CAGE_LOG(severityEnum::Info, "xatlas", string() + "category: " + category + ", progress: " + progress);
+		CAGE_LOG(severityEnum::Info, "xatlas", stringizer() + "category: " + category + ", progress: " + progress);
 		return true; // continue processing
 	}
 
@@ -149,17 +150,17 @@ namespace
 
 	inline string v2s(const vec3 &v)
 	{
-		return string() + v[0] + " " + v[1] + " " + v[2];
+		return stringizer() + v[0] + " " + v[1] + " " + v[2];
 	}
 
 	inline string v2s(const vec2 &v)
 	{
-		return string() + v[0] + " " + v[1];
+		return stringizer() + v[0] + " " + v[1];
 	}
 
 	void genDensities()
 	{
-		CAGE_LOG(severityEnum::Info, "generator", string() + "generating densities");
+		CAGE_LOG(severityEnum::Info, "generator", "generating densities");
 		OPTICK_EVENT("genDensities");
 		std::vector<vec3> positions;
 		densities.reserve(positions.size());
@@ -180,19 +181,19 @@ namespace
 
 	void genSurface()
 	{
-		CAGE_LOG(severityEnum::Info, "generator", string() + "generating surface");
+		CAGE_LOG(severityEnum::Info, "generator", "generating surface");
 		OPTICK_EVENT("genSurface");
 		dualmc::DualMC<float> mc;
 		mc.build((float*)densities.data(), verticesPerSide, verticesPerSide, verticesPerSide, 0, true, false, mcVertices, mcIndices);
 		std::vector<real>().swap(densities);
-		CAGE_LOG(severityEnum::Info, "generator", string() + "vertices count: " + mcVertices.size() + ", quads count: " + mcIndices.size());
+		CAGE_LOG(severityEnum::Info, "generator", stringizer() + "vertices count: " + mcVertices.size() + ", quads count: " + mcIndices.size());
 		if (mcVertices.size() == 0 || mcIndices.size() == 0)
 			CAGE_THROW_ERROR(exception, "generated empty mesh");
 	}
 
 	void genTriangles()
 	{
-		CAGE_LOG(severityEnum::Info, "generator", string() + "generating triangles");
+		CAGE_LOG(severityEnum::Info, "generator", "generating triangles");
 		OPTICK_EVENT("genTriangles");
 		CAGE_ASSERT(meshVertices.empty());
 		CAGE_ASSERT(meshIndices.empty());
@@ -228,12 +229,12 @@ namespace
 			it.normal = normalize(it.normal);
 		std::vector<dualmc::Vertex>().swap(mcVertices);
 		std::vector<dualmc::Quad>().swap(mcIndices);
-		CAGE_LOG(severityEnum::Info, "generator", string() + "vertices count: " + meshVertices.size() + ", triangles count: " + meshIndices.size() / 3);
+		CAGE_LOG(severityEnum::Info, "generator", stringizer() + "vertices count: " + meshVertices.size() + ", triangles count: " + meshIndices.size() / 3);
 	}
 
 	void computeScale()
 	{
-		CAGE_LOG(severityEnum::Info, "generator", string() + "compute scale");
+		CAGE_LOG(severityEnum::Info, "generator", "compute scale");
 		OPTICK_EVENT("computeScale");
 		real sum = 0;
 		uint32 tc = numeric_cast<uint32>(meshIndices.size() / 3);
@@ -252,12 +253,12 @@ namespace
 		for (auto &it : meshVertices)
 			it.position *= scale;
 		planetScale *= scale;
-		CAGE_LOG(severityEnum::Info, "generator", string() + "current scale: " + scale + ", total scale: " + planetScale);
+		CAGE_LOG(severityEnum::Info, "generator", stringizer() + "current scale: " + scale + ", total scale: " + planetScale);
 	}
 
 	void simplifyMesh()
 	{
-		CAGE_LOG(severityEnum::Info, "generator", string() + "simplifying mesh");
+		CAGE_LOG(severityEnum::Info, "generator", "simplifying mesh");
 		OPTICK_EVENT("simplifyMesh");
 		std::vector<ng_mesh::MeshVertex> vs;
 		vs.reserve(meshVertices.size());
@@ -314,12 +315,12 @@ namespace
 			meshIndices.push_back(it.indices_[2]);
 		}
 
-		CAGE_LOG(severityEnum::Info, "generator", string() + "vertices count: " + meshVertices.size() + ", triangles count: " + meshIndices.size() / 3);
+		CAGE_LOG(severityEnum::Info, "generator", stringizer() + "vertices count: " + meshVertices.size() + ", triangles count: " + meshIndices.size() / 3);
 	}
 
 	void genUvs()
 	{
-		CAGE_LOG(severityEnum::Info, "generator", string() + "generating uvs");
+		CAGE_LOG(severityEnum::Info, "generator", "generating uvs");
 		OPTICK_EVENT("genUvs");
 		atlas = newAtlas();
 
@@ -383,11 +384,11 @@ namespace
 
 	void genTextures()
 	{
-		CAGE_LOG(severityEnum::Info, "generator", string() + "generating textures");
+		CAGE_LOG(severityEnum::Info, "generator", "generating textures");
 		OPTICK_EVENT("genTextures");
 		const uint32 w = atlas->width * textureUpscale;
 		const uint32 h = atlas->height * textureUpscale;
-		CAGE_LOG(severityEnum::Info, "generator", string() + "texture resolution: " + w + "x" + h);
+		CAGE_LOG(severityEnum::Info, "generator", stringizer() + "texture resolution: " + w + "x" + h);
 
 		std::vector<triangle> triPos;
 		std::vector<triangle> triNorms;
@@ -586,7 +587,7 @@ namespace
 
 	void inpaintTextures()
 	{
-		CAGE_LOG(severityEnum::Info, "generator", string() + "inpainting textures");
+		CAGE_LOG(severityEnum::Info, "generator", "inpainting textures");
 		OPTICK_EVENT("inpaintTextures");
 		holder<threadPool> thr = newThreadPool("inpaint_", 3);
 		thr->function.bind<&inpaintEntry>();
@@ -595,7 +596,7 @@ namespace
 
 	void generatePathProperties()
 	{
-		CAGE_LOG(severityEnum::Info, "generator", string() + "generating path properties");
+		CAGE_LOG(severityEnum::Info, "generator", "generating path properties");
 		OPTICK_EVENT("generatePathProperties");
 		pathProperties.reserve(meshVertices.size());
 		for (const auto &it : meshVertices)
@@ -627,21 +628,26 @@ void generateTerrain()
 
 void exportTerrain()
 {
-	CAGE_LOG(severityEnum::Info, "generator", string() + "exporting");
+	CAGE_LOG(severityEnum::Info, "generator", "exporting");
 	OPTICK_EVENT("exportTerrain");
 
 	holder<filesystem> fs = newFilesystem();
-	fs->changeDir(string() + "output/" + globalSeed);
+	fs->changeDir(stringizer() + "output/" + globalSeed);
 	fs->remove("."); // remove previous output
 
 	{ // write unnatural-map
 		holder<fileHandle> f = fs->openFile("unnatural-map.ini", fileMode(false, true));
 		f->writeLine("[map]");
-		f->writeLine(string() + "name = Unnatural Planet");
+		f->writeLine("name = Unnatural Planet");
 		f->writeLine("version = 0");
 		f->writeLine("base = true");
 		f->writeLine("[description]");
-		f->writeLine(string() + "Seed: " + globalSeed);
+		f->writeLine(stringizer() + "Seed: " + globalSeed);
+		{
+			uint32 y, M, d, h, m, s;
+			detail::getSystemDateTime(y, M, d, h, m, s);
+			f->writeLine(stringizer() + "Date: " + detail::formatDateTime(y, M, d, h, m, s));
+		}
 		f->writeLine("[authors]");
 		f->writeLine("unnatural-planets");
 		f->writeLine("[assets]");
@@ -651,7 +657,7 @@ void exportTerrain()
 		f->writeLine("[generator]");
 		f->writeLine("name = unnatural-planets");
 		f->writeLine("url = https://github.com/ucpu/unnatural-planets.git");
-		f->writeLine(string() + "seed = " + globalSeed);
+		f->writeLine(stringizer() + "seed = " + globalSeed);
 		f->writeLine("feel free to edit this file to your needs");
 		f->writeLine("but leave the generator section intact, thanks");
 	}
@@ -677,11 +683,11 @@ void exportTerrain()
 		f->writeLine("o render");
 		f->writeLine("usemtl planet");
 		for (const vertexStruct &v : meshVertices)
-			f->writeLine(string() + "v " + v2s(v.position));
+			f->writeLine(stringizer() + "v " + v2s(v.position));
 		for (const vertexStruct &v : meshVertices)
-			f->writeLine(string() + "vn " + v2s(v.normal));
+			f->writeLine(stringizer() + "vn " + v2s(v.normal));
 		for (const vertexStruct &v : meshVertices)
-			f->writeLine(string() + "vt " + v2s(v.uv));
+			f->writeLine(stringizer() + "vt " + v2s(v.uv));
 		uint32 cnt = numeric_cast<uint32>(meshIndices.size()) / 3;
 		for (uint32 i = 0; i < cnt; i++)
 		{
@@ -689,7 +695,7 @@ void exportTerrain()
 			for (uint32 j = 0; j < 3; j++)
 			{
 				uint32 k = meshIndices[i * 3 + j] + 1;
-				s += string() + k + "/" + k + "/" + k + " ";
+				s += stringizer() + k + "/" + k + "/" + k + " ";
 			}
 			f->writeLine(s);
 		}
@@ -699,11 +705,11 @@ void exportTerrain()
 		holder<fileHandle> f = fs->openFile("planet-navigation.obj", fileMode(false, true));
 		f->writeLine("o navigation");
 		for (const vertexStruct &v : meshVertices)
-			f->writeLine(string() + "v " + v2s(v.position));
+			f->writeLine(stringizer() + "v " + v2s(v.position));
 		for (const vertexStruct &v : meshVertices)
-			f->writeLine(string() + "vn " + v2s(v.normal));
+			f->writeLine(stringizer() + "vn " + v2s(v.normal));
 		for (const vec2 &v : pathProperties)
-			f->writeLine(string() + "vt " + v2s(v));
+			f->writeLine(stringizer() + "vt " + v2s(v));
 		uint32 cnt = numeric_cast<uint32>(meshIndices.size()) / 3;
 		for (uint32 i = 0; i < cnt; i++)
 		{
@@ -711,7 +717,7 @@ void exportTerrain()
 			for (uint32 j = 0; j < 3; j++)
 			{
 				uint32 k = meshIndices[i * 3 + j] + 1;
-				s += string() + k + "/" + k + "/" + k + " ";
+				s += stringizer() + k + "/" + k + "/" + k + " ";
 			}
 			f->writeLine(s);
 		}
@@ -721,7 +727,7 @@ void exportTerrain()
 		holder<fileHandle> f = fs->openFile("planet-collider.obj", fileMode(false, true));
 		f->writeLine("o collider");
 		for (const vertexStruct &v : meshVertices)
-			f->writeLine(string() + "v " + v2s(v.position));
+			f->writeLine(stringizer() + "v " + v2s(v.position));
 		uint32 cnt = numeric_cast<uint32>(meshIndices.size()) / 3;
 		for (uint32 i = 0; i < cnt; i++)
 		{
@@ -729,7 +735,7 @@ void exportTerrain()
 			for (uint32 j = 0; j < 3; j++)
 			{
 				uint32 k = meshIndices[i * 3 + j] + 1;
-				s += string() + k + " ";
+				s += stringizer() + k + " ";
 			}
 			f->writeLine(s);
 		}
@@ -794,5 +800,5 @@ void exportTerrain()
 		f->writeLine("planet.pack");
 	}
 
-	CAGE_LOG(severityEnum::Info, "generator", string() + "exported ok");
+	CAGE_LOG(severityEnum::Info, "generator", "exported ok");
 }
