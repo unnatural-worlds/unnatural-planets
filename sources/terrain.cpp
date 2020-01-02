@@ -1,4 +1,3 @@
-
 #include "main.h"
 
 #include <cage-core/noiseFunction.h>
@@ -35,11 +34,11 @@ namespace
 		return normalize(normal + strength * randomDirection3());
 	}
 
-	holder<noiseFunction> newClouds(uint32 seed, uint32 octaves)
+	Holder<NoiseFunction> newClouds(uint32 seed, uint32 octaves)
 	{
-		noiseFunctionCreateConfig cfg;
+		NoiseFunctionCreateConfig cfg;
 		cfg.octaves = octaves;
-		cfg.type = noiseTypeEnum::Value;
+		cfg.type = NoiseTypeEnum::Value;
 		cfg.seed = seed;
 		return newNoiseFunction(cfg);
 	}
@@ -53,8 +52,8 @@ namespace
 	{
 		vec3 p1 = pos;
 		vec3 p2(p1[1], -p1[2], p1[0]);
-		static const holder<noiseFunction> clouds1 = newClouds(globalSeed + 200, 3);
-		static const holder<noiseFunction> clouds2 = newClouds(globalSeed + 201, 4);
+		static const Holder<NoiseFunction> clouds1 = newClouds(globalSeed + 200, 3);
+		static const Holder<NoiseFunction> clouds2 = newClouds(globalSeed + 201, 4);
 		return pow(clouds1->evaluate(p1 * 5) * 0.5 + 0.5, 1.8) * pow(clouds2->evaluate(p2 * 8) * 0.5 + 0.5, 1.5);
 	}
 
@@ -79,10 +78,10 @@ namespace
 			vec2(0.3, 0.02)
 		};
 
-		static const holder<noiseFunction> clouds1 = newClouds(globalSeed + 98541, 4);
-		static const holder<noiseFunction> clouds2 = newClouds(globalSeed + 13657, 6);
-		static const holder<noiseFunction> clouds3 = newClouds(globalSeed + 36974, 4);
-		static const holder<noiseFunction> clouds4 = newClouds(globalSeed + 21456, 6);
+		static const Holder<NoiseFunction> clouds1 = newClouds(globalSeed + 98541, 4);
+		static const Holder<NoiseFunction> clouds2 = newClouds(globalSeed + 13657, 6);
+		static const Holder<NoiseFunction> clouds3 = newClouds(globalSeed + 36974, 4);
+		static const Holder<NoiseFunction> clouds4 = newClouds(globalSeed + 21456, 6);
 		real cs[4];
 		cs[0] = clouds1->evaluate(pos * 0.08) + 0.2;
 		cs[1] = clouds2->evaluate(pos * 0.34);
@@ -113,10 +112,10 @@ namespace
 			vec2(0.6, 0.03)
 		};
 
-		static const holder<noiseFunction> clouds1 = newClouds(globalSeed + 74892, 4);
-		static const holder<noiseFunction> clouds2 = newClouds(globalSeed + 54747, 8);
-		static const holder<noiseFunction> clouds3 = newClouds(globalSeed + 56744, 4);
-		static const holder<noiseFunction> clouds4 = newClouds(globalSeed + 98323, 8);
+		static const Holder<NoiseFunction> clouds1 = newClouds(globalSeed + 74892, 4);
+		static const Holder<NoiseFunction> clouds2 = newClouds(globalSeed + 54747, 8);
+		static const Holder<NoiseFunction> clouds3 = newClouds(globalSeed + 56744, 4);
+		static const Holder<NoiseFunction> clouds4 = newClouds(globalSeed + 98323, 8);
 		real cs[4];
 		cs[0] = clouds1->evaluate(pos * 0.21);
 		cs[1] = clouds2->evaluate(pos * 0.91) - 0.2;
@@ -159,7 +158,7 @@ void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, re
 
 	{ // snow
 		static const real snowlineGlobal = (hash(globalSeed + 7154) % 100) * 0.01 * 0.25 + 0.2;
-		static const holder<noiseFunction> snowlineClouds = newClouds(globalSeed + 44798, 5);
+		static const Holder<NoiseFunction> snowlineClouds = newClouds(globalSeed + 44798, 5);
 		real snowline = snowlineGlobal + (snowlineClouds->evaluate(pos * 1.345) - 0.5) * 0.03;
 		if (elev > snowline)
 		{
@@ -173,7 +172,7 @@ void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, re
 
 	{ // mountain rocks
 		static const real mountainGlobal = (hash(globalSeed + 674) % 100) * 0.01 * 0.4 + 0.6;
-		static const holder<noiseFunction> mountainClouds = newClouds(globalSeed + 789499, 3);
+		static const Holder<NoiseFunction> mountainClouds = newClouds(globalSeed + 789499, 3);
 		real mountainline = mountainGlobal + (mountainClouds->evaluate(pos * 0.0954) - 0.5) * 0.2;
 		if (elev > mountainline)
 		{
@@ -186,19 +185,19 @@ void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, re
 	}
 
 	{ // sand
-		static const holder<noiseFunction> sandCloud1 = newClouds(globalSeed + 95670, 5);
-		static const holder<noiseFunction> sandCloud2 = newClouds(globalSeed + 45677, 5);
+		static const Holder<NoiseFunction> sandCloud1 = newClouds(globalSeed + 95670, 5);
+		static const Holder<NoiseFunction> sandCloud2 = newClouds(globalSeed + 45677, 5);
 		if (sandCloud1->evaluate(pos * 0.07) > 0.85 || sandCloud2->evaluate(pos * 0.13) + elev < 0.1)
 		{
 			type = 1;
-			static const holder<noiseFunction> sandCloud3 = newClouds(globalSeed + 688879, 5);
+			static const Holder<NoiseFunction> sandCloud3 = newClouds(globalSeed + 688879, 5);
 			difficulty = pow(max(sandCloud3->evaluate(pos * 0.274), 0), 1.3);
 			return;
 		}
 	}
 
 	{ // vegetation
-		static const holder<noiseFunction> vegetationClouds = newClouds(globalSeed + 3547746, 5);
+		static const Holder<NoiseFunction> vegetationClouds = newClouds(globalSeed + 3547746, 5);
 		type = 2;
 		difficulty = pow(max(vegetationClouds->evaluate(pos * 0.1374), 0), 1.3);
 	}
@@ -210,7 +209,7 @@ void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &sp
 	real difficulty;
 	terrainPathProperties(pos, normal, type, difficulty);
 	CAGE_ASSERT(difficulty.valid() && difficulty >= 0 && difficulty <= 1);
-	static const holder<noiseFunction> rocksClouds = newClouds(globalSeed + 68971, 4);
+	static const Holder<NoiseFunction> rocksClouds = newClouds(globalSeed + 68971, 4);
 	switch (type)
 	{
 	case 0: // concrete

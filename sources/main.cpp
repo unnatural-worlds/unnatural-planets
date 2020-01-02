@@ -1,9 +1,9 @@
-#include <exception>
-
 #include "main.h"
 
 #include <cage-core/random.h>
 #include <cage-core/logger.h>
+
+#include <exception>
 
 uint32 globalSeed;
 
@@ -11,29 +11,29 @@ int main(int argc, const char *args[])
 {
 	try
 	{
-		holder<logger> log1 = newLogger();
+		Holder<Logger> log1 = newLogger();
 		log1->format.bind<logFormatConsole>();
 		log1->output.bind<logOutputStdOut>();
 
-		globalSeed = (decltype(globalSeed))currentRandomGenerator().next();
+		globalSeed = (decltype(globalSeed))detail::getApplicationRandomGenerator().next();
 
 		generateTerrain();
 		exportTerrain();
 		return 0;
 	}
-	catch (const cage::exception &e)
+	catch (const cage::Exception &e)
 	{
-		CAGE_LOG(severityEnum::Note, "exception", e.message);
-		CAGE_LOG(severityEnum::Error, "exception", "caught cage exception in main");
+		CAGE_LOG(SeverityEnum::Note, "exception", e.message);
+		CAGE_LOG(SeverityEnum::Error, "exception", "caught cage exception in main");
 	}
 	catch (const std::exception &e)
 	{
-		CAGE_LOG(severityEnum::Note, "exception", e.what());
-		CAGE_LOG(severityEnum::Error, "exception", "caught std exception in main");
+		CAGE_LOG(SeverityEnum::Note, "exception", e.what());
+		CAGE_LOG(SeverityEnum::Error, "exception", "caught std exception in main");
 	}
 	catch (...)
 	{
-		CAGE_LOG(severityEnum::Error, "exception", "caught unknown exception in main");
+		CAGE_LOG(SeverityEnum::Error, "exception", "caught unknown exception in main");
 	}
 	return 1;
 }
