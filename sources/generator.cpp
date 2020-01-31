@@ -7,7 +7,6 @@
 #include <cage-core/image.h>
 #include <cage-core/enumerate.h>
 #include <cage-core/files.h>
-#include <cage-core/fileUtils.h>
 #include <cage-core/memoryBuffer.h>
 #include <cage-core/threadPool.h>
 #include <cage-core/timer.h> // formatDateTime
@@ -621,12 +620,11 @@ void exportTerrain()
 	CAGE_LOG(SeverityEnum::Info, "generator", "exporting");
 	OPTICK_EVENT("exportTerrain");
 
-	Holder<Filesystem> fs = newFilesystem();
-	fs->changeDir(stringizer() + "output/" + globalSeed);
-	fs->remove("."); // remove previous output
+	string currentDirectory = stringizer() + "output/" + globalSeed;
+	pathRemove(currentDirectory); // remove previous output
 
 	{ // write unnatural-map
-		Holder<File> f = fs->openFile("unnatural-map.ini", FileMode(false, true));
+		Holder<File> f = newFile(pathJoin(currentDirectory, "unnatural-map.ini"), FileMode(false, true));
 		f->writeLine("[map]");
 		f->writeLine("name = Unnatural Planet");
 		f->writeLine("version = 0");
@@ -653,22 +651,22 @@ void exportTerrain()
 	}
 
 	{ // write scene file
-		Holder<File> f = fs->openFile("scene.ini", FileMode(false, true));
+		Holder<File> f = newFile(pathJoin(currentDirectory, "scene.ini"), FileMode(false, true));
 		f->writeLine("[]");
 		f->writeLine("object = planet.object");
 	}
 
 	// go to the data subdirectory
-	fs->changeDir("data");
+	currentDirectory = pathJoin(currentDirectory, "data");
 
 	{ // write textures
-		fs->openFile("planet-albedo.png", FileMode(false, true))->writeBuffer(albedo->encodeBuffer());
-		fs->openFile("planet-special.png", FileMode(false, true))->writeBuffer(special->encodeBuffer());
-		fs->openFile("planet-height.png", FileMode(false, true))->writeBuffer(heightMap->encodeBuffer());
+		newFile(pathJoin(currentDirectory, "planet-albedo.png"), FileMode(false, true))->writeBuffer(albedo->encodeBuffer());
+		newFile(pathJoin(currentDirectory, "planet-special.png"), FileMode(false, true))->writeBuffer(special->encodeBuffer());
+		newFile(pathJoin(currentDirectory, "planet-height.png"), FileMode(false, true))->writeBuffer(heightMap->encodeBuffer());
 	}
 
 	{ // write geometry for rendering
-		Holder<File> f = fs->openFile("planet-render.obj", FileMode(false, true));
+		Holder<File> f = newFile(pathJoin(currentDirectory, "planet-render.obj"), FileMode(false, true));
 		f->writeLine("mtllib planet.mtl");
 		f->writeLine("o render");
 		f->writeLine("usemtl planet");
@@ -692,7 +690,7 @@ void exportTerrain()
 	}
 
 	{ // write geometry for navigation
-		Holder<File> f = fs->openFile("planet-navigation.obj", FileMode(false, true));
+		Holder<File> f = newFile(pathJoin(currentDirectory, "planet-navigation.obj"), FileMode(false, true));
 		f->writeLine("o navigation");
 		for (const Vertex &v : meshVertices)
 			f->writeLine(stringizer() + "v " + v2s(v.position));
@@ -714,7 +712,7 @@ void exportTerrain()
 	}
 
 	{ // write geometry for navigation
-		Holder<File> f = fs->openFile("planet-collider.obj", FileMode(false, true));
+		Holder<File> f = newFile(pathJoin(currentDirectory, "planet-collider.obj"), FileMode(false, true));
 		f->writeLine("o collider");
 		for (const Vertex &v : meshVertices)
 			f->writeLine(stringizer() + "v " + v2s(v.position));
@@ -732,14 +730,14 @@ void exportTerrain()
 	}
 
 	{ // write mtl file with link to albedo texture
-		Holder<File> f = fs->openFile("planet.mtl", FileMode(false, true));
+		Holder<File> f = newFile(pathJoin(currentDirectory, "planet.mtl"), FileMode(false, true));
 		f->writeLine("newmtl planet");
 		f->writeLine("map_Kd planet-albedo.png");
 		f->writeLine("map_bump planet-height.png");
 	}
 
 	{ // write cpm material file
-		Holder<File> f = fs->openFile("planet.cpm", FileMode(false, true));
+		Holder<File> f = newFile(pathJoin(currentDirectory, "planet.cpm"), FileMode(false, true));
 		f->writeLine("[textures]");
 		f->writeLine("albedo = planet-albedo.png");
 		f->writeLine("special = planet-special.png");
@@ -747,19 +745,19 @@ void exportTerrain()
 	}
 
 	{ // object file
-		Holder<File> f = fs->openFile("planet.object", FileMode(false, true));
+		Holder<File> f = newFile(pathJoin(currentDirectory, "planet.object"), FileMode(false, true));
 		f->writeLine("[]");
 		f->writeLine("planet-render.obj");
 	}
 
 	{ // pack file
-		Holder<File> f = fs->openFile("planet.pack", FileMode(false, true));
+		Holder<File> f = newFile(pathJoin(currentDirectory, "planet.pack"), FileMode(false, true));
 		f->writeLine("[]");
 		f->writeLine("planet.object");
 	}
 
 	{ // generate asset configuration
-		Holder<File> f = fs->openFile("planet.assets", FileMode(false, true));
+		Holder<File> f = newFile(pathJoin(currentDirectory, "planet.assets"), FileMode(false, true));
 		f->writeLine("[]");
 		f->writeLine("scheme = texture");
 		f->writeLine("srgb = true");

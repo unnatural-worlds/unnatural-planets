@@ -1,7 +1,6 @@
 #ifndef main_h_dsfg4ds5
 #define main_h_dsfg4ds5
 
-#include <cage-core/core.h>
 #include <cage-core/math.h>
 
 using namespace cage;
