@@ -1,11 +1,8 @@
-#include "main.h"
+#include "generator.h"
 
-#include <cage-core/random.h>
 #include <cage-core/logger.h>
 
 #include <exception>
-
-uint32 globalSeed;
 
 int main(int argc, const char *args[])
 {
@@ -15,10 +12,7 @@ int main(int argc, const char *args[])
 		log1->format.bind<logFormatConsole>();
 		log1->output.bind<logOutputStdOut>();
 
-		globalSeed = (decltype(globalSeed))detail::getApplicationRandomGenerator().next();
-
-		generateTerrain();
-		exportTerrain();
+		generateEntry();
 		return 0;
 	}
 	catch (const cage::Exception &e)

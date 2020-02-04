@@ -1,4 +1,4 @@
-#include "main.h"
+#include "generator.h"
 
 #include <cage-core/noiseFunction.h>
 #include <cage-core/color.h>
@@ -6,6 +6,8 @@
 
 namespace
 {
+	uint32 globalSeed = (uint32)detail::getApplicationRandomGenerator().next();
+
 	template <class T>
 	T rescale(const T &v, real ia, real ib, real oa, real ob)
 	{
@@ -45,21 +47,16 @@ namespace
 
 	real sphereDensity(const vec3 &pos)
 	{
-		return real(0.7) - length(pos);
+		return real(0.45) - length(pos) * 0.01;
 	}
 
-	real terrainElevationImpl(const vec3 &pos)
+	real terrainElevation(const vec3 &pos)
 	{
 		vec3 p1 = pos;
 		vec3 p2(p1[1], -p1[2], p1[0]);
 		static const Holder<NoiseFunction> clouds1 = newClouds(globalSeed + 200, 3);
 		static const Holder<NoiseFunction> clouds2 = newClouds(globalSeed + 201, 4);
 		return pow(clouds1->evaluate(p1 * 5) * 0.5 + 0.5, 1.8) * pow(clouds2->evaluate(p2 * 8) * 0.5 + 0.5, 1.5);
-	}
-
-	real terrainElevation(const vec3 &pos)
-	{
-		return terrainElevationImpl(pos / planetScale);
 	}
 
 	void vegetationMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height)
@@ -131,25 +128,25 @@ namespace
 	}
 }
 
-real terrainDensity(const vec3 &pos)
+real functionDensity(const vec3 &pos)
 {
-	vec3 p1 = pos / planetScale;
-	real e = terrainElevationImpl(p1);
-	return (sphereDensity(p1) + e * 0.15);
+	return sphereDensity(pos);
+
+	real e = terrainElevation(pos);
+	return (sphereDensity(pos) + e * 0.15);
 }
 
-void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, real &difficulty)
+void functionTileProperties(const vec3 &pos, const vec3 &normal, uint8 &terrainType)
 {
 	real elev = terrainElevation(pos);
 	CAGE_ASSERT(elev >= 0 && elev <= 1);
-	
+
 	{ // sea water
 		static const real waterlineGlobal = (hash(globalSeed + 15674) % 100) * 0.01 * 0.07 + 0.005;
 		real waterline = waterlineGlobal;
 		if (elev < waterline)
 		{
-			type = 3;
-			difficulty = elev / waterline;
+			terrainType = 3;
 			return;
 		}
 		elev = (elev - waterline) / (1 - waterline);
@@ -162,8 +159,7 @@ void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, re
 		real snowline = snowlineGlobal + (snowlineClouds->evaluate(pos * 1.345) - 0.5) * 0.03;
 		if (elev > snowline)
 		{
-			type = 5;
-			difficulty = min(1, 3 * (elev - snowline) / (1 - snowline));
+			terrainType = 5;
 			return;
 		}
 		elev = 1 - (snowline - elev) / snowline;
@@ -176,8 +172,7 @@ void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, re
 		real mountainline = mountainGlobal + (mountainClouds->evaluate(pos * 0.0954) - 0.5) * 0.2;
 		if (elev > mountainline)
 		{
-			type = 4;
-			difficulty = (elev - mountainline) / (1 - mountainline);
+			terrainType = 4;
 			return;
 		}
 		elev = 1 - (mountainline - elev) / mountainline;
@@ -189,34 +184,30 @@ void terrainPathProperties(const vec3 &pos, const vec3 &normal, uint32 &type, re
 		static const Holder<NoiseFunction> sandCloud2 = newClouds(globalSeed + 45677, 5);
 		if (sandCloud1->evaluate(pos * 0.07) > 0.85 || sandCloud2->evaluate(pos * 0.13) + elev < 0.1)
 		{
-			type = 1;
+			terrainType = 1;
 			static const Holder<NoiseFunction> sandCloud3 = newClouds(globalSeed + 688879, 5);
-			difficulty = pow(max(sandCloud3->evaluate(pos * 0.274), 0), 1.3);
 			return;
 		}
 	}
 
 	{ // vegetation
 		static const Holder<NoiseFunction> vegetationClouds = newClouds(globalSeed + 3547746, 5);
-		type = 2;
-		difficulty = pow(max(vegetationClouds->evaluate(pos * 0.1374), 0), 1.3);
+		terrainType = 2;
 	}
 }
 
-void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height)
+void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height)
 {
-	uint32 type;
-	real difficulty;
-	terrainPathProperties(pos, normal, type, difficulty);
-	CAGE_ASSERT(difficulty.valid() && difficulty >= 0 && difficulty <= 1);
+	uint8 type;
+	functionTileProperties(pos, normal, type);
 	static const Holder<NoiseFunction> rocksClouds = newClouds(globalSeed + 68971, 4);
 	switch (type)
 	{
 	case 0: // concrete
-		// todo
+			// todo
 		break; //return;
 	case 1: // sand
-		albedo = colorDeviation(interpolateColor(pdnToRgb(55, 99, 97), pdnToRgb(44, 70, 74), difficulty));
+		albedo = colorDeviation(interpolateColor(pdnToRgb(55, 99, 97), pdnToRgb(44, 70, 74), randomChance()));
 		special = vec2(randomRange(0.4, 0.8), randomRange(0.01, 0.2));
 		height = randomRange(0.47, 0.53);
 		return;
@@ -224,9 +215,9 @@ void terrainMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &sp
 		vegetationMaterial(pos, normal, albedo, special, height);
 		return;
 	case 3: // sea water
-		albedo = colorDeviation(interpolateColor(pdnToRgb(235, 85, 48), pdnToRgb(199, 78, 78), difficulty));
+		albedo = colorDeviation(interpolateColor(pdnToRgb(235, 85, 48), pdnToRgb(199, 78, 78), randomChance()));
 		special = vec2(randomRange(0.2, 0.3), 0.02);
-		height = 0.05 * (1 - 0.7 * difficulty) * (randomChance() - 0.5) + 0.5;
+		height = 0.05 * (1 - 0.7 * randomChance()) * (randomChance() - 0.5) + 0.5;
 		return;
 	case 4: // mountain rocks
 		mountainRocksMaterial(pos, normal, albedo, special, height);
