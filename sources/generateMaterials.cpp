@@ -84,14 +84,14 @@ void generateMaterials(const Holder<UPMesh> &renderMesh, uint32 width, uint32 he
 		normals.reserve(width * height);
 		xs.reserve(width * height);
 		ys.reserve(width * height);
-		const vec2 whInv = 1 / vec2(width - 1, height - 1);
+		const vec2 scaleInv = 1 / vec2(width - 1, height - 1);
+		const vec3 scale = vec3(width - 1, height - 1, 1);
 		for (uint32 triIdx = 0; triIdx < triCount; triIdx++)
 		{
-			vec3 invUv = 1.0 / vec3(width - 1, height - 1, 1);
 			triangle uvTri = triUvs[triIdx];
 			vec3 *vertUvs = uvTri.vertices;
 			for (int i = 0; i < 3; i++)
-				vertUvs[i] *= invUv;
+				vertUvs[i] *= scale;
 			ivec2 t0 = ivec2(sint32(vertUvs[0][0].value), sint32(vertUvs[0][1].value));
 			ivec2 t1 = ivec2(sint32(vertUvs[1][0].value), sint32(vertUvs[1][1].value));
 			ivec2 t2 = ivec2(sint32(vertUvs[2][0].value), sint32(vertUvs[2][1].value));
@@ -117,7 +117,7 @@ void generateMaterials(const Holder<UPMesh> &renderMesh, uint32 width, uint32 he
 				for (sint32 x = A.x; x <= B.x; x++)
 				{
 					sint32 y = t0.y + i;
-					vec2 uv = vec2(x, y) * whInv;
+					vec2 uv = vec2(x, y) * scaleInv;
 					vec2 b = barycoord(triUvs[triIdx], uv);
 					CAGE_ASSERT(b.valid());
 					positions.push_back(interpolate(triPos[triIdx], b));

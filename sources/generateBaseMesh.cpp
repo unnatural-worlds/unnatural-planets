@@ -86,6 +86,10 @@ Holder<UPMesh> generateBaseMesh(real size, uint32 resolution)
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating base mesh");
 	OPTICK_EVENT();
 
+#ifdef CAGE_DEBUG
+	resolution /= 4;
+#endif
+
 	std::vector<real> densities = genDensities(size, resolution);
 	std::vector<dualmc::Vertex> mcVertices;
 	std::vector<dualmc::Quad> mcIndices;

@@ -56,7 +56,7 @@ namespace
 		vec3 p2(p1[1], -p1[2], p1[0]);
 		static const Holder<NoiseFunction> clouds1 = newClouds(globalSeed + 200, 3);
 		static const Holder<NoiseFunction> clouds2 = newClouds(globalSeed + 201, 4);
-		return pow(clouds1->evaluate(p1 * 5) * 0.5 + 0.5, 1.8) * pow(clouds2->evaluate(p2 * 8) * 0.5 + 0.5, 1.5) * 15;
+		return pow(clouds1->evaluate(p1 * 5) * 0.5 + 0.5, 1.8) * pow(clouds2->evaluate(p2 * 8) * 0.5 + 0.5, 1.5);
 	}
 
 	void vegetationMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height)
@@ -130,12 +130,12 @@ namespace
 
 real functionDensity(const vec3 &pos)
 {
-	return sphereDensity(pos) + terrainElevation(pos);
+	return sphereDensity(pos) + terrainElevation(pos) * 15;
 }
 
 void functionTileProperties(const vec3 &pos, const vec3 &normal, uint8 &terrainType)
 {
-	real elev = terrainElevation(pos) / 15;
+	real elev = terrainElevation(pos);
 	CAGE_ASSERT(elev >= 0 && elev <= 1);
 
 	{ // sea water
