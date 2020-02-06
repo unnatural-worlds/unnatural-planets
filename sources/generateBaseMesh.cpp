@@ -35,7 +35,7 @@ namespace
 
 		dualmc::DualMC<float> mc;
 		mc.build((float*)densities.data(), resolution, resolution, resolution, 0, true, false, mcVertices, mcIndices);
-		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "vertices count: " + mcVertices.size() + ", quads count: " + mcIndices.size());
+		//CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "vertices count: " + mcVertices.size() + ", quads count: " + mcIndices.size());
 		if (mcVertices.size() == 0 || mcIndices.size() == 0)
 			CAGE_THROW_ERROR(Exception, "generated empty mesh");
 	}
@@ -90,7 +90,24 @@ Holder<UPMesh> generateBaseMesh(real size, uint32 resolution)
 	std::vector<dualmc::Vertex> mcVertices;
 	std::vector<dualmc::Quad> mcIndices;
 	genSurface(densities, resolution, mcVertices, mcIndices);
-	return genTriangles(mcVertices, mcIndices, size, resolution);
+	Holder<UPMesh> res = genTriangles(mcVertices, mcIndices, size, resolution);
+
+	{
+		real len = 0;
+		uint32 trisCnt = res->indices.size() / 3;
+		for (uint32 tri = 0; tri < trisCnt; tri++)
+		{
+			vec3 a = res->positions[res->indices[tri * 3 + 0]];
+			vec3 b = res->positions[res->indices[tri * 3 + 1]];
+			vec3 c = res->positions[res->indices[tri * 3 + 2]];
+			len += distance(a, b);
+			len += distance(b, c);
+			len += distance(c, a);
+		}
+		real avg = len / res->indices.size();
+		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "average edge length: " + avg);
+	}
+	return res;
 }
 
 

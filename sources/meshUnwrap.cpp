@@ -18,9 +18,17 @@ namespace
 		return result;
 	}
 
+	const string xAtlasCategoriesNames[] = {
+		"AddMesh",
+		"ComputeCharts",
+		"ParameterizeCharts",
+		"PackCharts",
+		"BuildOutputMeshes"
+	};
+
 	bool xAtlasProgress(xatlas::ProgressCategory::Enum category, int progress, void *userData)
 	{
-		CAGE_LOG(SeverityEnum::Info, "xatlas", stringizer() + "category: " + category + ", progress: " + progress);
+		CAGE_LOG(SeverityEnum::Info, "xatlas", stringizer() + xAtlasCategoriesNames[category] + ": " + progress + " %");
 		return true; // continue processing
 	}
 
@@ -36,12 +44,6 @@ namespace
 		xatlas::SetProgressCallback(a, &xAtlasProgress);
 		return Holder<xatlas::Atlas>(a, a, Delegate<void(void*)>().bind<&destroyAtlas>());
 	}
-
-	#ifdef CAGE_DEBUG
-	const real texelsPerSegment = 1;
-	#else
-	const real texelsPerSegment = 10;
-	#endif // CAGE_DEBUG
 }
 
 UnwrapResult meshUnwrap(const Holder<UPMesh> &mesh)
@@ -68,6 +70,9 @@ UnwrapResult meshUnwrap(const Holder<UPMesh> &mesh)
 	{
 		OPTICK_EVENT("ComputeCharts");
 		xatlas::ChartOptions chart;
+		chart.maxIterations = 10;
+		chart.maxBoundaryLength = 50;
+		chart.roundnessMetricWeight = 0.3;
 		xatlas::ComputeCharts(atlas.get(), chart);
 	}
 
@@ -79,11 +84,16 @@ UnwrapResult meshUnwrap(const Holder<UPMesh> &mesh)
 	{
 		OPTICK_EVENT("PackCharts");
 		xatlas::PackOptions pack;
-		pack.resolution = 512;
-		pack.texelsPerUnit = texelsPerSegment.value;
+		pack.resolution = 1024;
+#ifdef CAGE_DEBUG
+		pack.texelsPerUnit = 1;
+#else
+		pack.texelsPerUnit = 10;
+#endif // CAGE_DEBUG
 		pack.padding = 2;
 		pack.bilinear = true;
 		pack.blockAlign = true;
+		pack.bruteForce = true;
 		xatlas::PackCharts(atlas.get(), pack);
 		CAGE_ASSERT(atlas->meshCount == 1);
 		CAGE_ASSERT(atlas->atlasCount > 0);
@@ -117,7 +127,7 @@ UnwrapResult meshUnwrap(const Holder<UPMesh> &mesh)
 			Holder<UPMesh> &res = result.meshes[v.atlasIndex];
 			if (mapping.count(index) == 0)
 			{
-				mapping[index] = res->positions.size();
+				mapping[index] = numeric_cast<uint32>(res->positions.size());
 				res->positions.push_back(mesh->positions[v.xref]);
 				res->normals.push_back(mesh->normals[v.xref]);
 				res->uvs.push_back(vec2(v.uv[0], v.uv[1]) * whInv);

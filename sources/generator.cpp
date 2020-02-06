@@ -52,10 +52,11 @@ namespace
 
 	void exportConfiguration(const string &baseDirectory, uint32 renderChunksCount)
 	{
-		const string assetsDirectory = pathJoin(baseDirectory, "data");
-
 		CAGE_LOG(SeverityEnum::Info, "generator", "exporting");
+		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "target directory: " + pathToAbs(baseDirectory));
 		OPTICK_EVENT("exportTerrain");
+
+		const string assetsDirectory = pathJoin(baseDirectory, "data");
 
 		{ // write unnatural-map
 			Holder<File> f = newFile(pathJoin(baseDirectory, "unnatural-map.ini"), FileMode(false, true));
@@ -144,14 +145,14 @@ void generateEntry()
 {
 	const string baseDirectory = findBaseDirectory();
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
-	Holder<UPMesh> baseMesh = generateBaseMesh(100, 100);
+	Holder<UPMesh> baseMesh = generateBaseMesh(150, 150);
 	Holder<UPMesh> navMesh = meshSimplifyRegular(baseMesh);
-	UnwrapResult unwrap = meshUnwrap(navMesh);
+	Holder<UPMesh> colliderMesh = meshSimplifyDynamic(navMesh);
+	UnwrapResult unwrap = meshUnwrap(colliderMesh);
 	exportConfiguration(baseDirectory, numeric_cast<uint32>(unwrap.meshes.size()));
 	uint32 index = 0;
 	for (Holder<UPMesh> &msh : unwrap.meshes)
 	{
-		msh = meshSimplifyDynamic(msh);
 		generateMaterials(msh, unwrap.textureWidth, unwrap.textureHeight, albedo, special, heightMap);
 		inpaintTextures();
 		saveRenderMesh(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + ".obj"), msh);
@@ -162,7 +163,6 @@ void generateEntry()
 	}
 	std::vector<uint8> terrainTypes = generateTileProperties(navMesh);
 	saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), navMesh, terrainTypes);
-	Holder<UPMesh> colliderMesh = meshSimplifyDynamic(navMesh);
 	saveCollider(pathJoin(assetsDirectory, "collider.obj"), colliderMesh);
 	CAGE_LOG(SeverityEnum::Info, "generator", "all done");
 }

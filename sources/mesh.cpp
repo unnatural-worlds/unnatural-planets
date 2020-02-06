@@ -87,7 +87,7 @@ void saveNavigationMesh(const string &path, const Holder<UPMesh> &mesh, const st
 	for (const vec3 &v : mesh->normals)
 		f->writeLine(stringizer() + "vn " + v2s(v));
 	for (const uint8 &v : terrainTypes)
-		f->writeLine(stringizer() + "vt " + (v + 0.5) / 32);
+		f->writeLine(stringizer() + "vt " + v2s(vec2((v + 0.5) / 32, 0)));
 	writeIndices(f, mesh);
 }
 
