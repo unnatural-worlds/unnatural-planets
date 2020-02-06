@@ -30,4 +30,6 @@ void saveRenderMesh(const string &path, const Holder<UPMesh> &mesh);
 void saveNavigationMesh(const string &path, const Holder<UPMesh> &mesh, const std::vector<uint8> &terrainTypes);
 void saveCollider(const string &path, const Holder<UPMesh> &mesh);
 
+real meshAverageEdgeLength(const Holder<UPMesh> &mesh);
+
 #endif

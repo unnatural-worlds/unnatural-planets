@@ -93,7 +93,7 @@ UnwrapResult meshUnwrap(const Holder<UPMesh> &mesh)
 		pack.padding = 2;
 		pack.bilinear = true;
 		pack.blockAlign = true;
-		pack.bruteForce = true;
+		//pack.bruteForce = true;
 		xatlas::PackCharts(atlas.get(), pack);
 		CAGE_ASSERT(atlas->meshCount == 1);
 		CAGE_ASSERT(atlas->atlasCount > 0);

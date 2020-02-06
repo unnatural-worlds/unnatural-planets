@@ -146,8 +146,12 @@ void generateEntry()
 	const string baseDirectory = findBaseDirectory();
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
 	Holder<UPMesh> baseMesh = generateBaseMesh(150, 150);
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "base mesh: average edge length: " + meshAverageEdgeLength(baseMesh));
 	Holder<UPMesh> navMesh = meshSimplifyRegular(baseMesh);
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: vertices: " + navMesh->positions.size() + ", triangles: " + (navMesh->indices.size() / 3));
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: average edge length: " + meshAverageEdgeLength(navMesh));
 	Holder<UPMesh> colliderMesh = meshSimplifyDynamic(navMesh);
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "collider: vertices: " + colliderMesh->positions.size() + ", triangles: " + (colliderMesh->indices.size() / 3));
 	UnwrapResult unwrap = meshUnwrap(colliderMesh);
 	exportConfiguration(baseDirectory, numeric_cast<uint32>(unwrap.meshes.size()));
 	uint32 index = 0;

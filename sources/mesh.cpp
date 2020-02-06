@@ -103,6 +103,21 @@ void saveCollider(const string &path, const Holder<UPMesh> &mesh)
 	writeIndices(f, mesh);
 }
 
+real meshAverageEdgeLength(const Holder<UPMesh> &mesh)
+{
+	real len = 0;
+	uint32 trisCnt = mesh->indices.size() / 3;
+	for (uint32 tri = 0; tri < trisCnt; tri++)
+	{
+		vec3 a = mesh->positions[mesh->indices[tri * 3 + 0]];
+		vec3 b = mesh->positions[mesh->indices[tri * 3 + 1]];
+		vec3 c = mesh->positions[mesh->indices[tri * 3 + 2]];
+		len += distance(a, b);
+		len += distance(b, c);
+		len += distance(c, a);
+	}
+	return len / mesh->indices.size();
+}
 
 
 
