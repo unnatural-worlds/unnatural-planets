@@ -84,11 +84,12 @@ UnwrapResult meshUnwrap(const Holder<UPMesh> &mesh)
 	{
 		OPTICK_EVENT("PackCharts");
 		xatlas::PackOptions pack;
-		pack.resolution = 1024;
 #ifdef CAGE_DEBUG
+		pack.resolution = 512;
 		pack.texelsPerUnit = 1;
 #else
-		pack.texelsPerUnit = 10;
+		pack.resolution = 2048;
+		pack.texelsPerUnit = 15;
 #endif // CAGE_DEBUG
 		pack.padding = 2;
 		pack.bilinear = true;

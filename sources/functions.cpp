@@ -8,6 +8,17 @@ namespace
 {
 	uint32 globalSeed = (uint32)detail::getApplicationRandomGenerator().next();
 
+	//---------
+	// general
+	//---------
+
+	uint32 noiseSeed()
+	{
+		static uint32 offset = 0;
+		offset += globalSeed % 123;
+		return globalSeed + offset;
+	}
+
 	template <class T>
 	T rescale(const T &v, real ia, real ib, real oa, real ob)
 	{
@@ -45,189 +56,219 @@ namespace
 		return newNoiseFunction(cfg);
 	}
 
-	real sphereDensity(const vec3 &pos)
+	//-----------
+	// densities
+	//-----------
+
+	real densitySphere(const vec3 &pos)
 	{
 		return 55 - length(pos);
 	}
 
+	//--------
+	// biomes
+	//--------
+
+	// inspired by Whittaker diagram
+	enum class BiomeEnum
+	{
+		Ocean,
+		Beach,
+		Snow,
+		Tundra,
+		Bare,
+		Scorched,
+		Taiga,
+		Shrubland,
+		TemperateDesert,
+		TemperateRainForest,
+		TemperateDeciduousForest,
+		Grassland,
+		TropicalRainForest,
+		TropicalSeasonalForest,
+		SubtropicalDesert,
+	};
+
+	BiomeEnum biome(real elevation, real moisture)
+	{
+		elevation = pow(elevation, 0.8);
+		// https://www.redblobgames.com/maps/terrain-from-noise/
+		if (elevation < 0.1)
+			return BiomeEnum::Ocean;
+		if (elevation < 0.12)
+			return BiomeEnum::Beach;
+		if (elevation > 0.8)
+		{
+			if (moisture < 0.1)
+				return BiomeEnum::Scorched;
+			if (moisture < 0.2)
+				return BiomeEnum::Bare;
+			if (moisture < 0.5)
+				return BiomeEnum::Tundra;
+			return BiomeEnum::Snow;
+		}
+		if (elevation > 0.6)
+		{
+			if (moisture < 0.33)
+				return BiomeEnum::TemperateDesert;
+			if (moisture < 0.66)
+				return BiomeEnum::Shrubland;
+			return BiomeEnum::Taiga;
+		}
+		if (elevation > 0.3)
+		{
+			if (moisture < 0.16)
+				return BiomeEnum::TemperateDesert;
+			if (moisture < 0.50)
+				return BiomeEnum::Grassland;
+			if (moisture < 0.83)
+				return BiomeEnum::TemperateDeciduousForest;
+			return BiomeEnum::TemperateRainForest;
+		}
+		if (moisture < 0.16)
+			return BiomeEnum::SubtropicalDesert;
+		if (moisture < 0.33)
+			return BiomeEnum::Grassland;
+		if (moisture < 0.66)
+			return BiomeEnum::TropicalSeasonalForest;
+		return BiomeEnum::TropicalRainForest;
+	}
+
+	vec3 biomeColor(BiomeEnum b)
+	{
+		switch (b)
+		{
+		case BiomeEnum::Ocean: return vec3(54, 54, 97) / 255;
+		case BiomeEnum::Beach: return vec3(172, 159, 139) / 255;
+		case BiomeEnum::Snow: return vec3(248, 248, 248) / 255;
+		case BiomeEnum::Tundra: return vec3(221, 221, 187) / 255;
+		case BiomeEnum::Bare: return vec3(187, 187, 187) / 255;
+		case BiomeEnum::Scorched: return vec3(153, 153, 153) / 255;
+		case BiomeEnum::Taiga: return vec3(204, 212, 187) / 255;
+		case BiomeEnum::Shrubland: return vec3(196, 204, 187) / 255;
+		case BiomeEnum::TemperateDesert: return vec3(228, 232, 202) / 255;
+		case BiomeEnum::TemperateRainForest: return vec3(164, 196, 168) / 255;
+		case BiomeEnum::TemperateDeciduousForest: return vec3(180, 201, 169) / 255;
+		case BiomeEnum::Grassland: return vec3(196, 212, 170) / 255;
+		case BiomeEnum::TropicalRainForest: return vec3(156, 187, 169) / 255;
+		case BiomeEnum::TropicalSeasonalForest: return vec3(169, 204, 164) / 255;
+		case BiomeEnum::SubtropicalDesert: return vec3(233, 221, 199) / 255;
+		default: return vec3::Nan();
+		};
+	}
+
+	uint8 biomeTerrainType(BiomeEnum b)
+	{
+		switch (b)
+		{
+		case BiomeEnum::Ocean:
+			return 8; // water
+		case BiomeEnum::Bare:
+		case BiomeEnum::Scorched:
+		case BiomeEnum::Grassland:
+		case BiomeEnum::TemperateDesert:
+		case BiomeEnum::TemperateRainForest:
+		case BiomeEnum::TemperateDeciduousForest:
+		case BiomeEnum::TropicalSeasonalForest:
+			return 4; // fast
+		case BiomeEnum::Snow:
+		case BiomeEnum::Beach:
+		case BiomeEnum::Tundra:
+		case BiomeEnum::Taiga:
+		case BiomeEnum::Shrubland:
+		case BiomeEnum::TropicalRainForest:
+		case BiomeEnum::SubtropicalDesert:
+			return 2; // slow
+		default:
+			return 0;
+		}
+	}
+
+	//-----------
+	// elevation
+	//-----------
+
 	real terrainElevation(const vec3 &pos)
 	{
+		static const Holder<NoiseFunction> clouds1 = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.octaves = 3;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> clouds2 = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.octaves = 4;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
 		vec3 p1 = pos * 0.01;
 		vec3 p2(p1[1], -p1[2], p1[0]);
-		static const Holder<NoiseFunction> clouds1 = newClouds(globalSeed + 200, 3);
-		static const Holder<NoiseFunction> clouds2 = newClouds(globalSeed + 201, 4);
 		return pow(clouds1->evaluate(p1 * 5) * 0.5 + 0.5, 1.8) * pow(clouds2->evaluate(p2 * 8) * 0.5 + 0.5, 1.5);
 	}
 
-	void vegetationMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height)
+	//----------
+	// moisture
+	//----------
+
+	real terrainMoisture(const vec3 &pos, const vec3 &normal)
 	{
-		static const vec3 colors[] = {
-			pdnToRgb(151, 87, 30),
-			pdnToRgb(93, 53, 45),
-			pdnToRgb(116, 68, 71),
-			pdnToRgb(70, 64, 76)
-		};
-
-		static const vec2 specials[] = {
-			vec2(0.5, 0.02),
-			vec2(0.3, 0.02),
-			vec2(0.5, 0.02),
-			vec2(0.3, 0.02)
-		};
-
-		static const Holder<NoiseFunction> clouds1 = newClouds(globalSeed + 98541, 4);
-		static const Holder<NoiseFunction> clouds2 = newClouds(globalSeed + 13657, 6);
-		static const Holder<NoiseFunction> clouds3 = newClouds(globalSeed + 36974, 4);
-		static const Holder<NoiseFunction> clouds4 = newClouds(globalSeed + 21456, 6);
-		real cs[4];
-		cs[0] = clouds1->evaluate(pos * 0.08) + 0.2;
-		cs[1] = clouds2->evaluate(pos * 0.34);
-		cs[2] = clouds3->evaluate(pos * 0.08);
-		cs[3] = clouds4->evaluate(pos * 0.57) - 0.1;
-		uint32 i = 0;
-		for (uint32 j = 1; j < 4; j++)
-			if (cs[j] > cs[i])
-				i = j;
-		albedo = colorDeviation(colors[i]);
-		special = specials[i];
-		height = randomRange(0.45, 0.55);
+		static const Holder<NoiseFunction> clouds1 = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.octaves = 4;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> clouds2 = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.octaves = 3;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		return clouds1->evaluate(pos * 0.1 + normal * clouds2->evaluate(pos * 0.2)) * 0.5 + 0.5;
 	}
 
-	void mountainRocksMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height)
+	//---------
+	// terrain
+	//---------
+
+	void terrain(const vec3 &pos, const vec3 &normal, uint8 &terrainType, vec3 &albedo, vec2 &special, real &height)
 	{
-		static const vec3 colors[] = {
-			pdnToRgb(66, 40, 62), // grass
-			pdnToRgb(182, 32, 71), // metal
-			pdnToRgb(218, 41, 34), // rock
-			pdnToRgb(25, 43, 44) // dirt
-		};
-
-		static const vec2 specials[] = {
-			vec2(0.3, 0.02),
-			vec2(0.04, 0.55),
-			vec2(0.5, 0.05),
-			vec2(0.6, 0.03)
-		};
-
-		static const Holder<NoiseFunction> clouds1 = newClouds(globalSeed + 74892, 4);
-		static const Holder<NoiseFunction> clouds2 = newClouds(globalSeed + 54747, 8);
-		static const Holder<NoiseFunction> clouds3 = newClouds(globalSeed + 56744, 4);
-		static const Holder<NoiseFunction> clouds4 = newClouds(globalSeed + 98323, 8);
-		real cs[4];
-		cs[0] = clouds1->evaluate(pos * 0.21);
-		cs[1] = clouds2->evaluate(pos * 0.91) - 0.2;
-		cs[2] = clouds3->evaluate(pos * 0.11) + 0.2;
-		cs[3] = clouds4->evaluate(pos * 1.11);
-		uint32 i = 0;
-		for (uint32 j = 1; j < 4; j++)
-			if (cs[j] > cs[i])
-				i = j;
-		albedo = colorDeviation(colors[i]);
-		special = specials[i];
-		height = randomRange(0.4, 0.6);
+		real elev = terrainElevation(pos);
+		CAGE_ASSERT(elev >= 0 && elev <= 1);
+		real moist = terrainMoisture(pos, normal);
+		CAGE_ASSERT(moist >= 0 && moist <= 1);
+		real temp = 1 - elev;
+		//temp *= 1 - pow(abs(pos[1] / length(pos)), 5); // colder on poles
+		CAGE_ASSERT(temp >= 0 && temp <= 1);
+		BiomeEnum biom = biome(1 - temp, moist);
+		terrainType = biomeTerrainType(biom);
+		albedo = biomeColor(biom);
+		special = vec2(0.5);
+		height = 0;
 	}
 }
 
 real functionDensity(const vec3 &pos)
 {
-	return sphereDensity(pos) + terrainElevation(pos) * 15;
+	return densitySphere(pos) + terrainElevation(pos) * 15;
 }
 
 void functionTileProperties(const vec3 &pos, const vec3 &normal, uint8 &terrainType)
 {
-	real elev = terrainElevation(pos);
-	CAGE_ASSERT(elev >= 0 && elev <= 1);
-
-	{ // sea water
-		static const real waterlineGlobal = (hash(globalSeed + 15674) % 100) * 0.01 * 0.07 + 0.005;
-		real waterline = waterlineGlobal;
-		if (elev < waterline)
-		{
-			terrainType = 3;
-			return;
-		}
-		elev = (elev - waterline) / (1 - waterline);
-		CAGE_ASSERT(elev >= 0 && elev <= 1);
-	}
-
-	{ // snow
-		static const real snowlineGlobal = (hash(globalSeed + 7154) % 100) * 0.01 * 0.25 + 0.2;
-		static const Holder<NoiseFunction> snowlineClouds = newClouds(globalSeed + 44798, 5);
-		real snowline = snowlineGlobal + (snowlineClouds->evaluate(pos * 1.345) - 0.5) * 0.03;
-		if (elev > snowline)
-		{
-			terrainType = 5;
-			return;
-		}
-		elev = 1 - (snowline - elev) / snowline;
-		CAGE_ASSERT(elev >= 0 && elev <= 1);
-	}
-
-	{ // mountain rocks
-		static const real mountainGlobal = (hash(globalSeed + 674) % 100) * 0.01 * 0.4 + 0.6;
-		static const Holder<NoiseFunction> mountainClouds = newClouds(globalSeed + 789499, 3);
-		real mountainline = mountainGlobal + (mountainClouds->evaluate(pos * 0.0954) - 0.5) * 0.2;
-		if (elev > mountainline)
-		{
-			terrainType = 4;
-			return;
-		}
-		elev = 1 - (mountainline - elev) / mountainline;
-		CAGE_ASSERT(elev >= 0 && elev <= 1);
-	}
-
-	{ // sand
-		static const Holder<NoiseFunction> sandCloud1 = newClouds(globalSeed + 95670, 5);
-		static const Holder<NoiseFunction> sandCloud2 = newClouds(globalSeed + 45677, 5);
-		if (sandCloud1->evaluate(pos * 0.07) > 0.85 || sandCloud2->evaluate(pos * 0.13) + elev < 0.1)
-		{
-			terrainType = 1;
-			static const Holder<NoiseFunction> sandCloud3 = newClouds(globalSeed + 688879, 5);
-			return;
-		}
-	}
-
-	{ // vegetation
-		static const Holder<NoiseFunction> vegetationClouds = newClouds(globalSeed + 3547746, 5);
-		terrainType = 2;
-	}
+	vec3 albedo;
+	vec2 special;
+	real height;
+	terrain(pos, normal, terrainType, albedo, special, height);
 }
 
 void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height)
 {
-	uint8 type;
-	functionTileProperties(pos, normal, type);
-	static const Holder<NoiseFunction> rocksClouds = newClouds(globalSeed + 68971, 4);
-	switch (type)
-	{
-	case 0: // concrete
-			// todo
-		break; //return;
-	case 1: // sand
-		albedo = colorDeviation(interpolateColor(pdnToRgb(55, 99, 97), pdnToRgb(44, 70, 74), randomChance()));
-		special = vec2(randomRange(0.4, 0.8), randomRange(0.01, 0.2));
-		height = randomRange(0.47, 0.53);
-		return;
-	case 2: // vegetation
-		vegetationMaterial(pos, normal, albedo, special, height);
-		return;
-	case 3: // sea water
-		albedo = colorDeviation(interpolateColor(pdnToRgb(235, 85, 48), pdnToRgb(199, 78, 78), randomChance()));
-		special = vec2(randomRange(0.2, 0.3), 0.02);
-		height = 0.05 * (1 - 0.7 * randomChance()) * (randomChance() - 0.5) + 0.5;
-		return;
-	case 4: // mountain rocks
-		mountainRocksMaterial(pos, normal, albedo, special, height);
-		return;
-	case 5: // snow
-		albedo = colorDeviation(vec3(0.81), 0.02);
-		special = vec2(randomRange(0.1, 0.4), 0.02);
-		height = randomRange(0.49, 0.51);
-		return;
-	}
-
-	// default
-	albedo = vec3(0.5);
-	special = vec2(0.5, 0);
-	height = 0.5;
+	uint8 terrainType;
+	terrain(pos, normal, terrainType, albedo, special, height);
+	albedo = colorDeviation(albedo, 0.01);
 }
