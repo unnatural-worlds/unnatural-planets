@@ -11,6 +11,7 @@ struct UPMesh
 	std::vector<vec3> normals;
 	std::vector<vec2> uvs;
 	std::vector<uint32> indices;
+	void validate() const;
 };
 
 struct UnwrapResult
@@ -26,6 +27,7 @@ UnwrapResult meshUnwrap(const Holder<UPMesh> &mesh);
 Holder<UPMesh> meshSimplifyRegular(const Holder<UPMesh> &mesh);
 Holder<UPMesh> meshSimplifyDynamic(const Holder<UPMesh> &mesh);
 
+void saveDebugMesh(const string &path, const Holder<UPMesh> &mesh);
 void saveRenderMesh(const string &path, const Holder<UPMesh> &mesh);
 void saveNavigationMesh(const string &path, const Holder<UPMesh> &mesh, const std::vector<uint8> &terrainTypes);
 void saveCollider(const string &path, const Holder<UPMesh> &mesh);

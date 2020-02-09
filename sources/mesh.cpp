@@ -35,6 +35,49 @@ Holder<UPMesh> newUPMesh()
 	return detail::systemArena().createHolder<UPMesh>();
 }
 
+void UPMesh::validate() const
+{
+	if (!normals.empty() && normals.size() != positions.size())
+		CAGE_THROW_ERROR(Exception, "invalid count of normals");
+	if (!uvs.empty() && uvs.size() != positions.size())
+		CAGE_THROW_ERROR(Exception, "invalid count of uvs");
+	if ((indices.size() % 3) != 0)
+		CAGE_THROW_ERROR(Exception, "indices not divisible by 3");
+	for (const vec3 &p : positions)
+		if (!p.valid())
+			CAGE_THROW_ERROR(Exception, "invalid vertex position");
+	for (const vec3 &n : normals)
+	{
+		if (!n.valid())
+			CAGE_THROW_ERROR(Exception, "invalid vertex normal");
+		if (abs(length(n) - 1) > 1e-4)
+			CAGE_THROW_ERROR(Exception, "invalid normal length");
+	}
+	for (const vec2 &u : uvs)
+		if (!u.valid())
+			CAGE_THROW_ERROR(Exception, "invalid vertex uvs");
+	for (auto i : indices)
+		if (i >= positions.size())
+			CAGE_THROW_ERROR(Exception, "invalid mesh index");
+}
+
+void saveDebugMesh(const string &path, const Holder<UPMesh> &mesh)
+{
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving debug mesh: " + path);
+	OPTICK_EVENT();
+
+	string objectName = pathExtractFilenameNoExtension(path);
+	Holder<File> f = newFile(path, FileMode(false, true));
+	f->writeLine(stringizer() + "o " + objectName);
+	for (const vec3 &v : mesh->positions)
+		f->writeLine(stringizer() + "v " + v2s(v));
+	for (const vec3 &v : mesh->normals)
+		f->writeLine(stringizer() + "vn " + v2s(v));
+	for (const vec2 &v : mesh->uvs)
+		f->writeLine(stringizer() + "vt " + v2s(v));
+	writeIndices(f, mesh);
+}
+
 void saveRenderMesh(const string &path, const Holder<UPMesh> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving render mesh: " + path);

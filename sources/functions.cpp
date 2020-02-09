@@ -3,6 +3,7 @@
 #include <cage-core/noiseFunction.h>
 #include <cage-core/color.h>
 #include <cage-core/random.h>
+#include <cage-core/geometry.h>
 
 namespace
 {
@@ -47,22 +48,98 @@ namespace
 		return normalize(normal + strength * randomDirection3());
 	}
 
-	Holder<NoiseFunction> newClouds(uint32 seed, uint32 octaves)
-	{
-		NoiseFunctionCreateConfig cfg;
-		cfg.octaves = octaves;
-		cfg.type = NoiseTypeEnum::Value;
-		cfg.seed = seed;
-		return newNoiseFunction(cfg);
-	}
-
 	//-----------
 	// densities
 	//-----------
 
 	real densitySphere(const vec3 &pos)
 	{
-		return 55 - length(pos);
+		return 60 - length(pos);
+	}
+
+	real densityTorus(const vec3 &pos)
+	{
+		vec3 c = normalize(pos * vec3(1, 0, 1)) * 70;
+		return 25 - distance(pos, c);
+	}
+
+	real densityPretzel(const vec3 &pos)
+	{
+		vec3 c = normalize(pos * vec3(1, 0, 1));
+		rads yaw = atan2(c[0], c[2]);
+		rads pitch = atan2(pos[1], 70 - length(vec2(pos[0], pos[2])));
+		rads ang = yaw + pitch;
+		real t = length(vec2(sin(ang) * 25, cos(ang) * 5));
+		real l = distance(pos, c * 70);
+		return t - l;
+	}
+
+	real densityMobiusStrip(const vec3 &pos)
+	{
+		// todo fix this
+		vec3 c = normalize(pos * vec3(1, 0, 1));
+		rads yaw = atan2(c[0], c[2]);
+		rads pitch = atan2(length(vec2(pos[0], pos[2])) - 70, pos[1]);
+		rads ang = pitch;
+		real si = sin(ang);
+		real co = cos(ang);
+		real x = abs(co) * co + abs(si) * si;
+		real y = abs(co) * co - abs(si) * si;
+		real t = length(vec2(x * 25, y * 5));
+		real l = distance(pos, c * 70);
+		return t - l;
+	}
+
+	bool sideOfAPlane(const triangle &tri, const vec3 &pt)
+	{
+		plane pl(tri);
+		return dot(pl.normal, pt) < -pl.d;
+	}
+
+	real densityTetrahedron(const vec3 &pos)
+	{
+		const real size = 70;
+		const vec3 corners[4] = { vec3(1,1,1)*size, vec3(1,-1,-1)*size, vec3(-1,1,-1)*size, vec3(-1,-1,1)*size };
+		const triangle tris[4] = {
+			triangle(corners[0], corners[1], corners[2]),
+			triangle(corners[0], corners[3], corners[1]),
+			triangle(corners[0], corners[2], corners[3]),
+			triangle(corners[1], corners[3], corners[2])
+		};
+		const bool insides[4] = {
+			sideOfAPlane(tris[0], pos),
+			sideOfAPlane(tris[1], pos),
+			sideOfAPlane(tris[2], pos),
+			sideOfAPlane(tris[3], pos)
+		};
+		const real lens[4] = {
+			distance(tris[0], pos),
+			distance(tris[1], pos),
+			distance(tris[2], pos),
+			distance(tris[3], pos)
+		};
+		if (insides[0] && insides[1] && insides[2] && insides[3])
+		{
+			real r = min(min(lens[0], lens[1]), min(lens[2], lens[3]));
+			CAGE_ASSERT(r.valid() && r.finite());
+			return r;
+		}
+		else
+		{
+			real r = real::Infinity();
+			for (int i = 0; i < 4; i++)
+			{
+				if (!insides[i])
+					r = min(r, lens[i]);
+			}
+			CAGE_ASSERT(r.valid() && r.finite());
+			return -r;
+		}
+	}
+
+	real baseShapeDensity(const vec3 &pos)
+	{
+		return densitySphere(pos);
 	}
 
 	//--------
@@ -73,6 +150,7 @@ namespace
 	enum class BiomeEnum
 	{
 		Ocean,
+		Ice,
 		Beach,
 		Snow,
 		Tundra,
@@ -89,15 +167,21 @@ namespace
 		SubtropicalDesert,
 	};
 
-	BiomeEnum biome(real elevation, real moisture)
+	BiomeEnum biome(real elevation, real temperature, real moisture)
 	{
-		elevation = pow(elevation, 0.8);
-		// https://www.redblobgames.com/maps/terrain-from-noise/
-		if (elevation < 0.1)
+		if (elevation < 0.06)
+		{
+			if (temperature < 0.1)
+				return BiomeEnum::Ice;
 			return BiomeEnum::Ocean;
-		if (elevation < 0.12)
+		}
+		if (elevation < 0.07)
+		{
+			if (temperature < 0.2)
+				return BiomeEnum::Ice;
 			return BiomeEnum::Beach;
-		if (elevation > 0.8)
+		}
+		if (temperature < 0.2)
 		{
 			if (moisture < 0.1)
 				return BiomeEnum::Scorched;
@@ -107,7 +191,7 @@ namespace
 				return BiomeEnum::Tundra;
 			return BiomeEnum::Snow;
 		}
-		if (elevation > 0.6)
+		if (temperature < 0.4)
 		{
 			if (moisture < 0.33)
 				return BiomeEnum::TemperateDesert;
@@ -115,7 +199,7 @@ namespace
 				return BiomeEnum::Shrubland;
 			return BiomeEnum::Taiga;
 		}
-		if (elevation > 0.3)
+		if (temperature < 0.7)
 		{
 			if (moisture < 0.16)
 				return BiomeEnum::TemperateDesert;
@@ -139,6 +223,7 @@ namespace
 		switch (b)
 		{
 		case BiomeEnum::Ocean: return vec3(54, 54, 97) / 255;
+		case BiomeEnum::Ice: return vec3(130, 186, 233) / 255;
 		case BiomeEnum::Beach: return vec3(172, 159, 139) / 255;
 		case BiomeEnum::Snow: return vec3(248, 248, 248) / 255;
 		case BiomeEnum::Tundra: return vec3(221, 221, 187) / 255;
@@ -171,6 +256,7 @@ namespace
 		case BiomeEnum::TemperateDeciduousForest:
 		case BiomeEnum::TropicalSeasonalForest:
 			return 4; // fast
+		case BiomeEnum::Ice:
 		case BiomeEnum::Snow:
 		case BiomeEnum::Beach:
 		case BiomeEnum::Tundra:
@@ -229,7 +315,7 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		return clouds1->evaluate(pos * 0.1 + normal * clouds2->evaluate(pos * 0.2)) * 0.5 + 0.5;
+		return clouds1->evaluate(pos * 0.05 + normal * clouds2->evaluate(pos * 0.2) * 0.5) * 0.5 + 0.5;
 	}
 
 	//---------
@@ -238,14 +324,29 @@ namespace
 
 	void terrain(const vec3 &pos, const vec3 &normal, uint8 &terrainType, vec3 &albedo, vec2 &special, real &height)
 	{
+		static const Holder<NoiseFunction> elevationOffsetClouds = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.octaves = 4;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> temperatureOffsetClouds = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.octaves = 4;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
 		real elev = terrainElevation(pos);
-		CAGE_ASSERT(elev >= 0 && elev <= 1);
+		elev += elevationOffsetClouds->evaluate(pos * 0.3) * 0.05;
 		real moist = terrainMoisture(pos, normal);
-		CAGE_ASSERT(moist >= 0 && moist <= 1);
-		real temp = 1 - elev;
-		//temp *= 1 - pow(abs(pos[1] / length(pos)), 5); // colder on poles
-		CAGE_ASSERT(temp >= 0 && temp <= 1);
-		BiomeEnum biom = biome(1 - temp, moist);
+		real temp = 1 - pow(elev, 0.8);
+		real polar = pow(abs(pos[1] / length(pos)), 6);
+		temp *= 1 - polar;
+		moist += polar * 0.3;
+		temp += temperatureOffsetClouds->evaluate(pos * 0.1) * 0.15;
+		BiomeEnum biom = biome(elev, temp, moist);
 		terrainType = biomeTerrainType(biom);
 		albedo = biomeColor(biom);
 		special = vec2(0.5);
@@ -255,7 +356,7 @@ namespace
 
 real functionDensity(const vec3 &pos)
 {
-	return densitySphere(pos) + terrainElevation(pos) * 15;
+	return baseShapeDensity(pos) + terrainElevation(pos) * 15;
 }
 
 void functionTileProperties(const vec3 &pos, const vec3 &normal, uint8 &terrainType)
@@ -270,5 +371,5 @@ void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &s
 {
 	uint8 terrainType;
 	terrain(pos, normal, terrainType, albedo, special, height);
-	albedo = colorDeviation(albedo, 0.01);
+	albedo = colorDeviation(albedo, 0.03);
 }
