@@ -139,7 +139,7 @@ namespace
 
 	real baseShapeDensity(const vec3 &pos)
 	{
-		return densityTetrahedron(pos);
+		return densitySphere(pos);
 	}
 
 	//--------
@@ -149,22 +149,24 @@ namespace
 	// inspired by Whittaker diagram
 	enum class BiomeEnum
 	{
-		Ocean,
-		Ice,
-		Beach,
-		Snow,
-		Tundra,
-		Bare,
-		Scorched,
-		Taiga,
-		Shrubland,
-		TemperateDesert,
-		TemperateRainForest,
-		TemperateDeciduousForest,
-		Grassland,
-		TropicalRainForest,
-		TropicalSeasonalForest,
-		SubtropicalDesert,
+		                          // temperature // precipitation //
+		                          //    (°C)     //     (cm)      //
+		Ocean,                    //             //               //
+		Ice,                      //             //               //
+		Beach,                    //             //               //
+		Snow,                     //     ..  0   //   50 ..       //
+		Bare,                     // -15 .. -5   //    5 ..  10   //
+		Scorched,                 // -15 .. -5   //    0 ..   5   //
+		Tundra,                   // -15 .. -5   //   10 .. 100   //
+		Taiga,                    //  -5 ..  4   //   20 .. 200   // (boreal forest)
+		TemperateDesert,          //  -5 .. 15   //    5 ..  10   //
+		Grassland,                //  -5 .. 15   //   10 ..  30   //
+		Shrubland,                //  -3 .. 20   //   10 .. 120   // (woodland)
+		TemperateRainForest,      //   5 .. 22   //  180 .. 330   //
+		TemperateDeciduousForest, //   3 .. 20   //   50 .. 230   //
+		SubtropicalDesert,        //  13 .. 30   //    0 .. 100   //
+		TropicalSeasonalForest,   //  18 .. 30   //   50 .. 270   // (savanna)
+		TropicalRainForest,       //  20 .. 28   //  240 .. 440   //
 	};
 
 	BiomeEnum biome(real elevation, real temperature, real moisture)
@@ -223,22 +225,95 @@ namespace
 		switch (b)
 		{
 		case BiomeEnum::Ocean: return vec3(54, 54, 97) / 255;
-		case BiomeEnum::Ice: return vec3(130, 186, 233) / 255;
-		case BiomeEnum::Beach: return vec3(172, 159, 139) / 255;
-		case BiomeEnum::Snow: return vec3(248, 248, 248) / 255;
-		case BiomeEnum::Tundra: return vec3(221, 221, 187) / 255;
+		case BiomeEnum::Ice: return vec3(61, 81, 82) / 255;
+		case BiomeEnum::Beach: return vec3(149, 125, 97) / 255;
+		case BiomeEnum::Snow: return vec3(226, 225, 230) / 255;
 		case BiomeEnum::Bare: return vec3(187, 187, 187) / 255;
 		case BiomeEnum::Scorched: return vec3(153, 153, 153) / 255;
+		case BiomeEnum::Tundra: return vec3(221, 221, 187) / 255;
 		case BiomeEnum::Taiga: return vec3(204, 212, 187) / 255;
-		case BiomeEnum::Shrubland: return vec3(196, 204, 187) / 255;
 		case BiomeEnum::TemperateDesert: return vec3(228, 232, 202) / 255;
+		case BiomeEnum::Grassland: return vec3(196, 212, 170) / 255;
+		case BiomeEnum::Shrubland: return vec3(196, 204, 187) / 255;
 		case BiomeEnum::TemperateRainForest: return vec3(164, 196, 168) / 255;
 		case BiomeEnum::TemperateDeciduousForest: return vec3(180, 201, 169) / 255;
-		case BiomeEnum::Grassland: return vec3(196, 212, 170) / 255;
-		case BiomeEnum::TropicalRainForest: return vec3(156, 187, 169) / 255;
-		case BiomeEnum::TropicalSeasonalForest: return vec3(169, 204, 164) / 255;
 		case BiomeEnum::SubtropicalDesert: return vec3(233, 221, 199) / 255;
+		case BiomeEnum::TropicalSeasonalForest: return vec3(169, 204, 164) / 255;
+		case BiomeEnum::TropicalRainForest: return vec3(156, 187, 169) / 255;
 		default: return vec3::Nan();
+		};
+	}
+
+	real biomeRoughness(BiomeEnum b)
+	{
+		switch (b)
+		{
+		case BiomeEnum::Ocean: return 0.2;
+		case BiomeEnum::Ice: return 0.15;
+		case BiomeEnum::Beach: return 0.7;
+		case BiomeEnum::Snow: return 0.7;
+		case BiomeEnum::Bare: return 0.9;
+		case BiomeEnum::Scorched: return 0.9;
+		case BiomeEnum::Tundra: return 0.7;
+		case BiomeEnum::Taiga: return 0.7;
+		case BiomeEnum::TemperateDesert: return 0.7;
+		case BiomeEnum::Grassland: return 0.7;
+		case BiomeEnum::Shrubland: return 0.8;
+		case BiomeEnum::TemperateRainForest: return 0.7;
+		case BiomeEnum::TemperateDeciduousForest: return 0.7;
+		case BiomeEnum::SubtropicalDesert: return 0.7;
+		case BiomeEnum::TropicalSeasonalForest: return 0.7;
+		case BiomeEnum::TropicalRainForest: return 0.7;
+		default: return real::Nan();
+		};
+	}
+
+	vec2 biomeCracks(BiomeEnum b)
+	{
+		// scale, intensity
+		switch (b)
+		{
+		case BiomeEnum::Ocean: return vec2();
+		case BiomeEnum::Ice: return vec2(1.2, 0.07);
+		case BiomeEnum::Beach: return vec2();
+		case BiomeEnum::Snow: return vec2();
+		case BiomeEnum::Bare: return vec2(1.3, 0.1);
+		case BiomeEnum::Scorched: return vec2(1.5, 0.15);
+		case BiomeEnum::Tundra: return vec2();
+		case BiomeEnum::Taiga: return vec2();
+		case BiomeEnum::TemperateDesert: return vec2(2.5, 0.03);
+		case BiomeEnum::Grassland: return vec2();
+		case BiomeEnum::Shrubland: return vec2(2, 0.01);
+		case BiomeEnum::TemperateRainForest: return vec2();
+		case BiomeEnum::TemperateDeciduousForest: return vec2();
+		case BiomeEnum::SubtropicalDesert: return vec2(2.5, 0.03);
+		case BiomeEnum::TropicalSeasonalForest: return vec2();
+		case BiomeEnum::TropicalRainForest: return vec2();
+		default: return vec2::Nan();
+		};
+	}
+
+	real biomeDiversity(BiomeEnum b)
+	{
+		switch (b)
+		{
+		case BiomeEnum::Ocean: return 0.03;
+		case BiomeEnum::Ice: return 0.03;
+		case BiomeEnum::Beach: return 0.05;
+		case BiomeEnum::Snow: return 0.03;
+		case BiomeEnum::Bare: return 0.04;
+		case BiomeEnum::Scorched: return 0.04;
+		case BiomeEnum::Tundra: return 0.03;
+		case BiomeEnum::Taiga: return 0.03;
+		case BiomeEnum::TemperateDesert: return 0.04;
+		case BiomeEnum::Grassland: return 0.06;
+		case BiomeEnum::Shrubland: return 0.06;
+		case BiomeEnum::TemperateRainForest: return 0.07;
+		case BiomeEnum::TemperateDeciduousForest: return 0.07;
+		case BiomeEnum::SubtropicalDesert: return 0.05;
+		case BiomeEnum::TropicalSeasonalForest: return 0.08;
+		case BiomeEnum::TropicalRainForest: return 0.08;
+		default: return real::Nan();
 		};
 	}
 
@@ -338,19 +413,50 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
+		static const Holder<NoiseFunction> cracksNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Natural;
+			cfg.operation = NoiseOperationEnum::Divide;
+			cfg.index0 = 1;
+			cfg.index1 = 2;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
 		real elev = terrainElevation(pos);
 		elev += elevationOffsetClouds->evaluate(pos * 0.3) * 0.05;
 		real moist = terrainMoisture(pos, normal);
 		real temp = 1 - pow(elev, 0.8);
-		real polar = pow(abs(pos[1] / length(pos)), 6);
+		real polar = pow(abs(pos[1] / length(pos)), 5);
 		temp *= 1 - polar;
 		moist += polar * 0.3;
-		temp += temperatureOffsetClouds->evaluate(pos * 0.1) * 0.15;
+		temp += temperatureOffsetClouds->evaluate(pos * 0.15) * 0.25;
 		BiomeEnum biom = biome(elev, temp, moist);
 		terrainType = biomeTerrainType(biom);
+		real diversity = biomeDiversity(biom);
 		albedo = biomeColor(biom);
-		special = vec2(0.5);
-		height = 0;
+		albedo = colorDeviation(albedo, diversity);
+		special = vec2(biomeRoughness(biom) + (randomChance() - 0.5) * diversity, 0);
+		vec2 cracksParams = biomeCracks(biom);
+		height = 0.4 + sharpEdge(cracksNoise->evaluate(pos * cracksParams[0]) - 0.4) * cracksParams[1];
+		switch (biom)
+		{
+		case BiomeEnum::Ocean:
+			height = 0.1;
+			break;
+		case BiomeEnum::Ice:
+		{
+			real c = (height - 0.4) / cracksParams[1];
+			albedo += c * 0.3;
+			special[0] += c * 0.6;
+		} break;
+		case BiomeEnum::Snow:
+			height = 0.9;
+			break;
+		}
+		albedo = clamp(albedo, 0, 1);
+		special = clamp(special, 0, 1);
+		height = clamp(height, 0, 1);
 	}
 }
 
@@ -371,5 +477,4 @@ void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &s
 {
 	uint8 terrainType;
 	terrain(pos, normal, terrainType, albedo, special, height);
-	albedo = colorDeviation(albedo, 0.03);
 }

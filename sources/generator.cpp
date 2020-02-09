@@ -150,8 +150,6 @@ namespace
 			f->writeLine("scheme = pack");
 			f->writeLine("planet.pack");
 		}
-
-		CAGE_LOG(SeverityEnum::Info, "generator", "exported ok");
 	}
 }
 
@@ -173,7 +171,7 @@ void generateEntry()
 	UnwrapResult unwrap = meshUnwrap(colliderMesh);
 	exportConfiguration(baseDirectory, numeric_cast<uint32>(unwrap.meshes.size()));
 	{
-		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "processing individual atlases");
+		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "processing individual meshes");
 		SubmeshProcessor submeshProcessor;
 		submeshProcessor.assetsDirectory = assetsDirectory;
 		submeshProcessor.unwrap = &unwrap;
