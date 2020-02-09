@@ -26,6 +26,7 @@ Holder<UPMesh> newUPMesh();
 UnwrapResult meshUnwrap(const Holder<UPMesh> &mesh);
 Holder<UPMesh> meshSimplifyRegular(const Holder<UPMesh> &mesh);
 Holder<UPMesh> meshSimplifyDynamic(const Holder<UPMesh> &mesh);
+Holder<UPMesh> meshDiscardDisconnected(Holder<UPMesh> &mesh);
 
 void saveDebugMesh(const string &path, const Holder<UPMesh> &mesh);
 void saveRenderMesh(const string &path, const Holder<UPMesh> &mesh);

@@ -160,8 +160,8 @@ void generateEntry()
 	const string baseDirectory = findBaseDirectory();
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
 	Holder<UPMesh> baseMesh = generateBaseMesh(250, 200);
+	baseMesh = meshDiscardDisconnected(baseMesh);
 	baseMesh->validate();
-	saveDebugMesh("debugBaseMesh.obj", baseMesh);
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "base mesh: average edge length: " + meshAverageEdgeLength(baseMesh));
 	Holder<UPMesh> navMesh = meshSimplifyRegular(baseMesh);
 	navMesh->validate();

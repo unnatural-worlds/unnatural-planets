@@ -139,7 +139,7 @@ namespace
 
 	real baseShapeDensity(const vec3 &pos)
 	{
-		return densitySphere(pos);
+		return densityTetrahedron(pos);
 	}
 
 	//--------
