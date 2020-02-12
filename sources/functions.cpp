@@ -31,13 +31,6 @@ namespace
 		return rescale(clamp(v, 0.5 - p, 0.5 + p), 0.5 - p, 0.5 + p, 0, 1);
 	}
 
-	/*
-	vec3 pdnToRgb(real h, real s, real v)
-	{
-		return colorHsvToRgb(vec3(h / 360, s / 100, v / 100));
-	}
-	*/
-
 	vec3 colorDeviation(const vec3 &color, real deviation = 0.05)
 	{
 		vec3 hsl = colorRgbToHsluv(color) + (randomChance3() - 0.5) * deviation;
@@ -230,19 +223,19 @@ namespace
 		{
 		case BiomeEnum::Ocean: return vec3(54, 54, 97) / 255;
 		case BiomeEnum::Ice: return vec3(61, 81, 82) / 255;
-		case BiomeEnum::Beach: return vec3(149, 125, 97) / 255;
-		case BiomeEnum::Snow: return vec3(226, 225, 230) / 255;
-		case BiomeEnum::Bare: return vec3(214, 221, 127) / 255;
-		case BiomeEnum::Tundra: return vec3(213, 213, 157) / 255;
-		case BiomeEnum::Taiga: return vec3(97, 138, 56) / 255;
-		case BiomeEnum::Shrubland: return vec3(189, 222, 130) / 255;
-		case BiomeEnum::Grassland: return vec3(161, 215, 122) / 255;
-		case BiomeEnum::TemperateSeasonalForest: return vec3(41, 188, 86) / 255;
-		case BiomeEnum::TemperateRainForest: return vec3(69, 179, 72) / 255;
-		case BiomeEnum::Desert: return vec3(251, 250, 174) / 255;
-		case BiomeEnum::Savanna: return vec3(238, 245, 134) / 255;
-		case BiomeEnum::TropicalSeasonalForest: return vec3(182, 217, 93) / 255;
-		case BiomeEnum::TropicalRainForest: return vec3(125, 203, 53) / 255;
+		case BiomeEnum::Beach: return vec3(172, 159, 139) / 255;
+		case BiomeEnum::Snow: return vec3(248) / 255;
+		case BiomeEnum::Bare: return vec3(187) / 255;
+		case BiomeEnum::Tundra: return vec3(221, 221, 187) / 255;
+		case BiomeEnum::Taiga: return vec3(204, 212, 187) / 255;
+		case BiomeEnum::Shrubland: return vec3(196, 204, 187) / 255;
+		case BiomeEnum::Grassland: return vec3(196, 212, 170) / 255;
+		case BiomeEnum::TemperateSeasonalForest: return vec3(180, 201, 169) / 255;
+		case BiomeEnum::TemperateRainForest: return vec3(164, 196, 168) / 255;
+		case BiomeEnum::Desert: return vec3(233, 221, 199) / 255;
+		case BiomeEnum::Savanna: return vec3(228, 232, 202) / 255;
+		case BiomeEnum::TropicalSeasonalForest: return vec3(169, 204, 164) / 255;
+		case BiomeEnum::TropicalRainForest: return vec3(156, 187, 169) / 255;
 		default: return vec3::Nan();
 		};
 	}
@@ -425,7 +418,7 @@ namespace
 	}
 
 	// bump map
-	real terrainHeight(const vec3 &pos, BiomeEnum biom, vec3 &albedo, vec2 &special)
+	real terrainHeight(const vec3 &pos, BiomeEnum biom, real elev, vec3 &albedo, vec2 &special)
 	{
 		static const Holder<NoiseFunction> cracksNoise = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -439,10 +432,12 @@ namespace
 		}();
 		vec2 cracksParams = biomeCracks(biom);
 		real height = 0.4 + sharpEdge(cracksNoise->evaluate(pos * cracksParams[0]) - 0.4) * cracksParams[1];
+		static const vec3 shallowColor = vec3(26, 102, 125) / 255;
 		switch (biom)
 		{
 		case BiomeEnum::Ocean:
 			height = 0.1;
+			albedo = interpolate(albedo, shallowColor, -0.5 / (elev - 0.5));
 			break;
 		case BiomeEnum::Ice:
 		{
@@ -469,7 +464,7 @@ namespace
 		albedo = biomeColor(biom);
 		albedo = colorDeviation(albedo, diversity);
 		special = vec2(biomeRoughness(biom) + (randomChance() - 0.5) * diversity, 0);
-		height = terrainHeight(pos, biom, albedo, special);
+		height = terrainHeight(pos, biom, elev, albedo, special);
 		albedo = clamp(albedo, 0, 1);
 		special = clamp(special, 0, 1);
 		height = clamp(height, 0, 1);
