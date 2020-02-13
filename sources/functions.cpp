@@ -417,6 +417,43 @@ namespace
 		precp += polar * 40;
 	}
 
+	vec3 anyPerpendicular(const vec3 &a)
+	{
+		CAGE_ASSERT(abs(length(a) - 1) < 1e-4);
+		vec3 b = vec3(1, 0, 0);
+		if (abs(dot(a, b)) > 0.9)
+			b = vec3(0, 1, 0);
+		return normalize(cross(a, b));
+	}
+
+	rads terrainSlope(const vec3 &pos, const vec3 &normal, real radius = 0.05)
+	{
+		vec3 a = anyPerpendicular(normal);
+		vec3 b = cross(normal, a);
+		a *= radius;
+		b *= radius;
+		vec3 c = (a + b) / sqrt(2);
+		vec3 d = (a - b) / sqrt(2);
+		real elevs[8] = {
+			terrainElevation(pos + a),
+			terrainElevation(pos + b),
+			terrainElevation(pos - a),
+			terrainElevation(pos - b),
+			terrainElevation(pos + c),
+			terrainElevation(pos + d),
+			terrainElevation(pos - c),
+			terrainElevation(pos - d),
+		};
+		real difs[4] = {
+			abs(elevs[2] - elevs[0]),
+			abs(elevs[3] - elevs[1]),
+			abs(elevs[6] - elevs[4]),
+			abs(elevs[7] - elevs[5]),
+		};
+		real md = max(max(difs[0], difs[1]), max(difs[2], difs[3]));
+		return atan(md / radius);
+	}
+
 	// bump map
 	real terrainHeight(const vec3 &pos, BiomeEnum biom, real elev, vec3 &albedo, vec2 &special)
 	{
@@ -452,11 +489,50 @@ namespace
 		return height;
 	}
 
+	void applySlope(const vec3 &pos, rads slope, BiomeEnum biom, real elev, vec3 &albedo, vec2 &special, real &height)
+	{
+		static const uint32 seed = noiseSeed();
+		static const Holder<NoiseFunction> cracksNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Natural;
+			cfg.operation = NoiseOperationEnum::Subtract;
+			cfg.seed = seed;
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> typeNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Natural;
+			cfg.operation = NoiseOperationEnum::NoiseLookup;
+			cfg.seed = seed;
+			return newNoiseFunction(cfg, []() {
+				NoiseFunctionCreateConfig cfg;
+				cfg.type = NoiseTypeEnum::Value;
+				cfg.octaves = 2;
+				cfg.seed = noiseSeed();
+				return newNoiseFunction(cfg);
+			}());
+		}();
+		if (biom == BiomeEnum::Ocean)
+			return;
+		real crack = cracksNoise->evaluate(pos * 3) * 0.5 + 0.5;
+		real type = typeNoise->evaluate(pos * 3) * 0.5 + 0.5;
+		vec3 rockAlbedo = vec3((type * 0.6 + 0.2) * crack);
+		vec2 rockSpecial = vec2(interpolate(0.95, 0.3 + type * 0.6, crack), 0);
+		real rockHeight = 0.4 + crack * 0.2;
+		real blend = sharpEdge(slope.value / real::Pi() * 2 + 0.1, 0.1);
+		albedo = interpolate(albedo, rockAlbedo, blend);
+		special = interpolate(special, rockSpecial, blend);
+		height = interpolate(height, rockHeight, blend);
+	}
+
 	void terrain(const vec3 &pos, const vec3 &normal, uint8 &terrainType, vec3 &albedo, vec2 &special, real &height)
 	{
 		real elev = terrainElevation(pos);
 		real precp = terrainPrecipitation(pos);
 		real temp = terrainTemperature(pos, elev);
+		rads slope = terrainSlope(pos, normal);
 		terrainPoles(pos, temp, precp);
 		BiomeEnum biom = biome(elev, temp, precp);
 		terrainType = biomeTerrainType(biom);
@@ -465,6 +541,7 @@ namespace
 		albedo = colorDeviation(albedo, diversity);
 		special = vec2(biomeRoughness(biom) + (randomChance() - 0.5) * diversity, 0);
 		height = terrainHeight(pos, biom, elev, albedo, special);
+		applySlope(pos, slope, biom, elev, albedo, special, height);
 		albedo = clamp(albedo, 0, 1);
 		special = clamp(special, 0, 1);
 		height = clamp(height, 0, 1);
