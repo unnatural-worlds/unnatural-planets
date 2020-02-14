@@ -353,7 +353,7 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		return elevNoise->evaluate(pos * 0.02) * 15 + 5;
+		return elevNoise->evaluate(pos * 0.02) * 15 + 0;
 		/*
 		static const Holder<NoiseFunction> clouds1 = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -385,7 +385,9 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		return (precpNoise->evaluate(pos * 0.07) * 0.5 + 0.5) * 300;
+		real p = precpNoise->evaluate(pos * 0.02) * 0.5 + 0.5;
+		p = 1 - smoothstep(1 - p);
+		return p * 300;
 	}
 
 	real terrainTemperature(const vec3 &pos, real elev)
@@ -398,7 +400,7 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		return 30 - pow(elev, 1.2) * 1.3 + tempNoise->evaluate(pos * 0.02) * 10;
+		return 30 - elev * 2 + tempNoise->evaluate(pos * 0.01) * 10;
 	}
 
 	void terrainPoles(const vec3 &pos, real &temp, real &precp)
@@ -411,9 +413,9 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 		real polar = abs(atan(pos[1] / length(vec2(pos[0], pos[2]))).value) / real::Pi() * 2;
-		polar = pow(polar, 1.4);
+		polar = pow(polar, 3);
 		polar += polarNoise->evaluate(pos * 0.07) * 0.1;
-		temp -= polar * 25;
+		temp -= polar * 60;
 		precp += polar * 40;
 	}
 
@@ -473,7 +475,7 @@ namespace
 		switch (biom)
 		{
 		case BiomeEnum::Ocean:
-			height = 0.1;
+			height = 0.2;
 			albedo = interpolate(albedo, shallowColor, -0.5 / (elev - 0.5));
 			break;
 		case BiomeEnum::Ice:
@@ -483,13 +485,13 @@ namespace
 			special[0] += c * 0.6;
 		} break;
 		case BiomeEnum::Snow:
-			height = 0.9;
+			height = 0.8;
 			break;
 		}
 		return height;
 	}
 
-	void applySlope(const vec3 &pos, rads slope, BiomeEnum biom, real elev, vec3 &albedo, vec2 &special, real &height)
+	void applySlope(const vec3 &pos, rads slope, real elev, vec3 &albedo, vec2 &special, real &height)
 	{
 		static const uint32 seed = noiseSeed();
 		static const Holder<NoiseFunction> cracksNoise = []() {
@@ -514,14 +516,14 @@ namespace
 				return newNoiseFunction(cfg);
 			}());
 		}();
-		if (biom == BiomeEnum::Ocean)
+		if (elev <= 0)
 			return;
 		real crack = cracksNoise->evaluate(pos * 3) * 0.5 + 0.5;
 		real type = typeNoise->evaluate(pos * 3) * 0.5 + 0.5;
 		vec3 rockAlbedo = vec3((type * 0.6 + 0.2) * crack);
 		vec2 rockSpecial = vec2(interpolate(0.95, 0.3 + type * 0.6, crack), 0);
-		real rockHeight = 0.4 + crack * 0.2;
-		real blend = sharpEdge(slope.value / real::Pi() * 2 + 0.1, 0.1);
+		real rockHeight = 0.35 + crack * 0.3;
+		real blend = sharpEdge(slope.value / real::Pi() * 2 + 0.1, 0.07);
 		albedo = interpolate(albedo, rockAlbedo, blend);
 		special = interpolate(special, rockSpecial, blend);
 		height = interpolate(height, rockHeight, blend);
@@ -541,7 +543,7 @@ namespace
 		albedo = colorDeviation(albedo, diversity);
 		special = vec2(biomeRoughness(biom) + (randomChance() - 0.5) * diversity, 0);
 		height = terrainHeight(pos, biom, elev, albedo, special);
-		applySlope(pos, slope, biom, elev, albedo, special, height);
+		applySlope(pos, slope, elev, albedo, special, height);
 		albedo = clamp(albedo, 0, 1);
 		special = clamp(special, 0, 1);
 		height = clamp(height, 0, 1);
