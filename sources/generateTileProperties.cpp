@@ -15,6 +15,7 @@ std::vector<uint8> generateTileProperties(const Holder<UPMesh> &navMesh)
 		functionTileProperties(navMesh->positions[i], navMesh->normals[i], type);
 		terrainTypes.push_back(type);
 	}
+	printTerrainTypeStatistics(terrainTypes);
 	return terrainTypes;
 }
 

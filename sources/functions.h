@@ -7,4 +7,6 @@ real functionDensity(const vec3 &pos);
 void functionTileProperties(const vec3 &pos, const vec3 &normal, uint8 &terrainType);
 void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height);
 
+void printTerrainTypeStatistics(const std::vector<uint8> &types);
+
 #endif

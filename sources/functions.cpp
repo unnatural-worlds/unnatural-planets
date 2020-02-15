@@ -143,26 +143,27 @@ namespace
 	// inspired by Whittaker diagram
 	enum class BiomeEnum
 	{
-		                          // temperature // precipitation //
-		                          //    (°C)     //     (cm)      //
-		Ocean,                    //             //               //
-		Ice,                      //             //               //
-		Beach,                    //             //               //
-		Snow,                     //     ..  5   //   30 ..       //
-		Bare,                     // -15 .. -5   //    0 ..  10   //
-		Tundra,                   // -15 .. -5   //   10 ..  30   //
-		Taiga,                    //  -5 ..  5   //   30 .. 150   // (BorealForest)
-		Shrubland,                //   5 .. 20   //    0 ..  30   //
-		Grassland,                //   5 .. 20   //   30 .. 100   //
-		TemperateSeasonalForest,  //   5 .. 20   //  100 .. 200   // (TemperateDeciduousForest)
-		TemperateRainForest,      //   5 .. 20   //  200 .. 300   //
-		Desert,                   //  20 .. 30   //    0 ..  40   // (SubtropicalDesert)
-		Savanna,                  //  20 .. 30   //   40 .. 130   // (TropicalGrassland)
-		TropicalSeasonalForest,   //  20 .. 30   //  130 .. 230   //
-		TropicalRainForest,       //  20 .. 30   //  230 .. 440   //
+		                          // temperature // precipitation // coverage //
+		                          //    (°C)     //     (cm)      //   (%)    //
+		Ocean,                    //             //               //          //
+		Ice,                      //             //               //          //
+		Beach,                    //             //               //          //
+		Slope,                    //             //               //          //
+		Snow,                     //     ..  5   //   30 ..       //          //
+		Bare,                     // -15 .. -5   //    0 ..  10   //          //
+		Tundra,                   // -15 .. -5   //   10 ..  30   //    11    //
+		Taiga,                    //  -5 ..  5   //   30 .. 150   //    17    // (BorealForest)
+		Shrubland,                //   5 .. 20   //    0 ..  30   //     3    //
+		Grassland,                //   5 .. 20   //   30 .. 100   //    13    //
+		TemperateSeasonalForest,  //   5 .. 20   //  100 .. 200   //     4    // (TemperateDeciduousForest)
+		TemperateRainForest,      //   5 .. 20   //  200 .. 300   //     4    //
+		Desert,                   //  20 .. 30   //    0 ..  40   //    19    // (SubtropicalDesert)
+		Savanna,                  //  20 .. 30   //   40 .. 130   //    10    // (TropicalGrassland)
+		TropicalSeasonalForest,   //  20 .. 30   //  130 .. 230   //     6    //
+		TropicalRainForest,       //  20 .. 30   //  230 .. 440   //     6    //
 	};
 
-	BiomeEnum biome(real elev, real temp, real precp)
+	BiomeEnum biome(real elev, rads slope, real temp, real precp)
 	{
 		if (elev < 0)
 		{
@@ -170,10 +171,16 @@ namespace
 				return BiomeEnum::Ice;
 			return BiomeEnum::Ocean;
 		}
+		if (slope > degs(40))
+			return BiomeEnum::Slope;
 		if (elev < 0.5)
 		{
 			if (temp < 0)
+			{
+				if (precp > 30)
+					return BiomeEnum::Snow;
 				return BiomeEnum::Ice;
+			}
 			return BiomeEnum::Beach;
 		}
 		if (temp > 20)
@@ -224,6 +231,7 @@ namespace
 		case BiomeEnum::Ocean: return vec3(54, 54, 97) / 255;
 		case BiomeEnum::Ice: return vec3(61, 81, 82) / 255;
 		case BiomeEnum::Beach: return vec3(172, 159, 139) / 255;
+		case BiomeEnum::Slope: return vec3(0) / 255;
 		case BiomeEnum::Snow: return vec3(248) / 255;
 		case BiomeEnum::Bare: return vec3(187) / 255;
 		case BiomeEnum::Tundra: return vec3(221, 221, 187) / 255;
@@ -244,9 +252,10 @@ namespace
 	{
 		switch (b)
 		{
-		case BiomeEnum::Ocean: return 0.2;
+		case BiomeEnum::Ocean: return 0.3;
 		case BiomeEnum::Ice: return 0.15;
 		case BiomeEnum::Beach: return 0.7;
+		case BiomeEnum::Slope: return 0.8;
 		case BiomeEnum::Snow: return 0.7;
 		case BiomeEnum::Bare: return 0.9;
 		case BiomeEnum::Tundra: return 0.7;
@@ -263,27 +272,27 @@ namespace
 		};
 	}
 
-	vec2 biomeCracks(BiomeEnum b)
+	real biomeHeight(BiomeEnum b)
 	{
-		// scale, intensity
 		switch (b)
 		{
-		case BiomeEnum::Ocean: return vec2();
-		case BiomeEnum::Ice: return vec2(1.4, 0.05);
-		case BiomeEnum::Beach: return vec2();
-		case BiomeEnum::Snow: return vec2();
-		case BiomeEnum::Bare: return vec2(1.7, 0.1);
-		case BiomeEnum::Tundra: return vec2();
-		case BiomeEnum::Taiga: return vec2();
-		case BiomeEnum::Shrubland: return vec2(2, 0.03);
-		case BiomeEnum::Grassland: return vec2();
-		case BiomeEnum::TemperateSeasonalForest: return vec2();
-		case BiomeEnum::TemperateRainForest: return vec2();
-		case BiomeEnum::Desert: return vec2(2.5, 0.01);
-		case BiomeEnum::Savanna: return vec2();
-		case BiomeEnum::TropicalSeasonalForest: return vec2();
-		case BiomeEnum::TropicalRainForest: return vec2();
-		default: return vec2::Nan();
+		case BiomeEnum::Ocean: return 0.1;
+		case BiomeEnum::Ice: return 0.1;
+		case BiomeEnum::Beach: return 0.3;
+		case BiomeEnum::Slope: return 0.5;
+		case BiomeEnum::Snow: return 0.9;
+		case BiomeEnum::Bare: return 0.3;
+		case BiomeEnum::Tundra: return 0.4;
+		case BiomeEnum::Taiga: return 0.6;
+		case BiomeEnum::Shrubland: return 0.4;
+		case BiomeEnum::Grassland: return 0.6;
+		case BiomeEnum::TemperateSeasonalForest: return 0.7;
+		case BiomeEnum::TemperateRainForest: return 0.8;
+		case BiomeEnum::Desert: return 0.3;
+		case BiomeEnum::Savanna: return 0.4;
+		case BiomeEnum::TropicalSeasonalForest: return 0.7;
+		case BiomeEnum::TropicalRainForest: return 0.8;
+		default: return real::Nan();
 		};
 	}
 
@@ -294,7 +303,8 @@ namespace
 		case BiomeEnum::Ocean: return 0.03;
 		case BiomeEnum::Ice: return 0.03;
 		case BiomeEnum::Beach: return 0.05;
-		case BiomeEnum::Snow: return 0.03;
+		case BiomeEnum::Slope: return 0.07;
+		case BiomeEnum::Snow: return 0.02;
 		case BiomeEnum::Bare: return 0.04;
 		case BiomeEnum::Tundra: return 0.03;
 		case BiomeEnum::Taiga: return 0.03;
@@ -314,29 +324,29 @@ namespace
 	{
 		switch (b)
 		{
-			// water
 		case BiomeEnum::Ocean:
-			return 8;
-			// fast
-		case BiomeEnum::Bare:
+			return 8; // deep water
+		case BiomeEnum::Beach:
+			return 7; // shallow water
+		case BiomeEnum::Slope:
+			return 4; // slope
 		case BiomeEnum::Shrubland:
 		case BiomeEnum::Grassland:
 		case BiomeEnum::Savanna:
 		case BiomeEnum::TemperateSeasonalForest:
+		case BiomeEnum::TemperateRainForest:
 		case BiomeEnum::TropicalSeasonalForest:
-			return 4;
-			// slow
+		case BiomeEnum::TropicalRainForest:
+			return 5; // fast
 		case BiomeEnum::Ice:
-		case BiomeEnum::Beach:
 		case BiomeEnum::Snow:
 		case BiomeEnum::Tundra:
 		case BiomeEnum::Taiga:
 		case BiomeEnum::Desert:
-		case BiomeEnum::TemperateRainForest:
-		case BiomeEnum::TropicalRainForest:
-			return 2;
+			return 2; // slow
+		case BiomeEnum::Bare:
 		default:
-			return 0;
+			return 0; // road
 		}
 	}
 
@@ -386,8 +396,8 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 		real p = precpNoise->evaluate(pos * 0.02) * 0.5 + 0.5;
-		p = 1 - smoothstep(1 - p);
-		return p * 300;
+		p = pow(p, 2.5);
+		return p * 400;
 	}
 
 	real terrainTemperature(const vec3 &pos, real elev)
@@ -400,10 +410,10 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		return 30 - elev * 2 + tempNoise->evaluate(pos * 0.01) * 10;
+		return 30 - max(elev, 0) * 2.2 + tempNoise->evaluate(pos * 0.01) * 10;
 	}
 
-	void terrainPoles(const vec3 &pos, real &temp, real &precp)
+	void terrainPoles(const vec3 &pos, real &temp)
 	{
 		static const Holder<NoiseFunction> polarNoise = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -416,7 +426,6 @@ namespace
 		polar = pow(polar, 3);
 		polar += polarNoise->evaluate(pos * 0.07) * 0.1;
 		temp -= polar * 60;
-		precp += polar * 40;
 	}
 
 	vec3 anyPerpendicular(const vec3 &a)
@@ -456,42 +465,46 @@ namespace
 		return atan(md / radius);
 	}
 
-	// bump map
-	real terrainHeight(const vec3 &pos, BiomeEnum biom, real elev, vec3 &albedo, vec2 &special)
+	void oceanOverrides(const vec3 &pos, BiomeEnum biom, real elev, uint8 &terrainType, vec3 &albedo, vec2 &special, real &height)
+	{
+		static const vec3 shallowColor = vec3(26, 102, 125) / 255;
+		if (biom != BiomeEnum::Ocean)
+			return;
+		real shallow = -0.5 / (elev - 0.5);
+		albedo = interpolate(albedo, shallowColor, shallow);
+		if (shallow > 0.5)
+			terrainType = 7;
+		// todo waves
+	}
+
+	void iceOverrides(const vec3 &pos, BiomeEnum biom, vec3 &albedo, vec2 &special, real &height)
 	{
 		static const Holder<NoiseFunction> cracksNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cellular;
 			cfg.distance = NoiseDistanceEnum::Natural;
-			cfg.operation = NoiseOperationEnum::Divide;
-			cfg.index0 = 1;
-			cfg.index1 = 2;
+			cfg.operation = NoiseOperationEnum::Subtract;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		vec2 cracksParams = biomeCracks(biom);
-		real height = 0.4 + sharpEdge(cracksNoise->evaluate(pos * cracksParams[0]) - 0.4) * cracksParams[1];
-		static const vec3 shallowColor = vec3(26, 102, 125) / 255;
-		switch (biom)
-		{
-		case BiomeEnum::Ocean:
-			height = 0.2;
-			albedo = interpolate(albedo, shallowColor, -0.5 / (elev - 0.5));
-			break;
-		case BiomeEnum::Ice:
-		{
-			real c = (height - 0.4) / cracksParams[1];
-			albedo += c * 0.3;
-			special[0] += c * 0.6;
-		} break;
-		case BiomeEnum::Snow:
-			height = 0.8;
-			break;
-		}
-		return height;
+		static const Holder<NoiseFunction> scaleNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.octaves = 4;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		if (biom != BiomeEnum::Ice)
+			return;
+		real scale = 0.5 + scaleNoise->evaluate(pos * 0.3) * 0.02;
+		real crack = cracksNoise->evaluate(pos * scale);
+		crack = pow(crack, 0.3);
+		height += (crack - 0.5) * 0.2;
+		albedo += crack * 0.3;
+		special[0] += (1 - crack) * 0.6;
 	}
 
-	void applySlope(const vec3 &pos, rads slope, real elev, vec3 &albedo, vec2 &special, real &height)
+	void slopeOverrides(const vec3 &pos, BiomeEnum biom, vec3 &albedo, vec2 &special, real &height)
 	{
 		static const uint32 seed = noiseSeed();
 		static const Holder<NoiseFunction> cracksNoise = []() {
@@ -516,34 +529,35 @@ namespace
 				return newNoiseFunction(cfg);
 			}());
 		}();
-		if (elev <= 0)
+		if (biom != BiomeEnum::Slope)
 			return;
-		real crack = cracksNoise->evaluate(pos * 3) * 0.5 + 0.5;
-		real type = typeNoise->evaluate(pos * 3) * 0.5 + 0.5;
-		vec3 rockAlbedo = vec3((type * 0.6 + 0.2) * crack);
-		vec2 rockSpecial = vec2(interpolate(0.95, 0.3 + type * 0.6, crack), 0);
-		real rockHeight = 0.35 + crack * 0.3;
-		real blend = sharpEdge(slope.value / real::Pi() * 2 + 0.1, 0.07);
-		albedo = interpolate(albedo, rockAlbedo, blend);
-		special = interpolate(special, rockSpecial, blend);
-		height = interpolate(height, rockHeight, blend);
+		real scale = 3;
+		real crack = cracksNoise->evaluate(pos * scale) * 0.5 + 0.5;
+		crack = pow(crack, 0.8);
+		real type = typeNoise->evaluate(pos * scale) * 0.5 + 0.5;
+		albedo = vec3((type * 0.6 + 0.2) * crack);
+		special[0] = interpolate(0.9, 0.3 + type * 0.6, crack);
+		height = 0.35 + crack * 0.3;
 	}
 
 	void terrain(const vec3 &pos, const vec3 &normal, uint8 &terrainType, vec3 &albedo, vec2 &special, real &height)
 	{
 		real elev = terrainElevation(pos);
-		real precp = terrainPrecipitation(pos);
-		real temp = terrainTemperature(pos, elev);
 		rads slope = terrainSlope(pos, normal);
-		terrainPoles(pos, temp, precp);
-		BiomeEnum biom = biome(elev, temp, precp);
+		real temp = terrainTemperature(pos, elev);
+		terrainPoles(pos, temp);
+		real precp = terrainPrecipitation(pos);
+		BiomeEnum biom = biome(elev, slope, temp, precp);
 		terrainType = biomeTerrainType(biom);
 		real diversity = biomeDiversity(biom);
 		albedo = biomeColor(biom);
+		special = vec2(biomeRoughness(biom), 0);
+		height = biomeHeight(biom);
+		oceanOverrides(pos, biom, elev, terrainType, albedo, special, height);
+		iceOverrides(pos, biom, albedo, special, height);
+		slopeOverrides(pos, biom, albedo, special, height);
 		albedo = colorDeviation(albedo, diversity);
-		special = vec2(biomeRoughness(biom) + (randomChance() - 0.5) * diversity, 0);
-		height = terrainHeight(pos, biom, elev, albedo, special);
-		applySlope(pos, slope, elev, albedo, special, height);
+		special[0] = special[0] + (randomChance() - 0.5) * diversity * 2;
 		albedo = clamp(albedo, 0, 1);
 		special = clamp(special, 0, 1);
 		height = clamp(height, 0, 1);
@@ -568,3 +582,21 @@ void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &s
 	uint8 terrainType;
 	terrain(pos, normal, terrainType, albedo, special, height);
 }
+
+void printTerrainTypeStatistics(const std::vector<uint8> &types)
+{
+	uint32 counts[256];
+	for (uint32 &c : counts)
+		c = 0;
+	for (uint8 t : types)
+		counts[t]++;
+	CAGE_LOG(SeverityEnum::Info, "terrainTypes", "terrain types:");
+	for (uint32 i = 0; i < 256; i++)
+	{
+		if (counts[i])
+		{
+			CAGE_LOG_CONTINUE(SeverityEnum::Info, "terrainTypes", stringizer() + i + ": " + counts[i]);
+		}
+	}
+}
+
