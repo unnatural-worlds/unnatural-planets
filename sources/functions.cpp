@@ -92,6 +92,7 @@ namespace
 
 	real densityTetrahedron(const vec3 &pos)
 	{
+		const real margin = 5;
 		const real size = 70;
 		const vec3 corners[4] = { vec3(1,1,1)*size, vec3(1,-1,-1)*size, vec3(-1,1,-1)*size, vec3(-1,-1,1)*size };
 		const triangle tris[4] = {
@@ -121,7 +122,7 @@ namespace
 		{
 			real r = min(min(lens[0], lens[1]), min(lens[2], lens[3]));
 			CAGE_ASSERT(r.valid() && r.finite());
-			return r;
+			return r + margin;
 		}
 		else
 		{
@@ -132,7 +133,7 @@ namespace
 					r = min(r, lens[i]);
 			}
 			CAGE_ASSERT(r.valid() && r.finite());
-			return -r;
+			return -r + margin;
 		}
 	}
 

@@ -14,3 +14,7 @@ cage_ide_category(xatlas unnatural-planets/externals)
 cage_ide_sort_files(xatlas)
 
 configure_file("xatlas/LICENSE" "${CMAKE_BINARY_DIR}/result/redist/licenses/xatlas" COPYONLY)
+
+if (NOT MSVC)
+	target_link_libraries(xatlas PUBLIC pthread)
+endif()
