@@ -7,7 +7,7 @@
 
 namespace
 {
-	uint32 globalSeed = (uint32)detail::getApplicationRandomGenerator().next();
+	const uint32 globalSeed = (uint32)detail::getApplicationRandomGenerator().next();
 
 	uint32 noiseSeed()
 	{
@@ -52,48 +52,32 @@ namespace
 	// densities
 	//-----------
 
-	real densitySphere(const vec3 &pos)
+	real densitySphere(const vec3 &pos, real radius = 100)
 	{
-		return 60 - length(pos);
+		return radius - length(pos);
 	}
 
-	real densityTorus(const vec3 &pos)
+	real densityTorus(const vec3 &pos, real major = 75, real minor = 25)
 	{
-		vec3 c = normalize(pos * vec3(1, 0, 1)) * 70;
-		return 25 - distance(pos, c);
+		vec3 c = normalize(pos * vec3(1, 0, 1)) * major;
+		return minor - distance(pos, c);
 	}
 
-	real densityPretzel(const vec3 &pos)
+	real densityCylinder(const vec3 &pos, real r = 80, real h = 70, real rounding = 5)
 	{
-		vec3 c = normalize(pos * vec3(1, 0, 1));
-		rads yaw = atan2(c[0], c[2]);
-		rads pitch = atan2(pos[1], 70 - length(vec2(pos[0], pos[2])));
-		rads ang = yaw + pitch;
-		real t = length(vec2(sin(ang) * 25, cos(ang) * 5));
-		real l = distance(pos, c * 70);
-		return t - l;
+		vec2 d = abs(vec2(length(vec2(pos[0], pos[2])), pos[1])) - vec2(r, h);
+		return -min(max(d[0], d[1]), 0) - length(max(d, 0)) + rounding;
 	}
 
-	real densityMobiusStrip(const vec3 &pos)
+	real densityBox(const vec3 &pos, const vec3 &size = vec3(100, 50, 50), real rounding = 5)
 	{
-		// todo fix this
-		vec3 c = normalize(pos * vec3(1, 0, 1));
-		rads yaw = atan2(c[0], c[2]);
-		rads pitch = atan2(length(vec2(pos[0], pos[2])) - 70, pos[1]);
-		rads ang = pitch;
-		real si = sin(ang);
-		real co = cos(ang);
-		real x = abs(co) * co + abs(si) * si;
-		real y = abs(co) * co - abs(si) * si;
-		real t = length(vec2(x * 25, y * 5));
-		real l = distance(pos, c * 70);
-		return t - l;
+		vec3 p = abs(pos) - size;
+		real box = length(max(p, 0)) + min(max(p[0], max(p[1], p[2])), 0) - rounding;
+		return -box;
 	}
 
-	real densityTetrahedron(const vec3 &pos)
+	real densityTetrahedron(const vec3 &pos, real size = 100, real rounding = 5)
 	{
-		const real margin = 5;
-		const real size = 70;
 		const vec3 corners[4] = { vec3(1,1,1)*size, vec3(1,-1,-1)*size, vec3(-1,1,-1)*size, vec3(-1,-1,1)*size };
 		const triangle tris[4] = {
 			triangle(corners[0], corners[1], corners[2]),
@@ -122,7 +106,7 @@ namespace
 		{
 			real r = min(min(lens[0], lens[1]), min(lens[2], lens[3]));
 			CAGE_ASSERT(r.valid() && r.finite());
-			return r + margin;
+			return r + rounding;
 		}
 		else
 		{
@@ -133,8 +117,76 @@ namespace
 					r = min(r, lens[i]);
 			}
 			CAGE_ASSERT(r.valid() && r.finite());
-			return -r + margin;
+			return -r + rounding;
 		}
+	}
+
+	real densityOctahedron(const vec3 &pos, real size = 100, real rounding = 5)
+	{
+		vec3 p = abs(pos);
+		real m = p[0] + p[1] + p[2] - size;
+		vec3 q;
+		if (3.0 * p[0] < m)
+			q = p;
+		else if (3.0 * p[1] < m)
+			q = vec3(p[1], p[2], p[0]);
+		else if (3.0 * p[2] < m)
+			q = vec3(p[2], p[0], p[1]);
+		else
+			return m * -0.57735027 + rounding;
+		real k = clamp(0.5 * (q[2] - q[1] + size), 0.0, size);
+		return -length(vec3(q[0], q[1] - size + k, q[2] - k)) + rounding;
+	}
+
+	real densityPretzel(const vec3 &pos)
+	{
+		vec3 c = normalize(pos * vec3(1, 0, 1));
+		rads yaw = atan2(c[0], c[2]);
+		rads pitch = atan2(pos[1], 70 - length(vec2(pos[0], pos[2])));
+		rads ang = yaw + pitch;
+		real t = length(vec2(sin(ang) * 25, cos(ang) * 5));
+		real l = distance(pos, c * 70);
+		return t - l;
+	}
+
+	/*
+	real densityMobiusStrip(const vec3 &pos)
+	{
+		// todo fix this
+		vec3 c = normalize(pos * vec3(1, 0, 1));
+		rads yaw = atan2(c[0], c[2]);
+		rads pitch = atan2(length(vec2(pos[0], pos[2])) - 70, pos[1]);
+		rads ang = pitch;
+		real si = sin(ang);
+		real co = cos(ang);
+		real x = abs(co) * co + abs(si) * si;
+		real y = abs(co) * co - abs(si) * si;
+		real t = length(vec2(x * 25, y * 5));
+		real l = distance(pos, c * 70);
+		return t - l;
+	}
+	*/
+
+	real densityMolecule(const vec3 &pos)
+	{
+		const auto &sdGyroid = [](vec3 p, real scale, real thickness, real bias)
+		{
+			p *= scale;
+			vec3 a = vec3(sin(rads(p[0])), sin(rads(p[1])), sin(rads(p[2])));
+			vec3 b = vec3(cos(rads(p[2])), cos(rads(p[0])), cos(rads(p[1])));
+			return abs(dot(a, b) + bias) / scale - thickness;
+		};
+
+		static const real scale = 0.02;
+		real box = -densityBox(pos * scale, vec3(1.5), 0.05);
+		static const vec3 offset = randomRange3(-1000, 1000);
+		const vec3 p = (pos + offset) * scale;
+		real g1 = sdGyroid(p, 3.23, 0.03, 1.4);
+		real g2 = sdGyroid(p, 5.78, 0.05, 0.3);
+		real g3 = sdGyroid(p, 12.21, 0.02, 0.1);
+		real g4 = sdGyroid(p, 17.13, 0.03, 0.3);
+		real g = g1 - g2*0.37 + g3*0.2 + g4*0.11;
+		return -max(box, g * 0.7) / scale;
 	}
 
 	real baseShapeDensity(const vec3 &pos)
