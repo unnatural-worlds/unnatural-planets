@@ -57,7 +57,7 @@ Holder<Image> textureInpaint(const Holder<Image> &img)
 
 	uint32 c = img->channels();
 	Holder<Image> tmp = newImage();
-	tmp->empty(img->width(), img->height(), c, img->bytesPerChannel());
+	tmp->empty(img->width(), img->height(), c, img->format());
 	switch (c)
 	{
 	case 1: inpaintProcess<real>(img, tmp); break;
