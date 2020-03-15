@@ -130,11 +130,15 @@ void generateMaterials(const Holder<UPMesh> &renderMesh, uint32 width, uint32 he
 	}
 
 	albedo = newImage();
-	albedo->empty(width, height, 3);
+	albedo->empty(width, height, 3, ImageFormatEnum::Float);
+	textureFill(albedo.get(), real::Nan());
 	special = newImage();
-	special->empty(width, height, 2);
+	special->empty(width, height, 2, ImageFormatEnum::Float);
+	textureFill(special.get(), real::Nan());
 	heightMap = newImage();
-	heightMap->empty(width, height, 1);
+	heightMap->empty(width, height, 1, ImageFormatEnum::Float);
+	textureFill(heightMap.get(), real::Nan());
+
 	{
 		OPTICK_EVENT("pixelColors");
 		uint32 *xi = xs.data();

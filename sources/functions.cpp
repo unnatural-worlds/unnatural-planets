@@ -655,10 +655,9 @@ namespace
 		albedo = saturate(albedo);
 		albedo = colorDeviation(albedo, diversity);
 		special[0] = special[0] + (randomChance() - 0.5) * diversity * 2;
-		static const real mm = 1.01 / 255; // prevent valid values from being overridden by texture inpaint
-		albedo = clamp(albedo, mm, 1);
-		special = clamp(special, mm, 1);
-		height = clamp(height, mm, 1);
+		albedo = saturate(albedo);
+		special = saturate(special);
+		height = saturate(height);
 	}
 }
 

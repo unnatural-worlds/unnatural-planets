@@ -5,6 +5,7 @@
 
 #include "common.h"
 
-Holder<Image> textureInpaint(const Holder<Image> &texture);
+void textureFill(Image *img, real value);
+void textureInpaint(Image *img, uint32 rounds);
 
 #endif

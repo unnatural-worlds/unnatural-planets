@@ -21,14 +21,14 @@ namespace
 			generateMaterials(msh, unwrap->textureWidth, unwrap->textureHeight, albedo, special, heightMap);
 			{
 				OPTICK_EVENT("inpainting");
-				for (uint32 i = 0; i < 7; i++)
-					albedo = textureInpaint(albedo);
-				for (uint32 i = 0; i < 7; i++)
-					special = textureInpaint(special);
-				for (uint32 i = 0; i < 7; i++)
-					heightMap = textureInpaint(heightMap);
+				textureInpaint(albedo.get(), 7);
+				textureInpaint(special.get(), 7);
+				textureInpaint(heightMap.get(), 7);
 			}
 			saveRenderMesh(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + ".obj"), msh);
+			albedo->convert(ImageFormatEnum::U8);
+			special->convert(ImageFormatEnum::U8);
+			heightMap->convert(ImageFormatEnum::U8);
 			albedo->encodeFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-albedo.png"));
 			special->encodeFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-special.png"));
 			heightMap->encodeFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-height.png"));
