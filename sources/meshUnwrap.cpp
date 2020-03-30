@@ -89,7 +89,7 @@ UnwrapResult meshUnwrap(const Holder<UPMesh> &mesh)
 		pack.texelsPerUnit = 1;
 #else
 		pack.resolution = 2048;
-		pack.texelsPerUnit = 15;
+		pack.texelsPerUnit = 20;
 #endif // CAGE_DEBUG
 		pack.padding = 2;
 		pack.bilinear = true;

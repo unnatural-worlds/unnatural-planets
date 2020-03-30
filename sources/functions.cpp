@@ -1,4 +1,5 @@
 #include "generator.h"
+#include "functions.h"
 
 #include <cage-core/noiseFunction.h>
 #include <cage-core/color.h>
@@ -198,38 +199,6 @@ namespace
 	// biomes
 	//--------
 
-	// inspired by Whittaker diagram
-	enum class BiomeEnum
-	{
-		                          // temperature // precipitation // coverage //
-		                          //    (°C)     //     (cm)      //   (%)    //
-		Bare,                     // -15 .. -5   //    0 ..  10   //          //
-		Tundra,                   // -15 .. -5   //   10 ..  30   //    11    //
-		Taiga,                    //  -5 ..  5   //   30 .. 150   //    17    // (BorealForest)
-		Shrubland,                //   5 .. 20   //    0 ..  30   //     3    //
-		Grassland,                //   5 .. 20   //   30 .. 100   //    13    //
-		TemperateSeasonalForest,  //   5 .. 20   //  100 .. 200   //     4    // (TemperateDeciduousForest)
-		TemperateRainForest,      //   5 .. 20   //  200 .. 300   //     4    //
-		Desert,                   //  20 .. 30   //    0 ..  40   //    19    // (SubtropicalDesert)
-		Savanna,                  //  20 .. 30   //   40 .. 130   //    10    // (TropicalGrassland)
-		TropicalSeasonalForest,   //  20 .. 30   //  130 .. 230   //     6    //
-		TropicalRainForest,       //  20 .. 30   //  230 .. 440   //     6    //
-	};
-
-	class TerrainType
-	{
-	public:
-		enum Types
-		{
-			Road = 0,
-			Slow = 2,
-			Fast = 5,
-			SteepSlope = 4,
-			ShallowWater = 7,
-			DeepWater = 8,
-		};
-	};
-
 	BiomeEnum biome(real elev, rads slope, real temp, real precp)
 	{
 		if (temp > 20)
@@ -342,7 +311,7 @@ namespace
 		};
 	}
 
-	uint8 biomeTerrainType(BiomeEnum b)
+	TerrainTypeEnum biomeTerrainType(BiomeEnum b)
 	{
 		switch (b)
 		{
@@ -351,16 +320,16 @@ namespace
 		case BiomeEnum::Savanna:
 		case BiomeEnum::TemperateSeasonalForest:
 		case BiomeEnum::TropicalSeasonalForest:
-			return TerrainType::Fast;
+			return TerrainTypeEnum::Fast;
 		case BiomeEnum::Tundra:
 		case BiomeEnum::Taiga:
 		case BiomeEnum::Desert:
 		case BiomeEnum::TemperateRainForest:
 		case BiomeEnum::TropicalRainForest:
-			return TerrainType::Slow;
+			return TerrainTypeEnum::Slow;
 		case BiomeEnum::Bare:
 		default:
-			return TerrainType::Road;
+			return TerrainTypeEnum::Road;
 		}
 	}
 
@@ -470,20 +439,21 @@ namespace
 		return atan(md / radius);
 	}
 
-	void oceanOverrides(const vec3 &pos, real elev, uint8 &terrainType, vec3 &albedo, vec2 &special, real &height)
+	void oceanOverrides(const vec3 &pos, real elev, BiomeEnum &biom, TerrainTypeEnum &terrainType, vec3 &albedo, vec2 &special, real &height)
 	{
 		if (elev > 0)
 			return;
 		CAGE_ASSERT(elev <= 0);
 		real shallow = -0.5 / (elev - 0.5);
-		terrainType = shallow > 0.5 ? TerrainType::ShallowWater : TerrainType::DeepWater;
+		terrainType = shallow > 0.5 ? TerrainTypeEnum::ShallowWater : TerrainTypeEnum::DeepWater;
 		albedo = interpolate(deepWaterColor, shallowWaterColor, shallow);
 		special[0] = 0.3;
 		height = 0;
 		// todo waves
+		biom = BiomeEnum::Ocean;
 	}
 
-	void iceOverrides(const vec3 &pos, real elev, real temp, uint8 &terrainType, vec3 &albedo, vec2 &special, real &height)
+	void iceOverrides(const vec3 &pos, real elev, real temp, TerrainTypeEnum &terrainType, vec3 &albedo, vec2 &special, real &height)
 	{
 		static const Holder<NoiseFunction> cracksNoise = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -505,13 +475,13 @@ namespace
 		real scale = 0.5 + scaleNoise->evaluate(pos * 0.3) * 0.02;
 		real crack = cracksNoise->evaluate(pos * scale);
 		crack = pow(crack, 0.3);
-		terrainType = TerrainType::Slow;
+		terrainType = TerrainTypeEnum::Slow;
 		albedo = vec3(61, 81, 82) / 255 + crack * 0.3;
 		special[0] = 0.15 + (1 - crack) * 0.6;
 		height = 0.2 + crack * 0.2;
 	}
 
-	void slopeOverrides(const vec3 &pos, real elev, rads slope, uint8 &terrainType, vec3 &albedo, vec2 &special, real &height)
+	void slopeOverrides(const vec3 &pos, real elev, rads slope, TerrainTypeEnum &terrainType, vec3 &albedo, vec2 &special, real &height)
 	{
 		static const uint32 seed = noiseSeed();
 		static const Holder<NoiseFunction> cracksNoise = []() {
@@ -545,7 +515,7 @@ namespace
 		crack = pow(crack, 0.8);
 		real type = typeNoise->evaluate(pos * scale) * 0.5 + 0.5;
 		if (factor > 0.5)
-			terrainType = TerrainType::SteepSlope;
+			terrainType = TerrainTypeEnum::SteepSlope;
 		vec3 rocksAlbedo = vec3((type * 0.6 + 0.2) * crack);
 		albedo = interpolate(albedo, rocksAlbedo, factor);
 		real rocksRoughness = interpolate(0.9, 0.3 + type * 0.6, crack);
@@ -593,7 +563,7 @@ namespace
 		height += (0.03 + blend * 0.05) * factor;
 	}
 
-	void snowOverrides(const vec3 &pos, real elev, rads slope, real temp, real precp, uint8 &terrainType, vec3 &albedo, vec2 &special, real &height)
+	void snowOverrides(const vec3 &pos, real elev, rads slope, real temp, real precp, TerrainTypeEnum &terrainType, vec3 &albedo, vec2 &special, real &height)
 	{
 		static const Holder<NoiseFunction> thresholdNoise = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -604,16 +574,16 @@ namespace
 		}();
 		if ((elev < 0 || temp > 0) && (elev > -2 || temp > -5))
 			return;
-		if (precp < 50 || terrainType == TerrainType::SteepSlope)
+		if (precp < 50 || terrainType == TerrainTypeEnum::SteepSlope)
 			return;
 		real factor = (thresholdNoise->evaluate(pos) * 0.5 + 0.5) * 0.6 + 0.4;
-		terrainType = TerrainType::Slow;
+		terrainType = TerrainTypeEnum::Slow;
 		albedo = interpolate(albedo, vec3(248) / 255, factor);
 		special[0] = interpolate(special[0], 0.7, factor);
 		height += 0.3 * factor;
 	}
 
-	void beachOverrides(const vec3 &pos, real elev, uint8 &terrainType, vec3 &albedo, vec2 &special, real &height)
+	void beachOverrides(const vec3 &pos, real elev, TerrainTypeEnum &terrainType, vec3 &albedo, vec2 &special, real &height)
 	{
 		static const Holder<NoiseFunction> solidNoise = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -627,26 +597,26 @@ namespace
 		real solid = elev / 0.5;
 		solid += solidNoise->evaluate(pos * 1.5) * 0.3;
 		solid = clamp(solid, 0, 1);
-		terrainType = TerrainType::ShallowWater;
+		terrainType = TerrainTypeEnum::ShallowWater;
 		albedo = interpolate(shallowWaterColor, albedo, solid);
 		special[0] = interpolate(0.3, special[0], solid);
 		height = solid * 0.2;
 	}
 
-	void terrain(const vec3 &pos, const vec3 &normal, uint8 &terrainType, vec3 &albedo, vec2 &special, real &height)
+	void terrain(const vec3 &pos, const vec3 &normal, BiomeEnum &biom, TerrainTypeEnum &terrainType, vec3 &albedo, vec2 &special, real &height)
 	{
 		real elev = terrainElevation(pos);
 		rads slope = terrainSlope(pos, normal);
 		real temp = terrainTemperature(pos, elev);
 		terrainPoles(pos, temp);
 		real precp = terrainPrecipitation(pos);
-		BiomeEnum biom = biome(elev, slope, temp, precp);
+		biom = biome(elev, slope, temp, precp);
 		terrainType = biomeTerrainType(biom);
 		real diversity = biomeDiversity(biom);
 		albedo = biomeColor(biom);
 		special = vec2(biomeRoughness(biom), 0);
 		height = biomeHeight(biom);
-		oceanOverrides(pos, elev, terrainType, albedo, special, height);
+		oceanOverrides(pos, elev, biom, terrainType, albedo, special, height);
 		iceOverrides(pos, elev, temp, terrainType, albedo, special, height);
 		slopeOverrides(pos, elev, slope, terrainType, albedo, special, height);
 		grassOverrides(pos, elev, slope, temp, precp, albedo, special, height);
@@ -661,39 +631,58 @@ namespace
 	}
 }
 
+stringizer &operator + (stringizer &str, const BiomeEnum &other)
+{
+	switch (other)
+	{
+	case BiomeEnum::Bare: str + "Bare"; break;
+	case BiomeEnum::Tundra: str + "Tundra"; break;
+	case BiomeEnum::Taiga: str + "Taiga"; break;
+	case BiomeEnum::Shrubland: str + "Shrubland"; break;
+	case BiomeEnum::Grassland: str + "Grassland"; break;
+	case BiomeEnum::TemperateSeasonalForest: str + "TemperateSeasonalForest"; break;
+	case BiomeEnum::TemperateRainForest: str + "TemperateRainForest"; break;
+	case BiomeEnum::Desert: str + "Desert"; break;
+	case BiomeEnum::Savanna: str + "Savanna"; break;
+	case BiomeEnum::TropicalSeasonalForest: str + "TropicalSeasonalForest"; break;
+	case BiomeEnum::TropicalRainForest: str + "TropicalRainForest"; break;
+	case BiomeEnum::Ocean: str + "Ocean"; break;
+	default: str + "<unknown>"; break;
+	}
+	return str;
+}
+
+stringizer &operator + (stringizer &str, const TerrainTypeEnum &other)
+{
+	switch (other)
+	{
+	case TerrainTypeEnum::Road: str + "Road"; break;
+	case TerrainTypeEnum::Slow: str + "Slow"; break;
+	case TerrainTypeEnum::Fast: str + "Fast"; break;
+	case TerrainTypeEnum::SteepSlope: str + "SteepSlope"; break;
+	case TerrainTypeEnum::ShallowWater: str + "ShallowWater"; break;
+	case TerrainTypeEnum::DeepWater: str + "DeepWater"; break;
+	default: str + "<unknown>"; break;
+	}
+	return str;
+}
+
 real functionDensity(const vec3 &pos)
 {
 	return baseShapeDensity(pos) + max(terrainElevation(pos), 0);
 }
 
-void functionTileProperties(const vec3 &pos, const vec3 &normal, uint8 &terrainType)
+void functionTileProperties(const vec3 &pos, const vec3 &normal, BiomeEnum &biome, TerrainTypeEnum &terrainType)
 {
 	vec3 albedo;
 	vec2 special;
 	real height;
-	terrain(pos, normal, terrainType, albedo, special, height);
+	terrain(pos, normal, biome, terrainType, albedo, special, height);
 }
 
 void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height)
 {
-	uint8 terrainType;
-	terrain(pos, normal, terrainType, albedo, special, height);
+	BiomeEnum biome;
+	TerrainTypeEnum terrainType;
+	terrain(pos, normal, biome, terrainType, albedo, special, height);
 }
-
-void printTerrainTypeStatistics(const std::vector<uint8> &types)
-{
-	uint32 counts[256];
-	for (uint32 &c : counts)
-		c = 0;
-	for (uint8 t : types)
-		counts[t]++;
-	CAGE_LOG(SeverityEnum::Info, "terrainTypes", "terrain types:");
-	for (uint32 i = 0; i < 256; i++)
-	{
-		if (counts[i])
-		{
-			CAGE_LOG_CONTINUE(SeverityEnum::Info, "terrainTypes", stringizer() + i + ": " + counts[i]);
-		}
-	}
-}
-
