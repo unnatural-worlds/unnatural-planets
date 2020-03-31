@@ -53,6 +53,13 @@ namespace
 	// densities
 	//-----------
 
+	real densityPlane(const vec3 &pos, const plane &pln = plane(vec3(), normalize(vec3(1))))
+	{
+		CAGE_ASSERT(pln.valid());
+		vec3 c = pln.normal * pln.d;
+		return -dot(pln.normal, pos - c);
+	}
+
 	real densitySphere(const vec3 &pos, real radius = 100)
 	{
 		return radius - length(pos);
@@ -150,23 +157,27 @@ namespace
 		return t - l;
 	}
 
-	/*
-	real densityMobiusStrip(const vec3 &pos)
+	real densityMobiusStrip(const vec3 &pos, real radius = 70, real majorAxis = 30, real minorAxis = 2, real rounding = 5)
 	{
-		// todo fix this
-		vec3 c = normalize(pos * vec3(1, 0, 1));
-		rads yaw = atan2(c[0], c[2]);
-		rads pitch = atan2(length(vec2(pos[0], pos[2])) - 70, pos[1]);
-		rads ang = pitch;
-		real si = sin(ang);
-		real co = cos(ang);
-		real x = abs(co) * co + abs(si) * si;
-		real y = abs(co) * co - abs(si) * si;
-		real t = length(vec2(x * 25, y * 5));
-		real l = distance(pos, c * 70);
-		return t - l;
+		const auto &sdAlignedRect = [](const vec2 &point, const vec2 &halfSizes) -> real
+		{
+			vec2 d = abs(point) - halfSizes;
+			return length(max(d, 0)) + min(max(d[0], d[1]), 0);
+		};
+
+		const auto &sdRotatedRect = [&](const vec2 &point, const vec2 &halfSizes, rads rotation) -> real
+		{
+			// rotate the point instead of the rectangle
+			rads a = atan2(point[0], point[1]);
+			a += rotation;
+			vec2 p = vec2(cos(a), sin(a)) * length(point);
+			return sdAlignedRect(p, halfSizes);
+		};
+
+		rads planeRotation = atan2(pos[0], pos[2]);
+		vec2 proj = vec2(dot(vec2(pos[0], pos[2]), normalize(vec2(pos[0], pos[2]))), pos[1]);
+		return -sdRotatedRect(proj + vec2(-radius, 0), vec2(majorAxis, minorAxis), planeRotation / 2) + rounding;
 	}
-	*/
 
 	real densityMolecule(const vec3 &pos)
 	{
