@@ -13,10 +13,12 @@ namespace
 		const UnwrapResult *unwrap = nullptr;
 		string assetsDirectory;
 
-		void processEntry(uint32 index, uint32)
+		void processOne(uint32 index)
 		{
+			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "generating chunk " + index);
 			const auto &msh = unwrap->meshes[index];
 			msh->validate();
+			saveRenderMesh(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + ".obj"), msh);
 			Holder<Image> albedo, special, heightMap;
 			generateMaterials(msh, unwrap->textureWidth, unwrap->textureHeight, albedo, special, heightMap);
 			{
@@ -25,7 +27,6 @@ namespace
 				textureInpaint(special.get(), 7);
 				textureInpaint(heightMap.get(), 7);
 			}
-			saveRenderMesh(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + ".obj"), msh);
 			albedo->convert(ImageFormatEnum::U8);
 			special->convert(ImageFormatEnum::U8);
 			heightMap->convert(ImageFormatEnum::U8);
@@ -34,9 +35,17 @@ namespace
 			heightMap->encodeFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-height.png"));
 		}
 
+		void processEntry(uint32 threadIndex, uint32 threadsCount)
+		{
+			uint32 b, e;
+			threadPoolTasksSplit(threadIndex, threadsCount, numeric_cast<uint32>(unwrap->meshes.size()), b, e);
+			for (uint32 i = b; i < e; i++)
+				processOne(i);
+		}
+
 		void process()
 		{
-			thrPool = newThreadPool("process_", unwrap->meshes.size());
+			thrPool = newThreadPool("process_");
 			thrPool->function.bind<SubmeshProcessor, &SubmeshProcessor::processEntry>(this);
 			thrPool->run();
 		}
@@ -64,13 +73,10 @@ namespace
 		}
 	}
 
-	void exportConfiguration(const string &baseDirectory, uint32 renderChunksCount)
+	void exportConfiguration(const string &baseDirectory, const string &assetsDirectory, uint32 renderChunksCount)
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "exporting");
-		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "target directory: " + pathToAbs(baseDirectory));
 		OPTICK_EVENT("exportTerrain");
-
-		const string assetsDirectory = pathJoin(baseDirectory, "data");
 
 		{ // write unnatural-map
 			Holder<File> f = newFile(pathJoin(baseDirectory, "unnatural-map.ini"), FileMode(false, true));
@@ -157,6 +163,7 @@ void generateEntry()
 {
 	const string baseDirectory = findBaseDirectory();
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "target directory: " + pathToAbs(baseDirectory));
 	Holder<UPMesh> baseMesh = generateBaseMesh(250, 200);
 	baseMesh = meshDiscardDisconnected(baseMesh);
 	baseMesh->validate();
@@ -165,11 +172,16 @@ void generateEntry()
 	navMesh->validate();
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: vertices: " + navMesh->positions.size() + ", triangles: " + (navMesh->indices.size() / 3));
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: average edge length: " + meshAverageEdgeLength(navMesh));
+	std::vector<uint8> terrainTypes = generateTileProperties(navMesh);
+	saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), navMesh, terrainTypes);
 	Holder<UPMesh> colliderMesh = meshSimplifyDynamic(navMesh);
+	navMesh.clear();
 	colliderMesh->validate();
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "collider: vertices: " + colliderMesh->positions.size() + ", triangles: " + (colliderMesh->indices.size() / 3));
+	saveCollider(pathJoin(assetsDirectory, "collider.obj"), colliderMesh);
 	UnwrapResult unwrap = meshUnwrap(colliderMesh);
-	exportConfiguration(baseDirectory, numeric_cast<uint32>(unwrap.meshes.size()));
+	colliderMesh.clear();
+	exportConfiguration(baseDirectory, assetsDirectory, numeric_cast<uint32>(unwrap.meshes.size()));
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "processing individual meshes");
 		SubmeshProcessor submeshProcessor;
@@ -177,9 +189,6 @@ void generateEntry()
 		submeshProcessor.unwrap = &unwrap;
 		submeshProcessor.process();
 	}
-	std::vector<uint8> terrainTypes = generateTileProperties(navMesh);
-	saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), navMesh, terrainTypes);
-	saveCollider(pathJoin(assetsDirectory, "collider.obj"), colliderMesh);
 	CAGE_LOG(SeverityEnum::Info, "generator", "all done");
 }
 

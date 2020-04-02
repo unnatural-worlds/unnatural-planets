@@ -45,7 +45,7 @@ void generateMaterials(const Holder<UPMesh> &renderMesh, uint32 width, uint32 he
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating material textures");
 	OPTICK_EVENT();
 
-	const uint32 triCount = renderMesh->indices.size() / 3;
+	const uint32 triCount = numeric_cast<uint32>(renderMesh->indices.size()) / 3;
 
 	std::vector<triangle> triPos;
 	std::vector<triangle> triNorms;
