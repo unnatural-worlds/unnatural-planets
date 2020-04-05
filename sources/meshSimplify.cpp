@@ -73,7 +73,12 @@ Holder<UPMesh> meshSimplifyDynamic(const Holder<UPMesh> &mesh)
 	Holder<pmp::SurfaceMesh> pm = toPmp(mesh);
 	pmp::SurfaceRemeshing rms(*pm);
 	rms.adaptive_remeshing(0.5 * targetScale, 10 * targetScale, 0.03 * targetScale, iterations);
-	return fromPmp(pm);
+	auto result = fromPmp(pm);
+	if (result->indices.size() < mesh->indices.size())
+		return result;
+	CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified mesh has more triangles than the original");
+	*result = *mesh; // copy the values
+	return result;
 }
 
 Holder<UPMesh> meshDiscardDisconnected(Holder<UPMesh> &mesh)

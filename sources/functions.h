@@ -19,24 +19,26 @@ enum class BiomeEnum
 	Savanna,                  //  20 .. 30   //   40 .. 130   //    10    // (TropicalGrassland)
 	TropicalSeasonalForest,   //  20 .. 30   //  130 .. 230   //     6    //
 	TropicalRainForest,       //  20 .. 30   //  230 .. 440   //     6    //
-	Ocean = 250,
+	_Ocean,
+	_Total
 };
 
 enum class TerrainTypeEnum
 {
 	Road = 0,
+	Fast = 1,
 	Slow = 2,
-	Fast = 5,
-	SteepSlope = 4,
-	ShallowWater = 7,
-	DeepWater = 8,
+	SteepSlope = 3,
+	ShallowWater = 4,
+	DeepWater = 5,
+	_Total
 };
 
 stringizer &operator + (stringizer &str, const BiomeEnum &other);
 stringizer &operator + (stringizer &str, const TerrainTypeEnum &other);
 
 real functionDensity(const vec3 &pos);
-void functionTileProperties(const vec3 &pos, const vec3 &normal, BiomeEnum &biome, TerrainTypeEnum &terrainType);
+void functionTileProperties(const vec3 &pos, const vec3 &normal, BiomeEnum &biome, TerrainTypeEnum &terrainType, real &elevation, real &temperature, real &precipitation);
 void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height);
 
 #endif

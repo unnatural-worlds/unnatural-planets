@@ -350,6 +350,13 @@ namespace
 
 	real terrainElevation(const vec3 &pos)
 	{
+		static const Holder<NoiseFunction> scaleNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.octaves = 4;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
 		static const Holder<NoiseFunction> elevNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
@@ -357,29 +364,17 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		return elevNoise->evaluate(pos * 0.02) * 15 + 0;
-		/*
-		static const Holder<NoiseFunction> clouds1 = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.octaves = 3;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> clouds2 = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.octaves = 4;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		vec3 p1 = pos * 0.01;
-		vec3 p2(p1[1], -p1[2], p1[0]);
-		return pow(clouds1->evaluate(p1 * 5) * 0.5 + 0.5, 1.8) * pow(clouds2->evaluate(p2 * 8) * 0.5 + 0.5, 1.5) * 15 - 0.6;
-		*/
+		real scale = scaleNoise->evaluate(pos * 0.005) * 0.005 + 0.015;
+		real a = elevNoise->evaluate(pos * scale);
+		a += 0.1; // slightly prefer terrain over ocean
+		if (a < 0)
+			a = -pow(-a, 0.85);
+		else
+			a = pow(a, 1.7);
+		return a * 25;
 	}
 
-	real terrainPrecipitation(const vec3 &pos)
+	real terrainPrecipitation(const vec3 &pos, real elev)
 	{
 		static const Holder<NoiseFunction> precpNoise = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -389,8 +384,13 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		real p = precpNoise->evaluate(pos * 0.02) * 0.5 + 0.5;
-		p = pow(p, 2.5);
+		real p = precpNoise->evaluate(pos * 0.015) * 0.5 + 0.5;
+		p = clamp(p, 0, 1);
+		p = smootherstep(p);
+		p = smootherstep(p);
+		p = smootherstep(p);
+		p = pow(p, 1.6);
+		p += max(1 - abs(elev), 0) * 0.15; // more water close to oceans
 		return p * 400;
 	}
 
@@ -404,7 +404,12 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		return 40 - abs(elev) * 2.2 + tempNoise->evaluate(pos * 0.01) * 10;
+		real t = tempNoise->evaluate(pos * 0.015) * 0.5 + 0.5;
+		t = clamp(t, 0, 1);
+		t = smootherstep(t);
+		t = smootherstep(t);
+		t = t * 2 - 1;
+		return 30 + t * 5 - abs(elev) * 2.8;
 	}
 
 	void terrainPoles(const vec3 &pos, real &temp)
@@ -417,9 +422,9 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 		real polar = abs(atan(pos[1] / length(vec2(pos[0], pos[2]))).value) / real::Pi() * 2;
-		polar = pow(polar, 1.2);
+		polar = pow(polar, 1.7);
 		polar += polarNoise->evaluate(pos * 0.07) * 0.1;
-		temp -= polar * 80;
+		temp += 15 - polar * 80;
 	}
 
 	rads terrainSlope(const vec3 &pos, const vec3 &normal, real radius = 0.05)
@@ -456,12 +461,14 @@ namespace
 			return;
 		CAGE_ASSERT(elev <= 0);
 		real shallow = -0.5 / (elev - 0.5);
+		shallow = clamp(shallow, 0, 1);
+		shallow = smoothstep(shallow);
 		terrainType = shallow > 0.5 ? TerrainTypeEnum::ShallowWater : TerrainTypeEnum::DeepWater;
 		albedo = interpolate(deepWaterColor, shallowWaterColor, shallow);
 		special[0] = 0.3;
 		height = 0;
 		// todo waves
-		biom = BiomeEnum::Ocean;
+		biom = BiomeEnum::_Ocean;
 	}
 
 	void iceOverrides(const vec3 &pos, real elev, real temp, TerrainTypeEnum &terrainType, vec3 &albedo, vec2 &special, real &height)
@@ -603,9 +610,9 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		if (elev < 0 || elev > 0.5)
+		if (elev < 0 || elev > 0.3)
 			return;
-		real solid = elev / 0.5;
+		real solid = elev / 0.3;
 		solid += solidNoise->evaluate(pos * 1.5) * 0.3;
 		solid = clamp(solid, 0, 1);
 		terrainType = TerrainTypeEnum::ShallowWater;
@@ -614,13 +621,13 @@ namespace
 		height = solid * 0.2;
 	}
 
-	void terrain(const vec3 &pos, const vec3 &normal, BiomeEnum &biom, TerrainTypeEnum &terrainType, vec3 &albedo, vec2 &special, real &height)
+	void terrain(const vec3 &pos, const vec3 &normal, BiomeEnum &biom, TerrainTypeEnum &terrainType, real &elev, real &temp, real &precp, vec3 &albedo, vec2 &special, real &height)
 	{
-		real elev = terrainElevation(pos);
+		elev = terrainElevation(pos);
 		rads slope = terrainSlope(pos, normal);
-		real temp = terrainTemperature(pos, elev);
+		temp = terrainTemperature(pos, elev);
 		terrainPoles(pos, temp);
-		real precp = terrainPrecipitation(pos);
+		precp = terrainPrecipitation(pos, elev);
 		biom = biome(elev, slope, temp, precp);
 		terrainType = biomeTerrainType(biom);
 		real diversity = biomeDiversity(biom);
@@ -630,7 +637,7 @@ namespace
 		oceanOverrides(pos, elev, biom, terrainType, albedo, special, height);
 		iceOverrides(pos, elev, temp, terrainType, albedo, special, height);
 		slopeOverrides(pos, elev, slope, terrainType, albedo, special, height);
-		grassOverrides(pos, elev, slope, temp, precp, albedo, special, height);
+		//grassOverrides(pos, elev, slope, temp, precp, albedo, special, height);
 		snowOverrides(pos, elev, slope, temp, precp, terrainType, albedo, special, height);
 		beachOverrides(pos, elev, terrainType, albedo, special, height);
 		albedo = saturate(albedo);
@@ -657,7 +664,7 @@ stringizer &operator + (stringizer &str, const BiomeEnum &other)
 	case BiomeEnum::Savanna: str + "Savanna"; break;
 	case BiomeEnum::TropicalSeasonalForest: str + "TropicalSeasonalForest"; break;
 	case BiomeEnum::TropicalRainForest: str + "TropicalRainForest"; break;
-	case BiomeEnum::Ocean: str + "Ocean"; break;
+	case BiomeEnum::_Ocean: str + "Ocean"; break;
 	default: str + "<unknown>"; break;
 	}
 	return str;
@@ -683,17 +690,20 @@ real functionDensity(const vec3 &pos)
 	return baseShapeDensity(pos) + max(terrainElevation(pos), 0);
 }
 
-void functionTileProperties(const vec3 &pos, const vec3 &normal, BiomeEnum &biome, TerrainTypeEnum &terrainType)
+void functionTileProperties(const vec3 &pos, const vec3 &normal, BiomeEnum &biome, TerrainTypeEnum &terrainType, real &elevation, real &temperature, real &precipitation)
 {
 	vec3 albedo;
 	vec2 special;
 	real height;
-	terrain(pos, normal, biome, terrainType, albedo, special, height);
+	terrain(pos, normal, biome, terrainType, elevation, temperature, precipitation, albedo, special, height);
 }
 
 void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height)
 {
 	BiomeEnum biome;
 	TerrainTypeEnum terrainType;
-	terrain(pos, normal, biome, terrainType, albedo, special, height);
+	real elevation;
+	real temperature;
+	real precipitation;
+	terrain(pos, normal, biome, terrainType, elevation, temperature, precipitation, albedo, special, height);
 }
