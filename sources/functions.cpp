@@ -40,9 +40,14 @@ namespace
 		return normalize(normal + strength * randomDirection3());
 	}
 
+	bool isUnit(const vec3 &v)
+	{
+		return abs(length(v) - 1) < 1e-4;
+	}
+
 	vec3 anyPerpendicular(const vec3 &a)
 	{
-		CAGE_ASSERT(abs(length(a) - 1) < 1e-4);
+		CAGE_ASSERT(isUnit(a));
 		vec3 b = vec3(1, 0, 0);
 		if (abs(dot(a, b)) > 0.9)
 			b = vec3(0, 1, 0);
@@ -455,7 +460,7 @@ namespace
 		return atan(md / radius);
 	}
 
-	void oceanOverrides(const vec3 &pos, real elev, BiomeEnum &biom, TerrainTypeEnum &terrainType, vec3 &albedo, vec2 &special, real &height)
+	void oceanOverrides(const vec3 &pos, const vec3 &normal, real elev, BiomeEnum &biom, TerrainTypeEnum &terrainType, vec3 &albedo, vec2 &special, real &height)
 	{
 		if (elev > 0)
 			return;
@@ -466,9 +471,42 @@ namespace
 		terrainType = shallow > 0.5 ? TerrainTypeEnum::ShallowWater : TerrainTypeEnum::DeepWater;
 		albedo = interpolate(deepWaterColor, shallowWaterColor, shallow);
 		special[0] = 0.3;
-		height = 0;
-		// todo waves
 		biom = BiomeEnum::_Ocean;
+
+		{ // waves
+			static const Holder<NoiseFunction> xNoise = []() {
+				NoiseFunctionCreateConfig cfg;
+				cfg.type = NoiseTypeEnum::Value;
+				cfg.octaves = 4;
+				cfg.seed = noiseSeed();
+				return newNoiseFunction(cfg);
+			}();
+			static const Holder<NoiseFunction> yNoise = []() {
+				NoiseFunctionCreateConfig cfg;
+				cfg.type = NoiseTypeEnum::Value;
+				cfg.octaves = 4;
+				cfg.seed = noiseSeed();
+				return newNoiseFunction(cfg);
+			}();
+			static const Holder<NoiseFunction> zNoise = []() {
+				NoiseFunctionCreateConfig cfg;
+				cfg.type = NoiseTypeEnum::Value;
+				cfg.octaves = 4;
+				cfg.seed = noiseSeed();
+				return newNoiseFunction(cfg);
+			}();
+			vec3 s = pos * 0.01;
+			real x = xNoise->evaluate(s);
+			real y = yNoise->evaluate(s);
+			real z = zNoise->evaluate(s);
+			vec3 dir = normalize(vec3(x, y, z));
+			//CAGE_ASSERT(isUnit(dir));
+			//dir = normalize(dir - dot(dir, normal) * normal);
+			CAGE_ASSERT(isUnit(dir));
+			real dist = dot(dir, pos) * length(pos);
+			real wave = sin(rads(dist * 0.05));
+			height = wave * 0.05 + 0.05;
+		}
 	}
 
 	void iceOverrides(const vec3 &pos, real elev, real temp, TerrainTypeEnum &terrainType, vec3 &albedo, vec2 &special, real &height)
@@ -634,7 +672,7 @@ namespace
 		albedo = biomeColor(biom);
 		special = vec2(biomeRoughness(biom), 0);
 		height = biomeHeight(biom);
-		oceanOverrides(pos, elev, biom, terrainType, albedo, special, height);
+		oceanOverrides(pos, normal, elev, biom, terrainType, albedo, special, height);
 		iceOverrides(pos, elev, temp, terrainType, albedo, special, height);
 		slopeOverrides(pos, elev, slope, terrainType, albedo, special, height);
 		//grassOverrides(pos, elev, slope, temp, precp, albedo, special, height);

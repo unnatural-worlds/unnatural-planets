@@ -34,9 +34,9 @@ namespace
 		return p[0] * a + p[1] * b + (1 - p[0] - p[1]) * c;
 	}
 
-	ivec2 operator * (const ivec2 &a, float b)
+	ivec2 operator * (const ivec2 &a, real b)
 	{
-		return ivec2(sint32(a.x * b), sint32(a.y * b));
+		return ivec2(sint32(a.x * b.value), sint32(a.y * b.value));
 	}
 }
 
@@ -103,13 +103,13 @@ void generateMaterials(const Holder<UPMesh> &renderMesh, uint32 width, uint32 he
 			if (t1.y > t2.y)
 				std::swap(t1, t2);
 			sint32 totalHeight = t2.y - t0.y;
-			float totalHeightInv = 1.f / totalHeight;
+			real totalHeightInv = 1.f / totalHeight;
 			for (sint32 i = 0; i < totalHeight; i++)
 			{
 				bool secondHalf = i > t1.y - t0.y || t1.y == t0.y;
 				uint32 segmentHeight = secondHalf ? t2.y - t1.y : t1.y - t0.y;
-				float alpha = i * totalHeightInv;
-				float beta = (float)(i - (secondHalf ? t1.y - t0.y : 0)) / segmentHeight;
+				real alpha = i * totalHeightInv;
+				real beta = real(i - (secondHalf ? t1.y - t0.y : 0)) / segmentHeight;
 				ivec2 A = t0 + (t2 - t0) * alpha;
 				ivec2 B = secondHalf ? t1 + (t2 - t1) * beta : t0 + (t1 - t0) * beta;
 				if (A.x > B.x)
