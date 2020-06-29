@@ -72,7 +72,7 @@ UnwrapResult meshUnwrap(const Holder<UPMesh> &mesh)
 		xatlas::ChartOptions chart;
 		chart.maxIterations = 10;
 		chart.maxBoundaryLength = 50;
-		chart.roundnessMetricWeight = 0.3;
+		chart.roundnessWeight = 0.3;
 		xatlas::ComputeCharts(atlas.get(), chart);
 	}
 

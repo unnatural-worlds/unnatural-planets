@@ -65,7 +65,7 @@ namespace
 		CAGE_ASSERT(img->format() == ImageFormatEnum::Float);
 
 		Holder<Image> tmp = newImage();
-		tmp->empty(img->width(), img->height(), img->channels(), img->format());
+		tmp->initialize(img->width(), img->height(), img->channels(), img->format());
 		textureFill(tmp.get(), real::Nan());
 
 		Image *src = img;

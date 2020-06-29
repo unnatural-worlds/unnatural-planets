@@ -36,7 +36,7 @@ namespace
 
 	ivec2 operator * (const ivec2 &a, real b)
 	{
-		return ivec2(sint32(a.x * b.value), sint32(a.y * b.value));
+		return ivec2(sint32(a[0] * b.value), sint32(a[1] * b.value));
 	}
 }
 
@@ -96,27 +96,27 @@ void generateMaterials(const Holder<UPMesh> &renderMesh, uint32 width, uint32 he
 			ivec2 t1 = ivec2(sint32(vertUvs[1][0].value), sint32(vertUvs[1][1].value));
 			ivec2 t2 = ivec2(sint32(vertUvs[2][0].value), sint32(vertUvs[2][1].value));
 			// inspired by https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling
-			if (t0.y > t1.y)
+			if (t0[1] > t1[1])
 				std::swap(t0, t1);
-			if (t0.y > t2.y)
+			if (t0[1] > t2[1])
 				std::swap(t0, t2);
-			if (t1.y > t2.y)
+			if (t1[1] > t2[1])
 				std::swap(t1, t2);
-			sint32 totalHeight = t2.y - t0.y;
+			sint32 totalHeight = t2[1] - t0[1];
 			real totalHeightInv = 1.f / totalHeight;
 			for (sint32 i = 0; i < totalHeight; i++)
 			{
-				bool secondHalf = i > t1.y - t0.y || t1.y == t0.y;
-				uint32 segmentHeight = secondHalf ? t2.y - t1.y : t1.y - t0.y;
+				bool secondHalf = i > t1[1] - t0[1] || t1[1] == t0[1];
+				uint32 segmentHeight = secondHalf ? t2[1] - t1[1] : t1[1] - t0[1];
 				real alpha = i * totalHeightInv;
-				real beta = real(i - (secondHalf ? t1.y - t0.y : 0)) / segmentHeight;
+				real beta = real(i - (secondHalf ? t1[1] - t0[1] : 0)) / segmentHeight;
 				ivec2 A = t0 + (t2 - t0) * alpha;
 				ivec2 B = secondHalf ? t1 + (t2 - t1) * beta : t0 + (t1 - t0) * beta;
-				if (A.x > B.x)
+				if (A[0] > B[0])
 					std::swap(A, B);
-				for (sint32 x = A.x; x <= B.x; x++)
+				for (sint32 x = A[0]; x <= B[0]; x++)
 				{
-					sint32 y = t0.y + i;
+					sint32 y = t0[1] + i;
 					vec2 uv = vec2(x, y) * scaleInv;
 					vec2 b = barycoord(triUvs[triIdx], uv);
 					CAGE_ASSERT(b.valid());
@@ -130,13 +130,13 @@ void generateMaterials(const Holder<UPMesh> &renderMesh, uint32 width, uint32 he
 	}
 
 	albedo = newImage();
-	albedo->empty(width, height, 3, ImageFormatEnum::Float);
+	albedo->initialize(width, height, 3, ImageFormatEnum::Float);
 	textureFill(albedo.get(), real::Nan());
 	special = newImage();
-	special->empty(width, height, 2, ImageFormatEnum::Float);
+	special->initialize(width, height, 2, ImageFormatEnum::Float);
 	textureFill(special.get(), real::Nan());
 	heightMap = newImage();
-	heightMap->empty(width, height, 1, ImageFormatEnum::Float);
+	heightMap->initialize(width, height, 1, ImageFormatEnum::Float);
 	textureFill(heightMap.get(), real::Nan());
 
 	{

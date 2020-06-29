@@ -30,9 +30,9 @@ namespace
 			albedo->convert(ImageFormatEnum::U8);
 			special->convert(ImageFormatEnum::U8);
 			heightMap->convert(ImageFormatEnum::U8);
-			albedo->encodeFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-albedo.png"));
-			special->encodeFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-special.png"));
-			heightMap->encodeFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-height.png"));
+			albedo->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-albedo.png"));
+			special->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-special.png"));
+			heightMap->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-height.png"));
 		}
 
 		void processEntry(uint32 threadIndex, uint32 threadsCount)
