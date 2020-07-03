@@ -1,166 +1,78 @@
+#include <cage-core/image.h>
+
 #include "generator.h"
 #include "functions.h"
 
-#include <cage-core/geometry.h>
-#include <cage-engine/core.h> // ivec2
-
 namespace
 {
-	vec2 barycoord(const triangle &t, const vec2 &p)
+	struct Generator
 	{
-		vec2 a = vec2(t[0]);
-		vec2 b = vec2(t[1]);
-		vec2 c = vec2(t[2]);
-		vec2 v0 = b - a;
-		vec2 v1 = c - a;
-		vec2 v2 = p - a;
-		real d00 = dot(v0, v0);
-		real d01 = dot(v0, v1);
-		real d11 = dot(v1, v1);
-		real d20 = dot(v2, v0);
-		real d21 = dot(v2, v1);
-		real invDenom = 1.0 / (d00 * d11 - d01 * d01);
-		real v = (d11 * d20 - d01 * d21) * invDenom;
-		real w = (d00 * d21 - d01 * d20) * invDenom;
-		real u = 1 - v - w;
-		return vec2(u, v);
-	}
+		const Holder<Polyhedron> &mesh;
+		Holder<Image> &albedo;
+		Holder<Image> &special;
+		Holder<Image> &heightMap;
+		const uint32 width;
+		const uint32 height;
 
-	vec3 interpolate(const triangle &t, const vec2 &p)
-	{
-		vec3 a = t[0];
-		vec3 b = t[1];
-		vec3 c = t[2];
-		return p[0] * a + p[1] * b + (1 - p[0] - p[1]) * c;
-	}
+		Generator(const Holder<Polyhedron> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap) : mesh(mesh), width(width), height(height), albedo(albedo), special(special), heightMap(heightMap)
+		{}
 
-	ivec2 operator * (const ivec2 &a, real b)
-	{
-		return ivec2(sint32(a[0] * b.value), sint32(a[1] * b.value));
-	}
+		void pixel(uint32 x, uint32 y, const ivec3 &indices, const vec3 &weights)
+		{
+			const vec3 position = mesh->positionAt(indices, weights);
+			const vec3 normal = mesh->normalAt(indices, weights);
+			vec3 a;
+			vec2 s;
+			real h;
+			functionMaterial(position, normal, a, s, h);
+			albedo->set(x, y, a);
+			special->set(x, y, s);
+			heightMap->set(x, y, h);
+		}
+
+		void generate()
+		{
+			albedo = newImage();
+			albedo->initialize(width, height, 3, ImageFormatEnum::Float);
+			albedo->fill(vec3::Nan());
+			special = newImage();
+			special->initialize(width, height, 2, ImageFormatEnum::Float);
+			special->fill(vec2::Nan());
+			heightMap = newImage();
+			heightMap->initialize(width, height, 1, ImageFormatEnum::Float);
+			heightMap->fill(real::Nan());
+
+			PolyhedronTextureGenerationConfig cfg;
+			cfg.width = width;
+			cfg.height = height;
+			cfg.generator.bind<Generator, &Generator::pixel>(this);
+			mesh->generateTexture(cfg);
+
+			{
+				OPTICK_EVENT("inpainting");
+				albedo->inpaint(7, true);
+				special->inpaint(7, true);
+				heightMap->inpaint(7, true);
+			}
+
+			albedo->convert(ImageFormatEnum::U8);
+			special->convert(ImageFormatEnum::U8);
+			heightMap->convert(ImageFormatEnum::U8);
+
+			albedo->verticalFlip();
+			special->verticalFlip();
+			heightMap->verticalFlip();
+		}
+	};
 }
 
-void generateMaterials(const Holder<UPMesh> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
+void generateMaterials(const Holder<Polyhedron> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating material textures");
 	OPTICK_EVENT();
 
-	const uint32 triCount = numeric_cast<uint32>(renderMesh->indices.size()) / 3;
-
-	std::vector<triangle> triPos;
-	std::vector<triangle> triNorms;
-	std::vector<triangle> triUvs;
-	{
-		OPTICK_EVENT("prepTris");
-		triPos.reserve(triCount);
-		triNorms.reserve(triCount);
-		triUvs.reserve(triCount);
-		for (uint32 triIdx = 0; triIdx < triCount; triIdx++)
-		{
-			triangle p;
-			triangle n;
-			triangle u;
-			const uint32 *ids = renderMesh->indices.data() + triIdx * 3;
-			for (uint32 i = 0; i < 3; i++)
-			{
-				uint32 j = ids[i];
-				p[i] = renderMesh->positions[j];
-				n[i] = renderMesh->normals[j];
-				u[i] = vec3(renderMesh->uvs[j], 0);
-			}
-			triPos.push_back(p);
-			triNorms.push_back(n);
-			triUvs.push_back(u);
-		}
-	}
-
-	std::vector<vec3> positions;
-	std::vector<vec3> normals;
-	std::vector<uint32> xs;
-	std::vector<uint32> ys;
-	{
-		OPTICK_EVENT("prepCoords");
-		positions.reserve(width * height);
-		normals.reserve(width * height);
-		xs.reserve(width * height);
-		ys.reserve(width * height);
-		const vec2 scaleInv = 1 / vec2(width - 1, height - 1);
-		const vec3 scale = vec3(width - 1, height - 1, 1);
-		for (uint32 triIdx = 0; triIdx < triCount; triIdx++)
-		{
-			triangle uvTri = triUvs[triIdx];
-			vec3 *vertUvs = uvTri.vertices;
-			for (int i = 0; i < 3; i++)
-				vertUvs[i] *= scale;
-			ivec2 t0 = ivec2(sint32(vertUvs[0][0].value), sint32(vertUvs[0][1].value));
-			ivec2 t1 = ivec2(sint32(vertUvs[1][0].value), sint32(vertUvs[1][1].value));
-			ivec2 t2 = ivec2(sint32(vertUvs[2][0].value), sint32(vertUvs[2][1].value));
-			// inspired by https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling
-			if (t0[1] > t1[1])
-				std::swap(t0, t1);
-			if (t0[1] > t2[1])
-				std::swap(t0, t2);
-			if (t1[1] > t2[1])
-				std::swap(t1, t2);
-			sint32 totalHeight = t2[1] - t0[1];
-			real totalHeightInv = 1.f / totalHeight;
-			for (sint32 i = 0; i < totalHeight; i++)
-			{
-				bool secondHalf = i > t1[1] - t0[1] || t1[1] == t0[1];
-				uint32 segmentHeight = secondHalf ? t2[1] - t1[1] : t1[1] - t0[1];
-				real alpha = i * totalHeightInv;
-				real beta = real(i - (secondHalf ? t1[1] - t0[1] : 0)) / segmentHeight;
-				ivec2 A = t0 + (t2 - t0) * alpha;
-				ivec2 B = secondHalf ? t1 + (t2 - t1) * beta : t0 + (t1 - t0) * beta;
-				if (A[0] > B[0])
-					std::swap(A, B);
-				for (sint32 x = A[0]; x <= B[0]; x++)
-				{
-					sint32 y = t0[1] + i;
-					vec2 uv = vec2(x, y) * scaleInv;
-					vec2 b = barycoord(triUvs[triIdx], uv);
-					CAGE_ASSERT(b.valid());
-					positions.push_back(interpolate(triPos[triIdx], b));
-					normals.push_back(normalize(interpolate(triNorms[triIdx], b)));
-					xs.push_back(x);
-					ys.push_back(y);
-				}
-			}
-		}
-	}
-
-	albedo = newImage();
-	albedo->initialize(width, height, 3, ImageFormatEnum::Float);
-	textureFill(albedo.get(), real::Nan());
-	special = newImage();
-	special->initialize(width, height, 2, ImageFormatEnum::Float);
-	textureFill(special.get(), real::Nan());
-	heightMap = newImage();
-	heightMap->initialize(width, height, 1, ImageFormatEnum::Float);
-	textureFill(heightMap.get(), real::Nan());
-
-	{
-		OPTICK_EVENT("pixelColors");
-		uint32 *xi = xs.data();
-		uint32 *yi = ys.data();
-		uint32 cnt = numeric_cast<uint32>(positions.size());
-		for (uint32 i = 0; i < cnt; i++)
-		{
-			vec3 a;
-			vec2 s;
-			real h;
-			functionMaterial(positions[i], normals[i], a, s, h);
-			albedo->set(*xi, *yi, a);
-			special->set(*xi, *yi, s);
-			heightMap->set(*xi, *yi, h);
-			xi++;
-			yi++;
-		}
-	}
-
-	albedo->verticalFlip();
-	special->verticalFlip();
-	heightMap->verticalFlip();
+	Generator gen(mesh, width, height, albedo, special, heightMap);
+	gen.generate();
 }
 
 

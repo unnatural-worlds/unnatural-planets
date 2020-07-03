@@ -57,12 +57,12 @@ namespace
 	};
 }
 
-std::vector<uint8> generateTileProperties(const Holder<UPMesh> &navMesh)
+std::vector<uint8> generateTileProperties(const Holder<Polyhedron> &navMesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating tile properties");
 	OPTICK_EVENT();
 
-	uint32 cnt = numeric_cast<uint32>(navMesh->positions.size());
+	const uint32 cnt = navMesh->verticesCount();
 	std::vector<uint8> terrainTypes;
 	terrainTypes.reserve(cnt);
 
@@ -77,7 +77,7 @@ std::vector<uint8> generateTileProperties(const Holder<UPMesh> &navMesh)
 		real e, t, p;
 		BiomeEnum b;
 		TerrainTypeEnum tt;
-		functionTileProperties(navMesh->positions[i], navMesh->normals[i], b, tt, e, t, p);
+		functionTileProperties(navMesh->position(i), navMesh->normal(i), b, tt, e, t, p);
 		terrainTypes.push_back((uint8)tt);
 		elevations.insert(e);
 		temperatures.insert(t);

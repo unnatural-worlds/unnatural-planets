@@ -3,6 +3,7 @@
 #include <cage-core/threadPool.h>
 #include <cage-core/files.h>
 #include <cage-core/random.h>
+#include <cage-core/image.h>
 #include <cage-core/timer.h> // formatDateTime
 
 namespace
@@ -10,26 +11,31 @@ namespace
 	struct SubmeshProcessor
 	{
 		Holder<ThreadPool> thrPool;
-		const UnwrapResult *unwrap = nullptr;
+		const SplitResult *split = nullptr;
 		string assetsDirectory;
 
 		void processOne(uint32 index)
 		{
 			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "generating chunk " + index);
-			const auto &msh = unwrap->meshes[index];
-			msh->validate();
+			const auto &msh = split->meshes[index];
 			saveRenderMesh(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + ".obj"), msh);
-			Holder<Image> albedo, special, heightMap;
-			generateMaterials(msh, unwrap->textureWidth, unwrap->textureHeight, albedo, special, heightMap);
+			uint32 resolution = 0;
 			{
-				OPTICK_EVENT("inpainting");
-				textureInpaint(albedo.get(), 7);
-				textureInpaint(special.get(), 7);
-				textureInpaint(heightMap.get(), 7);
+				OPTICK_EVENT("unwrapping");
+				PolyhedronUnwrapConfig cfg;
+				cfg.maxChartIterations = 10;
+				cfg.maxChartBoundaryLength = 50;
+				cfg.chartRoundness = 0.3;
+#ifdef CAGE_DEBUG
+				cfg.texelsPerUnit = 1;
+#else
+				cfg.texelsPerUnit = 20;
+#endif // CAGE_DEBUG
+				cfg.padding = 6;
+				resolution = msh->unwrap(cfg);
 			}
-			albedo->convert(ImageFormatEnum::U8);
-			special->convert(ImageFormatEnum::U8);
-			heightMap->convert(ImageFormatEnum::U8);
+			Holder<Image> albedo, special, heightMap;
+			generateMaterials(msh, resolution, resolution, albedo, special, heightMap);
 			albedo->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-albedo.png"));
 			special->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-special.png"));
 			heightMap->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-height.png"));
@@ -38,7 +44,7 @@ namespace
 		void processEntry(uint32 threadIndex, uint32 threadsCount)
 		{
 			uint32 b, e;
-			threadPoolTasksSplit(threadIndex, threadsCount, numeric_cast<uint32>(unwrap->meshes.size()), b, e);
+			threadPoolTasksSplit(threadIndex, threadsCount, numeric_cast<uint32>(split->meshes.size()), b, e);
 			for (uint32 i = b; i < e; i++)
 				processOne(i);
 		}
@@ -164,29 +170,26 @@ void generateEntry()
 	const string baseDirectory = findBaseDirectory();
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "target directory: " + pathToAbs(baseDirectory));
-	Holder<UPMesh> baseMesh = generateBaseMesh(250, 200);
+	Holder<Polyhedron> baseMesh = generateBaseMesh(250, 200);
 	baseMesh = meshDiscardDisconnected(baseMesh);
-	baseMesh->validate();
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "base mesh: average edge length: " + meshAverageEdgeLength(baseMesh));
-	Holder<UPMesh> navMesh = meshSimplifyRegular(baseMesh);
-	navMesh->validate();
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: vertices: " + navMesh->positions.size() + ", triangles: " + (navMesh->indices.size() / 3));
+	Holder<Polyhedron> navMesh = meshSimplifyRegular(baseMesh);
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: vertices: " + navMesh->verticesCount() + ", triangles: " + (navMesh->indicesCount() / 3));
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: average edge length: " + meshAverageEdgeLength(navMesh));
 	std::vector<uint8> terrainTypes = generateTileProperties(navMesh);
 	saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), navMesh, terrainTypes);
-	Holder<UPMesh> colliderMesh = meshSimplifyDynamic(navMesh);
+	Holder<Polyhedron> colliderMesh = meshSimplifyDynamic(navMesh);
 	navMesh.clear();
-	colliderMesh->validate();
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "collider: vertices: " + colliderMesh->positions.size() + ", triangles: " + (colliderMesh->indices.size() / 3));
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "collider: vertices: " + colliderMesh->verticesCount() + ", triangles: " + (colliderMesh->indicesCount() / 3));
 	saveCollider(pathJoin(assetsDirectory, "collider.obj"), colliderMesh);
-	UnwrapResult unwrap = meshUnwrap(colliderMesh);
+	SplitResult split = meshSplit(colliderMesh);
 	colliderMesh.clear();
-	exportConfiguration(baseDirectory, assetsDirectory, numeric_cast<uint32>(unwrap.meshes.size()));
+	exportConfiguration(baseDirectory, assetsDirectory, numeric_cast<uint32>(split.meshes.size()));
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "processing individual meshes");
 		SubmeshProcessor submeshProcessor;
 		submeshProcessor.assetsDirectory = assetsDirectory;
-		submeshProcessor.unwrap = &unwrap;
+		submeshProcessor.split = &split;
 		submeshProcessor.process();
 	}
 	CAGE_LOG(SeverityEnum::Info, "generator", "all done");

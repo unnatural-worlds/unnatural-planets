@@ -42,7 +42,7 @@ namespace
 
 	bool isUnit(const vec3 &v)
 	{
-		return abs(length(v) - 1) < 1e-4;
+		return abs(length(v) - 1) < 1e-3;
 	}
 
 	vec3 anyPerpendicular(const vec3 &a)

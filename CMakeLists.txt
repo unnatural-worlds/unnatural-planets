@@ -9,7 +9,7 @@ add_subdirectory(externals)
 
 file(GLOB_RECURSE unnatural-planets-sources "sources/*")
 add_executable(unnatural-planets ${unnatural-planets-sources})
-target_link_libraries(unnatural-planets cage-core cage-engine dualmc pmp xatlas)
+target_link_libraries(unnatural-planets cage-core)
 cage_ide_category(unnatural-planets unnatural-planets)
 cage_ide_sort_files(unnatural-planets)
 cage_ide_working_dir_in_place(unnatural-planets)

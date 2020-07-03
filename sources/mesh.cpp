@@ -2,164 +2,91 @@
 
 #include "mesh.h"
 
-namespace
-{
-	string v2s(const vec3 &v)
-	{
-		return stringizer() + v[0] + " " + v[1] + " " + v[2];
-	}
-
-	string v2s(const vec2 &v)
-	{
-		return stringizer() + v[0] + " " + v[1];
-	}
-
-	void writeIndices(const Holder<File> &f, const Holder<UPMesh> &mesh)
-	{
-		uint32 cnt = numeric_cast<uint32>(mesh->indices.size()) / 3;
-		for (uint32 i = 0; i < cnt; i++)
-		{
-			string s = "f ";
-			for (uint32 j = 0; j < 3; j++)
-			{
-				uint32 k = mesh->indices[i * 3 + j] + 1;
-				s += stringizer() + k + "/" + k + "/" + k + " ";
-			}
-			f->writeLine(s);
-		}
-	}
-}
-
-Holder<UPMesh> newUPMesh()
-{
-	return detail::systemArena().createHolder<UPMesh>();
-}
-
-void UPMesh::validate() const
-{
-	if (!normals.empty() && normals.size() != positions.size())
-		CAGE_THROW_ERROR(Exception, "invalid count of normals");
-	if (!uvs.empty() && uvs.size() != positions.size())
-		CAGE_THROW_ERROR(Exception, "invalid count of uvs");
-	if ((indices.size() % 3) != 0)
-		CAGE_THROW_ERROR(Exception, "indices not divisible by 3");
-	for (const vec3 &p : positions)
-		if (!p.valid())
-			CAGE_THROW_ERROR(Exception, "invalid vertex position");
-	for (const vec3 &n : normals)
-	{
-		if (!n.valid())
-			CAGE_THROW_ERROR(Exception, "invalid vertex normal");
-		if (abs(length(n) - 1) > 1e-4)
-			CAGE_THROW_ERROR(Exception, "invalid normal length");
-	}
-	for (const vec2 &u : uvs)
-		if (!u.valid())
-			CAGE_THROW_ERROR(Exception, "invalid vertex uvs");
-	for (auto i : indices)
-		if (i >= positions.size())
-			CAGE_THROW_ERROR(Exception, "invalid mesh index");
-}
-
-void saveDebugMesh(const string &path, const Holder<UPMesh> &mesh)
+void saveDebugMesh(const string &path, const Holder<Polyhedron> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving debug mesh: " + path);
 	OPTICK_EVENT();
 
-	string objectName = pathExtractFilenameNoExtension(path);
-	Holder<File> f = newFile(path, FileMode(false, true));
-	f->writeLine(stringizer() + "o " + objectName);
-	for (const vec3 &v : mesh->positions)
-		f->writeLine(stringizer() + "v " + v2s(v));
-	for (const vec3 &v : mesh->normals)
-		f->writeLine(stringizer() + "vn " + v2s(v));
-	for (const vec2 &v : mesh->uvs)
-		f->writeLine(stringizer() + "vt " + v2s(v));
-	writeIndices(f, mesh);
+	PolyhedronObjExportConfig cfg;
+	cfg.objectName = pathExtractFilenameNoExtension(path);
+	mesh->exportObjFile(cfg, path);
 }
 
-void saveRenderMesh(const string &path, const Holder<UPMesh> &mesh)
+void saveRenderMesh(const string &path, const Holder<Polyhedron> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving render mesh: " + path);
 	OPTICK_EVENT();
 
-	string directory = pathExtractPath(path);
-	string objectName = pathExtractFilenameNoExtension(path);
-	string mtlName = objectName + ".mtl";
-	string cpmName = objectName + ".cpm";
+	PolyhedronObjExportConfig cfg;
+	cfg.objectName = pathExtractFilenameNoExtension(path);
+	cfg.materialLibraryName = cfg.objectName + ".mtl";
+	cfg.materialName = cfg.objectName;
+	mesh->exportObjFile(cfg, path);
 
-	{
-		Holder<File> f = newFile(path, FileMode(false, true));
-		f->writeLine(stringizer() + "mtllib " + mtlName);
-		f->writeLine(stringizer() + "o " + objectName);
-		f->writeLine(stringizer() + "usemtl " + objectName);
-		for (const vec3 &v : mesh->positions)
-			f->writeLine(stringizer() + "v " + v2s(v));
-		for (const vec3 &v : mesh->normals)
-			f->writeLine(stringizer() + "vn " + v2s(v));
-		for (const vec2 &v : mesh->uvs)
-			f->writeLine(stringizer() + "vt " + v2s(v));
-		writeIndices(f, mesh);
-	}
+	const string directory = pathExtractPath(path);
+	const string cpmName = cfg.objectName + ".cpm";
 
 	{ // write mtl file with link to albedo texture
-		Holder<File> f = newFile(pathJoin(directory, mtlName), FileMode(false, true));
-		f->writeLine(stringizer() + "newmtl " + objectName);
-		f->writeLine(stringizer() + "map_Kd " + objectName + "-albedo.png");
-		f->writeLine(stringizer() + "map_bump " + objectName + "-height.png");
+		Holder<File> f = writeFile(pathJoin(directory, cfg.materialLibraryName));
+		f->writeLine(stringizer() + "newmtl " + cfg.materialName);
+		f->writeLine(stringizer() + "map_Kd " + cfg.objectName + "-albedo.png");
+		f->writeLine(stringizer() + "map_bump " + cfg.objectName + "-height.png");
 	}
 
 	{ // write cpm material file
 		Holder<File> f = newFile(pathJoin(directory, cpmName), FileMode(false, true));
 		f->writeLine("[textures]");
-		f->writeLine(stringizer() + "albedo = " + objectName + "-albedo.png");
-		f->writeLine(stringizer() + "special = " + objectName + "-special.png");
-		f->writeLine(stringizer() + "normal = " + objectName + "-height.png");
+		f->writeLine(stringizer() + "albedo = " + cfg.objectName + "-albedo.png");
+		f->writeLine(stringizer() + "special = " + cfg.objectName + "-special.png");
+		f->writeLine(stringizer() + "normal = " + cfg.objectName + "-height.png");
 	}
 }
 
-void saveNavigationMesh(const string &path, const Holder<UPMesh> &mesh, const std::vector<uint8> &terrainTypes)
+void saveNavigationMesh(const string &path, const Holder<Polyhedron> &mesh, const std::vector<uint8> &terrainTypes)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving navigation mesh: " + path);
 	OPTICK_EVENT();
 
-	Holder<File> f = newFile(path, FileMode(false, true));
-	f->writeLine("o navigation");
-	for (const vec3 &v : mesh->positions)
-		f->writeLine(stringizer() + "v " + v2s(v));
-	for (const vec3 &v : mesh->normals)
-		f->writeLine(stringizer() + "vn " + v2s(v));
-	for (const uint8 &v : terrainTypes)
-		f->writeLine(stringizer() + "vt " + v2s(vec2((v + 0.5) / 32, 0)));
-	writeIndices(f, mesh);
+	CAGE_ASSERT(terrainTypes.size() == mesh->verticesCount());
+	Holder<Polyhedron> m = mesh->copy();
+	std::vector<vec2> uvs;
+	uvs.reserve(terrainTypes.size());
+	for (uint8 t : terrainTypes)
+		uvs.push_back(vec2((t + 0.5) / 32, 0));
+	m->uvs(uvs);
+
+	PolyhedronObjExportConfig cfg;
+	cfg.objectName = "navigation";
+	m->exportObjFile(cfg, path);
 }
 
-void saveCollider(const string &path, const Holder<UPMesh> &mesh)
+void saveCollider(const string &path, const Holder<Polyhedron> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving collider: " + path);
 	OPTICK_EVENT();
 
-	Holder<File> f = newFile(path, FileMode(false, true));
-	f->writeLine("o collider");
-	for (const vec3 &v : mesh->positions)
-		f->writeLine(stringizer() + "v " + v2s(v));
-	writeIndices(f, mesh);
+	Holder<Polyhedron> m = mesh->copy();
+	m->normals({});
+	m->uvs({});
+	PolyhedronObjExportConfig cfg;
+	cfg.objectName = "collider";
+	m->exportObjFile(cfg, path);
 }
 
-real meshAverageEdgeLength(const Holder<UPMesh> &mesh)
+real meshAverageEdgeLength(const Holder<Polyhedron> &mesh)
 {
 	real len = 0;
-	uint32 trisCnt = mesh->indices.size() / 3;
+	const uint32 trisCnt = mesh->indicesCount() / 3;
 	for (uint32 tri = 0; tri < trisCnt; tri++)
 	{
-		vec3 a = mesh->positions[mesh->indices[tri * 3 + 0]];
-		vec3 b = mesh->positions[mesh->indices[tri * 3 + 1]];
-		vec3 c = mesh->positions[mesh->indices[tri * 3 + 2]];
+		vec3 a = mesh->position(mesh->index(tri * 3 + 0));
+		vec3 b = mesh->position(mesh->index(tri * 3 + 1));
+		vec3 c = mesh->position(mesh->index(tri * 3 + 2));
 		len += distance(a, b);
 		len += distance(b, c);
 		len += distance(c, a);
 	}
-	return len / mesh->indices.size();
+	return len / mesh->indicesCount();
 }
 
 
