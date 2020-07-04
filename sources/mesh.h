@@ -12,9 +12,10 @@ struct SplitResult
 };
 
 SplitResult meshSplit(const Holder<Polyhedron> &mesh);
-Holder<Polyhedron> meshSimplifyRegular(const Holder<Polyhedron> &mesh);
-Holder<Polyhedron> meshSimplifyDynamic(const Holder<Polyhedron> &mesh);
-Holder<Polyhedron> meshDiscardDisconnected(Holder<Polyhedron> &mesh);
+void meshSimplifyRegular(Holder<Polyhedron> &mesh);
+void meshSimplifyDynamic(Holder<Polyhedron> &mesh);
+void meshDiscardDisconnected(Holder<Polyhedron> &mesh);
+uint32 meshUnwrap(const Holder<Polyhedron> &mesh);
 
 void saveDebugMesh(const string &path, const Holder<Polyhedron> &mesh);
 void saveRenderMesh(const string &path, const Holder<Polyhedron> &mesh);

@@ -17,6 +17,8 @@ void saveRenderMesh(const string &path, const Holder<Polyhedron> &mesh)
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving render mesh: " + path);
 	OPTICK_EVENT();
 
+	CAGE_ASSERT(mesh->normals().size() == mesh->verticesCount());
+	CAGE_ASSERT(mesh->uvs().size() == mesh->verticesCount());
 	PolyhedronObjExportConfig cfg;
 	cfg.objectName = pathExtractFilenameNoExtension(path);
 	cfg.materialLibraryName = cfg.objectName + ".mtl";
@@ -47,6 +49,7 @@ void saveNavigationMesh(const string &path, const Holder<Polyhedron> &mesh, cons
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving navigation mesh: " + path);
 	OPTICK_EVENT();
 
+	CAGE_ASSERT(mesh->normals().size() == mesh->verticesCount());
 	CAGE_ASSERT(terrainTypes.size() == mesh->verticesCount());
 	Holder<Polyhedron> m = mesh->copy();
 	std::vector<vec2> uvs;
@@ -71,22 +74,6 @@ void saveCollider(const string &path, const Holder<Polyhedron> &mesh)
 	PolyhedronObjExportConfig cfg;
 	cfg.objectName = "collider";
 	m->exportObjFile(cfg, path);
-}
-
-real meshAverageEdgeLength(const Holder<Polyhedron> &mesh)
-{
-	real len = 0;
-	const uint32 trisCnt = mesh->indicesCount() / 3;
-	for (uint32 tri = 0; tri < trisCnt; tri++)
-	{
-		vec3 a = mesh->position(mesh->index(tri * 3 + 0));
-		vec3 b = mesh->position(mesh->index(tri * 3 + 1));
-		vec3 c = mesh->position(mesh->index(tri * 3 + 2));
-		len += distance(a, b);
-		len += distance(b, c);
-		len += distance(c, a);
-	}
-	return len / mesh->indicesCount();
 }
 
 

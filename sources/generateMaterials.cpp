@@ -42,14 +42,17 @@ namespace
 			heightMap->initialize(width, height, 1, ImageFormatEnum::Float);
 			heightMap->fill(real::Nan());
 
-			PolyhedronTextureGenerationConfig cfg;
-			cfg.width = width;
-			cfg.height = height;
-			cfg.generator.bind<Generator, &Generator::pixel>(this);
-			mesh->generateTexture(cfg);
+			{
+				OPTICK_EVENT("generate textures");
+				PolyhedronTextureGenerationConfig cfg;
+				cfg.width = width;
+				cfg.height = height;
+				cfg.generator.bind<Generator, &Generator::pixel>(this);
+				mesh->generateTexture(cfg);
+			}
 
 			{
-				OPTICK_EVENT("inpainting");
+				OPTICK_EVENT("inpaint");
 				albedo->inpaint(7, true);
 				special->inpaint(7, true);
 				heightMap->inpaint(7, true);

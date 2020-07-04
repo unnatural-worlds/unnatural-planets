@@ -18,22 +18,8 @@ namespace
 		{
 			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "generating chunk " + index);
 			const auto &msh = split->meshes[index];
+			const uint32 resolution = meshUnwrap(msh);
 			saveRenderMesh(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + ".obj"), msh);
-			uint32 resolution = 0;
-			{
-				OPTICK_EVENT("unwrapping");
-				PolyhedronUnwrapConfig cfg;
-				cfg.maxChartIterations = 10;
-				cfg.maxChartBoundaryLength = 50;
-				cfg.chartRoundness = 0.3;
-#ifdef CAGE_DEBUG
-				cfg.texelsPerUnit = 1;
-#else
-				cfg.texelsPerUnit = 20;
-#endif // CAGE_DEBUG
-				cfg.padding = 6;
-				resolution = msh->unwrap(cfg);
-			}
 			Holder<Image> albedo, special, heightMap;
 			generateMaterials(msh, resolution, resolution, albedo, special, heightMap);
 			albedo->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-albedo.png"));
@@ -82,7 +68,7 @@ namespace
 	void exportConfiguration(const string &baseDirectory, const string &assetsDirectory, uint32 renderChunksCount)
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "exporting");
-		OPTICK_EVENT("exportTerrain");
+		OPTICK_EVENT();
 
 		{ // write unnatural-map
 			Holder<File> f = newFile(pathJoin(baseDirectory, "unnatural-map.ini"), FileMode(false, true));
@@ -170,23 +156,23 @@ void generateEntry()
 	const string baseDirectory = findBaseDirectory();
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "target directory: " + pathToAbs(baseDirectory));
-	Holder<Polyhedron> baseMesh = generateBaseMesh(250, 200);
-	baseMesh = meshDiscardDisconnected(baseMesh);
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "base mesh: average edge length: " + meshAverageEdgeLength(baseMesh));
-	Holder<Polyhedron> navMesh = meshSimplifyRegular(baseMesh);
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: vertices: " + navMesh->verticesCount() + ", triangles: " + (navMesh->indicesCount() / 3));
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: average edge length: " + meshAverageEdgeLength(navMesh));
-	std::vector<uint8> terrainTypes = generateTileProperties(navMesh);
-	saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), navMesh, terrainTypes);
-	Holder<Polyhedron> colliderMesh = meshSimplifyDynamic(navMesh);
-	navMesh.clear();
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "collider: vertices: " + colliderMesh->verticesCount() + ", triangles: " + (colliderMesh->indicesCount() / 3));
-	saveCollider(pathJoin(assetsDirectory, "collider.obj"), colliderMesh);
-	SplitResult split = meshSplit(colliderMesh);
-	colliderMesh.clear();
+	Holder<Polyhedron> mesh = generateBaseMesh(250, 200);
+	meshDiscardDisconnected(mesh);
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: average edge length: " + meshAverageEdgeLength(mesh));
+	meshSimplifyRegular(mesh);
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: vertices: " + mesh->verticesCount() + ", triangles: " + (mesh->indicesCount() / 3));
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: average edge length: " + meshAverageEdgeLength(mesh));
+	std::vector<uint8> terrainTypes = generateTileProperties(mesh);
+	saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), mesh, terrainTypes);
+	meshSimplifyDynamic(mesh);
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "collider: vertices: " + mesh->verticesCount() + ", triangles: " + (mesh->indicesCount() / 3));
+	saveCollider(pathJoin(assetsDirectory, "collider.obj"), mesh);
+	SplitResult split = meshSplit(mesh);
+	mesh.clear();
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "split into " + split.meshes.size() + " chunks");
 	exportConfiguration(baseDirectory, assetsDirectory, numeric_cast<uint32>(split.meshes.size()));
 	{
-		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "processing individual meshes");
+		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "processing individual chunks");
 		SubmeshProcessor submeshProcessor;
 		submeshProcessor.assetsDirectory = assetsDirectory;
 		submeshProcessor.split = &split;
