@@ -1,6 +1,8 @@
 #include "generator.h"
 #include "functions.h"
 
+#include <cage-core/logger.h>
+
 namespace
 {
 	void statistics(const string &name, uint32 current, uint32 maxc, uint32 total)
@@ -13,7 +15,7 @@ namespace
 
 	struct propertyCounters
 	{
-		uint32 counts[256];
+		uint32 counts[256] = {};
 		uint32 total = 0;
 		uint32 maxc = 0;
 		real a = 0;
@@ -22,10 +24,7 @@ namespace
 		uint8 maxIndex = 0;
 
 		propertyCounters(real a, real b) : a(a), b(b)
-		{
-			for (uint32 i = 0; i < 256; i++)
-				counts[i] = 0;
-		}
+		{}
 
 		void insert(real value)
 		{
@@ -57,10 +56,15 @@ namespace
 	};
 }
 
-std::vector<uint8> generateTileProperties(const Holder<Polyhedron> &navMesh)
+std::vector<uint8> generateTileProperties(const Holder<Polyhedron> &navMesh, const string &statsLogPath)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating tile properties");
 	OPTICK_EVENT();
+
+	Holder<Logger> logger = newLogger();
+	Holder<LoggerOutputFile> loggerFile = newLoggerOutputFile(statsLogPath, false);
+	logger->format.bind<logFormatConsole>();
+	logger->output.bind<LoggerOutputFile, &LoggerOutputFile::output>(loggerFile.get());
 
 	const uint32 cnt = navMesh->verticesCount();
 	std::vector<uint8> terrainTypes;

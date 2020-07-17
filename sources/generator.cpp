@@ -158,11 +158,12 @@ void generateEntry()
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "target directory: " + pathToAbs(baseDirectory));
 	Holder<Polyhedron> mesh = generateBaseMesh(250, 200);
 	meshDiscardDisconnected(mesh);
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: vertices: " + mesh->verticesCount() + ", triangles: " + (mesh->indicesCount() / 3));
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: average edge length: " + meshAverageEdgeLength(mesh));
 	meshSimplifyRegular(mesh);
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: vertices: " + mesh->verticesCount() + ", triangles: " + (mesh->indicesCount() / 3));
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh: average edge length: " + meshAverageEdgeLength(mesh));
-	std::vector<uint8> terrainTypes = generateTileProperties(mesh);
+	std::vector<uint8> terrainTypes = generateTileProperties(mesh, pathJoin(baseDirectory, "stats.log"));
 	saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), mesh, terrainTypes);
 	meshSimplifyDynamic(mesh);
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "collider: vertices: " + mesh->verticesCount() + ", triangles: " + (mesh->indicesCount() / 3));

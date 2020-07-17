@@ -5,6 +5,7 @@
 #include <cage-core/color.h>
 #include <cage-core/random.h>
 #include <cage-core/geometry.h>
+#include <cage-core/ini.h>
 
 namespace
 {
@@ -13,8 +14,8 @@ namespace
 	uint32 noiseSeed()
 	{
 		static uint32 offset = 0;
-		offset += globalSeed % 123;
-		return globalSeed + offset;
+		offset++;
+		return hash(globalSeed + offset);
 	}
 
 	template <class T>
@@ -58,38 +59,63 @@ namespace
 	// densities
 	//-----------
 
-	real densityPlane(const vec3 &pos, const plane &pln = plane(vec3(), normalize(vec3(1))))
+	real densityPlane(const vec3 &pos, const plane &pln)
 	{
 		CAGE_ASSERT(pln.valid());
 		vec3 c = pln.normal * pln.d;
 		return -dot(pln.normal, pos - c);
 	}
 
-	real densitySphere(const vec3 &pos, real radius = 100)
+	real densityPlane(const vec3 &pos)
+	{
+		return densityPlane(pos, plane(vec3(), normalize(vec3(1))));
+	}
+
+	real densitySphere(const vec3 &pos, real radius)
 	{
 		return radius - length(pos);
 	}
 
-	real densityTorus(const vec3 &pos, real major = 75, real minor = 25)
+	real densitySphere(const vec3 &pos)
+	{
+		return densitySphere(pos, 100);
+	}
+
+	real densityTorus(const vec3 &pos, real major, real minor)
 	{
 		vec3 c = normalize(pos * vec3(1, 0, 1)) * major;
 		return minor - distance(pos, c);
 	}
 
-	real densityCylinder(const vec3 &pos, real r = 80, real h = 70, real rounding = 5)
+	real densityTorus(const vec3 &pos)
+	{
+		return densityTorus(pos, 75, 25);
+	}
+
+	real densityCylinder(const vec3 &pos, real r, real h, real rounding)
 	{
 		vec2 d = abs(vec2(length(vec2(pos[0], pos[2])), pos[1])) - vec2(r, h);
 		return -min(max(d[0], d[1]), 0) - length(max(d, 0)) + rounding;
 	}
 
-	real densityBox(const vec3 &pos, const vec3 &size = vec3(100, 50, 50), real rounding = 5)
+	real densityCylinder(const vec3 &pos)
+	{
+		return densityCylinder(pos, 80, 70, 5);
+	}
+
+	real densityBox(const vec3 &pos, const vec3 &size, real rounding)
 	{
 		vec3 p = abs(pos) - size;
 		real box = length(max(p, 0)) + min(max(p[0], max(p[1], p[2])), 0) - rounding;
 		return -box;
 	}
 
-	real densityTetrahedron(const vec3 &pos, real size = 100, real rounding = 5)
+	real densityBox(const vec3 &pos)
+	{
+		return densityBox(pos, vec3(100, 50, 50), 5);
+	}
+
+	real densityTetrahedron(const vec3 &pos, real size, real rounding)
 	{
 		const vec3 corners[4] = { vec3(1,1,1)*size, vec3(1,-1,-1)*size, vec3(-1,1,-1)*size, vec3(-1,-1,1)*size };
 		const triangle tris[4] = {
@@ -134,7 +160,12 @@ namespace
 		}
 	}
 
-	real densityOctahedron(const vec3 &pos, real size = 100, real rounding = 5)
+	real densityTetrahedron(const vec3 &pos)
+	{
+		return densityTetrahedron(pos, 100, 5);
+	}
+
+	real densityOctahedron(const vec3 &pos, real size, real rounding)
 	{
 		vec3 p = abs(pos);
 		real m = p[0] + p[1] + p[2] - size;
@@ -151,6 +182,11 @@ namespace
 		return -length(vec3(q[0], q[1] - size + k, q[2] - k)) + rounding;
 	}
 
+	real densityOctahedron(const vec3 &pos)
+	{
+		return densityOctahedron(pos, 100, 5);
+	}
+
 	real densityPretzel(const vec3 &pos)
 	{
 		vec3 c = normalize(pos * vec3(1, 0, 1));
@@ -162,7 +198,7 @@ namespace
 		return t - l;
 	}
 
-	real densityMobiusStrip(const vec3 &pos, real radius = 70, real majorAxis = 30, real minorAxis = 2, real rounding = 5)
+	real densityMobiusStrip(const vec3 &pos, real radius, real majorAxis, real minorAxis, real rounding)
 	{
 		const auto &sdAlignedRect = [](const vec2 &point, const vec2 &halfSizes) -> real
 		{
@@ -182,6 +218,11 @@ namespace
 		rads planeRotation = atan2(pos[0], pos[2]);
 		vec2 proj = vec2(dot(vec2(pos[0], pos[2]), normalize(vec2(pos[0], pos[2]))), pos[1]);
 		return -sdRotatedRect(proj + vec2(-radius, 0), vec2(majorAxis, minorAxis), planeRotation / 2) + rounding;
+	}
+
+	real densityMobiusStrip(const vec3 &pos)
+	{
+		return densityMobiusStrip(pos, 70, 30, 2, 5);
 	}
 
 	real densityMolecule(const vec3 &pos)
@@ -206,10 +247,8 @@ namespace
 		return -max(box, g * 0.7) / scale;
 	}
 
-	real baseShapeDensity(const vec3 &pos)
-	{
-		return densitySphere(pos);
-	}
+	typedef real (*BaseShapeDensity)(const vec3 &);
+	BaseShapeDensity baseShapeDensity = 0;
 
 	//--------
 	// biomes
@@ -417,8 +456,12 @@ namespace
 		return 30 + t * 5 - abs(elev) * 2.8;
 	}
 
+	bool useTerrainPoles = false;
+
 	void terrainPoles(const vec3 &pos, real &temp)
 	{
+		if (!useTerrainPoles)
+			return;
 		static const Holder<NoiseFunction> polarNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
@@ -685,6 +728,20 @@ namespace
 		special = saturate(special);
 		height = saturate(height);
 	}
+
+	void preseedTerrainFunctions()
+	{
+		functionDensity(vec3());
+		BiomeEnum biom;
+		TerrainTypeEnum terrainType;
+		real elev;
+		real temp;
+		real precp;
+		vec3 albedo;
+		vec2 special;
+		real height;
+		terrain(vec3(), vec3(0, 1, 0), biom, terrainType, elev, temp, precp, albedo, special, height);
+	}
 }
 
 stringizer &operator + (stringizer &str, const BiomeEnum &other)
@@ -725,7 +782,10 @@ stringizer &operator + (stringizer &str, const TerrainTypeEnum &other)
 
 real functionDensity(const vec3 &pos)
 {
-	return baseShapeDensity(pos) + max(terrainElevation(pos), 0);
+	CAGE_ASSERT(baseShapeDensity != nullptr);
+	real base = (*baseShapeDensity)(pos);
+	real elev = terrainElevation(pos);
+	return base + max(elev, 0);
 }
 
 void functionTileProperties(const vec3 &pos, const vec3 &normal, BiomeEnum &biome, TerrainTypeEnum &terrainType, real &elevation, real &temperature, real &precipitation)
@@ -745,3 +805,72 @@ void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &s
 	real precipitation;
 	terrain(pos, normal, biome, terrainType, elevation, temperature, precipitation, albedo, special, height);
 }
+
+void functionsConfigure(const Holder<Ini> &cmd)
+{
+	constexpr BaseShapeDensity baseShapeFunctions[] = {
+		&densityPlane,
+		&densitySphere,
+		&densityTorus,
+		&densityCylinder,
+		&densityBox,
+		&densityTetrahedron,
+		&densityOctahedron,
+		&densityPretzel,
+		&densityMobiusStrip,
+		&densityMolecule,
+	};
+
+	constexpr uint32 baseShapesCount = sizeof(baseShapeFunctions) / sizeof(baseShapeFunctions[0]);
+
+	constexpr const char *const baseShapeNames[] = {
+		"plane",
+		"sphere",
+		"torus",
+		"cylinder",
+		"box",
+		"tetrahedron",
+		"octahedron",
+		"pretzel",
+		"mobiusStrip",
+		"molecule",
+	};
+
+	static_assert(baseShapesCount == sizeof(baseShapeNames) / sizeof(baseShapeNames[0]), "number of functions and names must match");
+
+	{ // base shape
+		string name = cmd->cmdString('s', "shape", "random");
+		if (name == "random")
+		{
+			const uint32 i = randomRange(0u, baseShapesCount);
+			baseShapeDensity = baseShapeFunctions[i];
+			CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "randomly chosen base shape: '" + baseShapeNames[i] + "'");
+		}
+		else
+		{
+			for (uint32 i = 0; i < baseShapesCount; i++)
+			{
+				if (name == baseShapeNames[i])
+				{
+					baseShapeDensity = baseShapeFunctions[i];
+					CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using base shape: '" + baseShapeNames[i] + "'");
+				}
+			}
+		}
+		if (!baseShapeDensity)
+		{
+			CAGE_LOG(SeverityEnum::Note, "exception", stringizer() + "base shape: '" + name + "'");
+			CAGE_THROW_ERROR(Exception, "unknown base shape configuration");
+		}
+	}
+
+	{ // poles
+		useTerrainPoles = baseShapeDensity == (BaseShapeDensity)&densitySphere;
+		if (cmd->sectionExists("p") || cmd->sectionExists("poles"))
+			useTerrainPoles = cmd->cmdBool('p', "poles");
+		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using poles: " + useTerrainPoles);
+	}
+
+	preseedTerrainFunctions();
+}
+

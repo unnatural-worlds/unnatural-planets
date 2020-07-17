@@ -38,7 +38,7 @@ jobs:
       shell: bash
       run: |
         cd build/result/${{ matrix.build-config }}
-        ./unnatural-planets
+        ./unnatural-planets -s sphere
 
 
   Ubuntu:
@@ -106,5 +106,5 @@ jobs:
       shell: bash
       run: |
         cd build/result/${{ matrix.build-config }}
-        ./unnatural-planets
+        ./unnatural-planets -s sphere
 

@@ -44,11 +44,11 @@ namespace
 	}
 
 #ifdef CAGE_DEBUG
-	const uint32 iterations = 1;
-	const float targetScale = 3;
+	constexpr uint32 iterations = 1;
+	constexpr float targetScale = 3;
 #else
-	const uint32 iterations = 10;
-	const float targetScale = 1;
+	constexpr uint32 iterations = 10;
+	constexpr float targetScale = 1;
 #endif // CAGE_DEBUG
 }
 
