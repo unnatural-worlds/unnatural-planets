@@ -392,6 +392,8 @@ namespace
 	// terrain
 	//---------
 
+	bool useTerrainElevation = true;
+
 	real terrainElevation(const vec3 &pos)
 	{
 		static const Holder<NoiseFunction> scaleNoise = []() {
@@ -408,6 +410,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
+		if (!useTerrainElevation)
+			return 1;
 		real scale = scaleNoise->evaluate(pos * 0.005) * 0.005 + 0.015;
 		real a = elevNoise->evaluate(pos * scale);
 		a += 0.1; // slightly prefer terrain over ocean
@@ -460,8 +464,6 @@ namespace
 
 	void terrainPoles(const vec3 &pos, real &temp)
 	{
-		if (!useTerrainPoles)
-			return;
 		static const Holder<NoiseFunction> polarNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
@@ -469,6 +471,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
+		if (!useTerrainPoles)
+			return;
 		real polar = abs(atan(pos[1] / length(vec2(pos[0], pos[2]))).value) / real::Pi() * 2;
 		polar = pow(polar, 1.7);
 		polar += polarNoise->evaluate(pos * 0.07) * 0.1;
@@ -783,7 +787,7 @@ stringizer &operator + (stringizer &str, const TerrainTypeEnum &other)
 real functionDensity(const vec3 &pos)
 {
 	CAGE_ASSERT(baseShapeDensity != nullptr);
-	real base = (*baseShapeDensity)(pos);
+	real base = baseShapeDensity(pos);
 	real elev = terrainElevation(pos);
 	return base + max(elev, 0);
 }
@@ -865,10 +869,14 @@ void functionsConfigure(const Holder<Ini> &cmd)
 	}
 
 	{ // poles
-		useTerrainPoles = baseShapeDensity == (BaseShapeDensity)&densitySphere;
-		if (cmd->sectionExists("p") || cmd->sectionExists("poles"))
-			useTerrainPoles = cmd->cmdBool('p', "poles");
+		useTerrainPoles = baseShapeDensity == baseShapeFunctions[1];
+		useTerrainPoles = cmd->cmdBool('p', "poles", useTerrainPoles);
 		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using poles: " + useTerrainPoles);
+	}
+
+	{ // elevation
+		useTerrainElevation = cmd->cmdBool('e', "elevation", useTerrainElevation);
+		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using terrain elevation: " + useTerrainElevation);
 	}
 
 	preseedTerrainFunctions();

@@ -71,7 +71,6 @@ namespace
 
 void generateMaterials(const Holder<Polyhedron> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
 {
-	CAGE_LOG(SeverityEnum::Info, "generator", "generating material textures");
 	OPTICK_EVENT();
 
 	Generator gen(mesh, width, height, albedo, special, heightMap);

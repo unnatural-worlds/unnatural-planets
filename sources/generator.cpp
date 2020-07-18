@@ -6,6 +6,8 @@
 #include <cage-core/image.h>
 #include <cage-core/timer.h> // formatDateTime
 
+#include <atomic>
+
 namespace
 {
 	struct SubmeshProcessor
@@ -13,10 +15,10 @@ namespace
 		Holder<ThreadPool> thrPool;
 		const SplitResult *split = nullptr;
 		string assetsDirectory;
+		std::atomic<uint32> completedChunks{ 0 };
 
 		void processOne(uint32 index)
 		{
-			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "generating chunk " + index);
 			const auto &msh = split->meshes[index];
 			const uint32 resolution = meshUnwrap(msh);
 			saveRenderMesh(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + ".obj"), msh);
@@ -25,6 +27,10 @@ namespace
 			albedo->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-albedo.png"));
 			special->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-special.png"));
 			heightMap->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-height.png"));
+			{
+				uint32 completed = ++completedChunks;
+				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "completed: " + ( 100.0 * completed / split->meshes.size() ) + " %");
+			}
 		}
 
 		void processEntry(uint32 threadIndex, uint32 threadsCount)
@@ -157,7 +163,6 @@ void generateEntry()
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "target directory: " + pathToAbs(baseDirectory));
 	Holder<Polyhedron> mesh = generateBaseMesh(250, 200);
-	meshDiscardDisconnected(mesh);
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: vertices: " + mesh->verticesCount() + ", triangles: " + (mesh->indicesCount() / 3));
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: average edge length: " + meshAverageEdgeLength(mesh));
 	meshSimplifyRegular(mesh);

@@ -16,7 +16,16 @@ Holder<Polyhedron> generateBaseMesh(real size, uint32 resolution)
 	cfg.resolutionX = cfg.resolutionY = cfg.resolutionZ = resolution;
 	Holder<MarchingCubes> cubes = newMarchingCubes(cfg);
 	cubes->updateByPosition(Delegate<real(const vec3 &)>().bind<&functionDensity>());
-	return cubes->makePolyhedron();
+	Holder<Polyhedron> poly = cubes->makePolyhedron();
+	{
+		OPTICK_EVENT("discardInvalid");
+		poly->discardInvalid(); // todo fix polyhedron clipping and remove this
+	}
+	{
+		OPTICK_EVENT("discardDisconnected");
+		poly->discardDisconnected();
+	}
+	return poly;
 }
 
 

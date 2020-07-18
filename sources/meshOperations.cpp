@@ -82,13 +82,6 @@ void meshSimplifyDynamic(Holder<Polyhedron> &mesh)
 		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified mesh has more triangles than the original");
 }
 
-void meshDiscardDisconnected(Holder<Polyhedron> &mesh)
-{
-	CAGE_LOG(SeverityEnum::Info, "generator", "detecting disconnected parts");
-	OPTICK_EVENT();
-	mesh->discardDisconnected();
-}
-
 SplitResult meshSplit(const Holder<Polyhedron> &mesh)
 {
 	OPTICK_EVENT();
