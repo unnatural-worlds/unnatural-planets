@@ -15,6 +15,7 @@ int main(int argc, const char *args[])
 			Holder<Ini> cmd = newIni();
 			cmd->parseCmd(argc, args);
 			functionsConfigure(cmd);
+			meshConfigure(cmd);
 			cmd->checkUnused();
 		}
 		generateEntry();

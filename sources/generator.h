@@ -10,5 +10,6 @@ void generateMaterials(const Holder<Polyhedron> &renderMesh, uint32 width, uint3
 void generateEntry();
 
 void functionsConfigure(const Holder<Ini> &cmd);
+void meshConfigure(const Holder<Ini> &cmd);
 
 #endif

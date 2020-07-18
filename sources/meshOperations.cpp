@@ -1,4 +1,7 @@
 #include <cage-core/geometry.h>
+#include <cage-core/ini.h>
+
+#include <unnatural-navmesh/navmesh.h>
 
 #include "mesh.h"
 
@@ -50,22 +53,32 @@ namespace
 	constexpr uint32 iterations = 10;
 	constexpr float targetScale = 1;
 #endif // CAGE_DEBUG
+
+	bool navmeshOptimize = true;
 }
 
-void meshSimplifyRegular(Holder<Polyhedron> &mesh)
+void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)
 {
-	CAGE_LOG(SeverityEnum::Info, "generator", "regularizing mesh");
+	CAGE_LOG(SeverityEnum::Info, "generator", "regularizing navigation mesh");
 	OPTICK_EVENT();
 
-	PolyhedronRegularizationConfig cfg;
-	cfg.iterations = iterations;
-	cfg.targetEdgeLength = targetScale;
-	mesh->regularize(cfg);
+	PolyhedronRegularizationConfig reg;
+	reg.iterations = iterations;
+	reg.targetEdgeLength = targetScale;
+	if (navmeshOptimize)
+	{
+		unnatural::NavmeshOptimizationConfig cfg;
+		cfg.regularization = reg;
+		// todo other configuration
+		mesh = unnatural::navmeshOptimize(templates::move(mesh), cfg);
+	}
+	else
+		mesh->regularize(reg);
 }
 
-void meshSimplifyDynamic(Holder<Polyhedron> &mesh)
+void meshSimplifyCollider(Holder<Polyhedron> &mesh)
 {
-	CAGE_LOG(SeverityEnum::Info, "generator", "simplifying mesh");
+	CAGE_LOG(SeverityEnum::Info, "generator", "simplifying collider mesh");
 	OPTICK_EVENT();
 
 	PolyhedronSimplificationConfig cfg;
@@ -79,7 +92,26 @@ void meshSimplifyDynamic(Holder<Polyhedron> &mesh)
 	if (m->indicesCount() < mesh->indicesCount())
 		mesh = templates::move(m);
 	else
-		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified mesh has more triangles than the original");
+		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified collider mesh has more triangles than the original");
+}
+
+void meshSimplifyRender(Holder<Polyhedron> &mesh)
+{
+	CAGE_LOG(SeverityEnum::Info, "generator", "simplifying render mesh");
+	OPTICK_EVENT();
+
+	PolyhedronSimplificationConfig cfg;
+	cfg.iterations = iterations;
+	cfg.minEdgeLength = 0.5 * targetScale;
+	cfg.maxEdgeLength = 10 * targetScale;
+	cfg.approximateError = 0.03 * targetScale;
+	Holder<Polyhedron> m = mesh->copy();
+	m->simplify(cfg);
+
+	if (m->indicesCount() < mesh->indicesCount())
+		mesh = templates::move(m);
+	else
+		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified render mesh has more triangles than the original");
 }
 
 SplitResult meshSplit(const Holder<Polyhedron> &mesh)
@@ -140,18 +172,10 @@ uint32 meshUnwrap(const Holder<Polyhedron> &mesh)
 	return mesh->unwrap(cfg);
 }
 
-real meshAverageEdgeLength(const Holder<Polyhedron> &mesh)
+void meshConfigure(const Holder<Ini> &cmd)
 {
-	real len = 0;
-	const uint32 trisCnt = mesh->indicesCount() / 3;
-	for (uint32 tri = 0; tri < trisCnt; tri++)
-	{
-		vec3 a = mesh->position(mesh->index(tri * 3 + 0));
-		vec3 b = mesh->position(mesh->index(tri * 3 + 1));
-		vec3 c = mesh->position(mesh->index(tri * 3 + 2));
-		len += distance(a, b);
-		len += distance(b, c);
-		len += distance(c, a);
+	{ // optimizations
+		navmeshOptimize = cmd->cmdBool('o', "optimize", navmeshOptimize);
+		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "navmesh optimizations: " + navmeshOptimize);
 	}
-	return len / mesh->indicesCount();
 }

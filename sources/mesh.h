@@ -12,15 +12,14 @@ struct SplitResult
 };
 
 SplitResult meshSplit(const Holder<Polyhedron> &mesh);
-void meshSimplifyRegular(Holder<Polyhedron> &mesh);
-void meshSimplifyDynamic(Holder<Polyhedron> &mesh);
+void meshSimplifyNavmesh(Holder<Polyhedron> &mesh);
+void meshSimplifyCollider(Holder<Polyhedron> &mesh);
+void meshSimplifyRender(Holder<Polyhedron> &mesh);
 uint32 meshUnwrap(const Holder<Polyhedron> &mesh);
 
 void saveDebugMesh(const string &path, const Holder<Polyhedron> &mesh);
 void saveRenderMesh(const string &path, const Holder<Polyhedron> &mesh);
 void saveNavigationMesh(const string &path, const Holder<Polyhedron> &mesh, const std::vector<uint8> &terrainTypes);
 void saveCollider(const string &path, const Holder<Polyhedron> &mesh);
-
-real meshAverageEdgeLength(const Holder<Polyhedron> &mesh);
 
 #endif

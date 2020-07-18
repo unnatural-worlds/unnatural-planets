@@ -1,3 +1,6 @@
 [submodule "externals/cage"]
 	path = externals/cage
 	url = https://github.com/ucpu/cage.git
+[submodule "externals/libnavmesh"]
+	path = externals/libnavmesh
+	url = https://github.com/unnatural-worlds/libnavmesh.git
