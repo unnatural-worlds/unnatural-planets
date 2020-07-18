@@ -193,7 +193,7 @@ namespace
 		void poolProcess()
 		{
 			Holder<ThreadPool> thrPool;
-			thrPool = newThreadPool("process_");
+			thrPool = newThreadPool("chunks_");
 			thrPool->function.bind<RenderProcessor, &RenderProcessor::poolEntry>(this);
 			thrPool->run();
 		}

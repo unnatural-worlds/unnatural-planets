@@ -49,12 +49,12 @@ namespace
 #ifdef CAGE_DEBUG
 	constexpr uint32 iterations = 1;
 	constexpr float targetScale = 3;
+	bool navmeshOptimize = false;
 #else
 	constexpr uint32 iterations = 10;
 	constexpr float targetScale = 1;
-#endif // CAGE_DEBUG
-
 	bool navmeshOptimize = true;
+#endif // CAGE_DEBUG
 }
 
 void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)
@@ -62,18 +62,22 @@ void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)
 	CAGE_LOG(SeverityEnum::Info, "generator", "regularizing navigation mesh");
 	OPTICK_EVENT();
 
-	PolyhedronRegularizationConfig reg;
-	reg.iterations = iterations;
-	reg.targetEdgeLength = targetScale;
 	if (navmeshOptimize)
 	{
 		unnatural::NavmeshOptimizationConfig cfg;
-		cfg.regularization = reg;
-		// todo other configuration
+#ifdef CAGE_DEBUG
+		cfg.iterations = 1;
+#endif
+		cfg.targetScale = targetScale;
 		mesh = unnatural::navmeshOptimize(templates::move(mesh), cfg);
 	}
 	else
-		mesh->regularize(reg);
+	{
+		PolyhedronRegularizationConfig cfg;
+		cfg.iterations = iterations;
+		cfg.targetEdgeLength = targetScale;
+		mesh->regularize(cfg);
+	}
 }
 
 void meshSimplifyCollider(Holder<Polyhedron> &mesh)
