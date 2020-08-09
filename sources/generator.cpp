@@ -9,11 +9,12 @@
 
 #include <atomic>
 
+extern const char *baseShapeName;
 string generateName();
 
 namespace
 {
-	string findBaseDirectory()
+	string findOutputDirectory()
 	{
 		string root;
 		try
@@ -35,7 +36,12 @@ namespace
 		}
 	}
 
-	const string baseDirectory = findBaseDirectory();
+	string findTmpDirectory()
+	{
+		return pathToAbs(pathJoin("tmp", stringizer() + processId()));
+	}
+
+	const string baseDirectory = findTmpDirectory();
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
 	Holder<const Polyhedron> baseMesh;
 
@@ -50,15 +56,19 @@ namespace
 			f->writeLine(stringizer() + "name = " + generateName());
 			f->writeLine("version = 0");
 			f->writeLine("[description]");
-			f->writeLine(stringizer() + "Seed1: " + detail::getApplicationRandomGenerator().s[0]);
-			f->writeLine(stringizer() + "Seed2: " + detail::getApplicationRandomGenerator().s[1]);
+			f->writeLine(baseShapeName);
+			//f->writeLine(stringizer() + "seed1: " + detail::getApplicationRandomGenerator().s[0]);
+			//f->writeLine(stringizer() + "seed2: " + detail::getApplicationRandomGenerator().s[1]);
 			{
 				uint32 y, M, d, h, m, s;
 				detail::getSystemDateTime(y, M, d, h, m, s);
-				f->writeLine(stringizer() + "Date: " + detail::formatDateTime(y, M, d, h, m, s));
+				f->writeLine(stringizer() + "date: " + detail::formatDateTime(y, M, d, h, m, s));
 			}
+#ifdef CAGE_DEBUG
+			f->writeLine("debug build");
+#endif // CAGE_DEBUG
 			f->writeLine("[authors]");
-			f->writeLine("unnatural-planets procedural generator");
+			f->writeLine("unnatural-planets procedural generator https://github.com/unnatural-worlds/unnatural-planets");
 			f->writeLine("[assets]");
 			f->writeLine("pack = planet.pack");
 			f->writeLine("navigation = navmesh.obj");
@@ -220,7 +230,7 @@ namespace
 
 void generateEntry()
 {
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "target directory: " + pathToAbs(baseDirectory));
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "tmp directory: " + baseDirectory);
 	baseMesh = generateBaseMesh(250, 200).cast<const Polyhedron>();
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: vertices: " + baseMesh->verticesCount() + ", triangles: " + (baseMesh->indicesCount() / 3));
 	
@@ -228,6 +238,14 @@ void generateEntry()
 		NavmeshProcessor nav;
 		ColliderProcessor col;
 		RenderProcessor ren;
+	}
+
+	CAGE_LOG(SeverityEnum::Info, "generator", "generated");
+
+	{
+		const string outPath = findOutputDirectory();
+		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "output directory: " + outPath);
+		pathMove(baseDirectory, outPath);
 	}
 
 	CAGE_LOG(SeverityEnum::Info, "generator", "all done");

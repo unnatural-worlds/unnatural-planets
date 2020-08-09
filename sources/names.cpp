@@ -27,20 +27,19 @@ namespace
 
 string generateName()
 {
-	stringizer tmp;
-	if (randomChance() < 0.5)
-		tmp + PICK(Prefixes);
-	if (randomChance() < 0.5)
-		tmp + PICK(Stems);
+	stringizer name;
+	if (randomChance() < 0.6)
+		name + PICK(Prefixes);
+	if (randomChance() < 0.6)
+		name + PICK(Stems);
 	if (randomChance() < 0.1)
-		tmp + PICK(Stems);
-	if (randomChance() < 0.5)
-		tmp + PICK(Suffixes);
-	if (randomChance() < 0.5)
-		tmp + PICK(Appendixes);
-	string name = tmp;
-	if (name.empty())
+		name + PICK(Stems);
+	if (randomChance() < 0.6)
+		name + PICK(Suffixes);
+	if (string(name).empty())
 		return generateName();
+	if (randomChance() < 0.4)
+		name + PICK(Appendixes);
 	CAGE_LOG(SeverityEnum::Info, "unnatural-planets", stringizer() + "generated name: '" + name + "'");
 	return name;
 }

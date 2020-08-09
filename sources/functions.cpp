@@ -7,6 +7,8 @@
 #include <cage-core/geometry.h>
 #include <cage-core/ini.h>
 
+const char *baseShapeName;
+
 namespace
 {
 	const uint32 globalSeed = (uint32)detail::getApplicationRandomGenerator().next();
@@ -848,7 +850,8 @@ void functionsConfigure(const Holder<Ini> &cmd)
 		{
 			const uint32 i = randomRange(0u, baseShapesCount);
 			baseShapeDensity = baseShapeFunctions[i];
-			CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "randomly chosen base shape: '" + baseShapeNames[i] + "'");
+			baseShapeName = baseShapeNames[i];
+			CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "randomly chosen base shape: '" + baseShapeName + "'");
 		}
 		else
 		{
@@ -857,9 +860,10 @@ void functionsConfigure(const Holder<Ini> &cmd)
 				if (name == baseShapeNames[i])
 				{
 					baseShapeDensity = baseShapeFunctions[i];
-					CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using base shape: '" + baseShapeNames[i] + "'");
+					baseShapeName = baseShapeNames[i];
 				}
 			}
+			CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using base shape: '" + baseShapeName + "'");
 		}
 		if (!baseShapeDensity)
 		{
