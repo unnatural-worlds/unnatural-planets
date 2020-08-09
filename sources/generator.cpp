@@ -9,6 +9,8 @@
 
 #include <atomic>
 
+string generateName();
+
 namespace
 {
 	string findBaseDirectory()
@@ -45,9 +47,8 @@ namespace
 		{ // write unnatural-map
 			Holder<File> f = newFile(pathJoin(baseDirectory, "unnatural-map.ini"), FileMode(false, true));
 			f->writeLine("[map]");
-			f->writeLine("name = Unnatural Planet");
+			f->writeLine(stringizer() + "name = " + generateName());
 			f->writeLine("version = 0");
-			f->writeLine("base = true");
 			f->writeLine("[description]");
 			f->writeLine(stringizer() + "Seed1: " + detail::getApplicationRandomGenerator().s[0]);
 			f->writeLine(stringizer() + "Seed2: " + detail::getApplicationRandomGenerator().s[1]);
@@ -62,6 +63,8 @@ namespace
 			f->writeLine("pack = planet.pack");
 			f->writeLine("navigation = navmesh.obj");
 			f->writeLine("collider = collider.obj");
+			f->writeLine("[packages]");
+			f->writeLine("unnatural/base/base.pack");
 		}
 
 		{ // write scene file

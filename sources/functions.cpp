@@ -235,9 +235,9 @@ namespace
 			return abs(dot(a, b) + bias) / scale - thickness;
 		};
 
-		static const real scale = 0.02;
-		real box = -densityBox(pos * scale, vec3(1.5), 0.05);
+		constexpr real scale = 0.02;
 		static const vec3 offset = randomRange3(-1000, 1000);
+		real box = -densityBox(pos * scale, vec3(1.5), 0.05);
 		const vec3 p = (pos + offset) * scale;
 		real g1 = sdGyroid(p, 3.23, 0.03, 1.4);
 		real g2 = sdGyroid(p, 5.78, 0.05, 0.3);
@@ -306,8 +306,8 @@ namespace
 		};
 	}
 
-	static const vec3 deepWaterColor = vec3(54, 54, 97) / 255;
-	static const vec3 shallowWaterColor = vec3(26, 102, 125) / 255;
+	constexpr vec3 deepWaterColor = vec3(54, 54, 97) / 255;
+	constexpr vec3 shallowWaterColor = vec3(26, 102, 125) / 255;
 
 	real biomeRoughness(BiomeEnum b)
 	{
