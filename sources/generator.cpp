@@ -45,6 +45,7 @@ namespace
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
 	Holder<Polyhedron> baseMesh;
 	Holder<Polyhedron> navMesh;
+	std::vector<string> assetPackages;
 	uint32 renderChunksCount;
 
 	void exportConfiguration()
@@ -77,6 +78,8 @@ namespace
 			f->writeLine("collider = collider.obj");
 			f->writeLine("[packages]");
 			f->writeLine("unnatural/base/base.pack");
+			for (const string &s : assetPackages)
+				f->writeLine(s);
 			f->close();
 		}
 
@@ -247,7 +250,7 @@ namespace
 			generateTileProperties(navMesh, tileTypes, tileBiomes, tileElevations, tileTemperatures, tilePrecipitations, pathJoin(baseDirectory, "stats.log"));
 			static_assert(sizeof(TerrainTypeEnum) == sizeof(uint8), "invalid reinterpret cast");
 			saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), navMesh, (std::vector<uint8>&)tileTypes);
-			generateDoodads(navMesh, tileTypes, tileBiomes, tileElevations, tileTemperatures, tilePrecipitations, pathJoin(baseDirectory, "doodads.ini"));
+			generateDoodads(navMesh, tileTypes, tileBiomes, tileElevations, tileTemperatures, tilePrecipitations, assetPackages, pathJoin(baseDirectory, "doodads.ini"));
 		}
 
 		TilesProcessor()

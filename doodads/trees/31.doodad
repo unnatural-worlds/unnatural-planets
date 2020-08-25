@@ -1,0 +1,3 @@
+[doodad]
+package = unnatural/package/trees/trees.pack
+prototype = unnatural/package/trees/31/tree_31.proto

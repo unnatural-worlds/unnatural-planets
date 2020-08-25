@@ -12,8 +12,8 @@ using namespace cage;
 enum class BiomeEnum : uint8
 {
 	// inspired by Whittaker diagram
-	// temperature // precipitation // coverage //
-	//    (°C)     //     (cm)      //   (%)    //
+	//                        // temperature // precipitation // coverage //
+	//                        //    (°C)     //     (cm)      //   (%)    //
 	Bare,                     // -15 .. -5   //    0 ..  10   //          //
 	Tundra,                   // -15 .. -5   //   10 ..  30   //    11    //
 	Taiga,                    //  -5 ..  5   //   30 .. 150   //    17    // (BorealForest)
@@ -53,7 +53,7 @@ void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &s
 Holder<Polyhedron> generateBaseMesh(real size, uint32 resolution);
 void generateTileProperties(const Holder<Polyhedron> &navMesh, std::vector<TerrainTypeEnum> &tileTypes, std::vector<BiomeEnum> &tileBiomes, std::vector<real> &tileElevations, std::vector<real> &tileTemperatures, std::vector<real> &tilePrecipitations, const string &statsLogPath);
 void generateMaterials(const Holder<Polyhedron> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap);
-void generateDoodads(const Holder<Polyhedron> &navMesh, const std::vector<TerrainTypeEnum> &tileTypes, const std::vector<BiomeEnum> &tileBiomes, const std::vector<real> &tileElevations, const std::vector<real> &tileTemperatures, const std::vector<real> &tilePrecipitations, const string &doodadsPath);
+void generateDoodads(const Holder<Polyhedron> &navMesh, const std::vector<TerrainTypeEnum> &tileTypes, const std::vector<BiomeEnum> &tileBiomes, const std::vector<real> &tileElevations, const std::vector<real> &tileTemperatures, const std::vector<real> &tilePrecipitations, std::vector<string> &assetPackages, const string &doodadsPath);
 
 std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh);
 void meshSimplifyNavmesh(Holder<Polyhedron> &mesh);
