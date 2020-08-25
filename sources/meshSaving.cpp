@@ -1,6 +1,6 @@
 #include <cage-core/files.h>
 
-#include "mesh.h"
+#include "generator.h"
 
 void saveDebugMesh(const string &path, const Holder<Polyhedron> &mesh)
 {

@@ -1,7 +1,6 @@
-#include "generator.h"
-#include "functions.h"
-
 #include <cage-core/logger.h>
+
+#include "generator.h"
 
 namespace
 {
@@ -13,7 +12,7 @@ namespace
 		CAGE_LOG_CONTINUE(SeverityEnum::Info, "tileStats", stringizer() + name.fill(28) + c.reverse().fill(6).reverse() + " ~ " + r.reverse().fill(9).reverse() + " % " + g);
 	}
 
-	struct propertyCounters
+	struct PropertyCounters
 	{
 		uint32 counts[256] = {};
 		uint32 total = 0;
@@ -23,7 +22,7 @@ namespace
 		uint8 minIndex = m;
 		uint8 maxIndex = 0;
 
-		propertyCounters(real a, real b) : a(a), b(b)
+		PropertyCounters(real a, real b) : a(a), b(b)
 		{}
 
 		void insert(real value)
@@ -56,7 +55,7 @@ namespace
 	};
 }
 
-std::vector<uint8> generateTileProperties(const Holder<Polyhedron> &navMesh, const string &statsLogPath)
+void generateTileProperties(const Holder<Polyhedron> &navMesh, std::vector<TerrainTypeEnum> &tileTypes, std::vector<BiomeEnum> &tileBiomes, std::vector<real> &tileElevations, std::vector<real> &tileTemperatures, std::vector<real> &tilePrecipitations, const string &statsLogPath)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating tile properties");
 	OPTICK_EVENT();
@@ -67,14 +66,17 @@ std::vector<uint8> generateTileProperties(const Holder<Polyhedron> &navMesh, con
 	logger->output.bind<LoggerOutputFile, &LoggerOutputFile::output>(loggerFile.get());
 
 	const uint32 cnt = navMesh->verticesCount();
-	std::vector<uint8> terrainTypes;
-	terrainTypes.reserve(cnt);
+	tileTypes.reserve(cnt);
+	tileBiomes.reserve(cnt);
+	tileElevations.reserve(cnt);
+	tileTemperatures.reserve(cnt);
+	tilePrecipitations.reserve(cnt);
 
-	propertyCounters elevations(-50, 150);
-	propertyCounters temperatures(-200, 200);
-	propertyCounters precipitations(0, 2000);
-	propertyCounters biomesCounts(0, 255);
-	propertyCounters typesCounts(0, 255);
+	PropertyCounters elevations(-50, 150);
+	PropertyCounters temperatures(-200, 200);
+	PropertyCounters precipitations(0, 2000);
+	PropertyCounters biomesCounts(0, 255);
+	PropertyCounters typesCounts(0, 255);
 
 	for (uint32 i = 0; i < cnt; i++)
 	{
@@ -82,7 +84,11 @@ std::vector<uint8> generateTileProperties(const Holder<Polyhedron> &navMesh, con
 		BiomeEnum b;
 		TerrainTypeEnum tt;
 		functionTileProperties(navMesh->position(i), navMesh->normal(i), b, tt, e, t, p);
-		terrainTypes.push_back((uint8)tt);
+		tileTypes.push_back(tt);
+		tileBiomes.push_back(b);
+		tileElevations.push_back(e);
+		tileTemperatures.push_back(t);
+		tilePrecipitations.push_back(p);
 		elevations.insert(e);
 		temperatures.insert(t);
 		precipitations.insert(p);
@@ -114,8 +120,6 @@ std::vector<uint8> generateTileProperties(const Holder<Polyhedron> &navMesh, con
 		statistics(stringizer() + t, typesCounts.counts[i], typesCounts.maxc, typesCounts.total);
 	}
 	CAGE_LOG(SeverityEnum::Info, "tileStats", "");
-
-	return terrainTypes;
 }
 
 

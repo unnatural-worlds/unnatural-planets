@@ -1,7 +1,6 @@
 #include <cage-core/image.h>
 
 #include "generator.h"
-#include "functions.h"
 
 namespace
 {

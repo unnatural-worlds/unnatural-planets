@@ -1,7 +1,7 @@
-#include "generator.h"
-
 #include <cage-core/logger.h>
 #include <cage-core/ini.h>
+
+#include "generator.h"
 
 int main(int argc, const char *args[])
 {

@@ -1,11 +1,10 @@
-#include "generator.h"
-#include "functions.h"
-
 #include <cage-core/noiseFunction.h>
 #include <cage-core/color.h>
 #include <cage-core/random.h>
 #include <cage-core/geometry.h>
 #include <cage-core/ini.h>
+
+#include "generator.h"
 
 const char *baseShapeName;
 

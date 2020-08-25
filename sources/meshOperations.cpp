@@ -1,9 +1,8 @@
 #include <cage-core/geometry.h>
 #include <cage-core/ini.h>
-
 #include <unnatural-navmesh/navmesh.h>
 
-#include "mesh.h"
+#include "generator.h"
 
 #include <initializer_list>
 
@@ -118,12 +117,12 @@ void meshSimplifyRender(Holder<Polyhedron> &mesh)
 		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified render mesh has more triangles than the original");
 }
 
-SplitResult meshSplit(const Holder<Polyhedron> &mesh)
+std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 {
 	OPTICK_EVENT();
 	const real myArea = meshSurfaceArea(mesh.get());
 	OPTICK_TAG("area", myArea.value);
-	SplitResult result;
+	std::vector<Holder<Polyhedron>> result;
 	if (myArea > 2500)
 	{
 		const aabb myBox = mesh->boundingBox();
@@ -148,14 +147,14 @@ SplitResult meshSplit(const Holder<Polyhedron> &mesh)
 		m1->clip(clippingBox(myBox, a, split));
 		m2->clip(clippingBox(myBox, a, split, true));
 		result = meshSplit(m1);
-		SplitResult r2 = meshSplit(m2);
-		for (auto &it : r2.meshes)
-			result.meshes.push_back(templates::move(it));
+		std::vector<Holder<Polyhedron>> r2 = meshSplit(m2);
+		for (auto &it : r2)
+			result.push_back(templates::move(it));
 	}
 	else
 	{
 		// no more splitting is required
-		result.meshes.push_back(mesh->copy());
+		result.push_back(mesh->copy());
 	}
 	return result;
 }

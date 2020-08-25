@@ -1,11 +1,11 @@
-#include "generator.h"
-
 #include <cage-core/threadPool.h>
 #include <cage-core/concurrent.h>
 #include <cage-core/files.h>
 #include <cage-core/random.h>
 #include <cage-core/image.h>
 #include <cage-core/timer.h> // formatDateTime
+
+#include "generator.h"
 
 #include <atomic>
 
@@ -43,9 +43,11 @@ namespace
 
 	const string baseDirectory = findTmpDirectory();
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
-	Holder<const Polyhedron> baseMesh;
+	Holder<Polyhedron> baseMesh;
+	Holder<Polyhedron> navMesh;
+	uint32 renderChunksCount;
 
-	void exportConfiguration(uint32 renderChunksCount)
+	void exportConfiguration()
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "exporting");
 		OPTICK_EVENT();
@@ -75,12 +77,14 @@ namespace
 			f->writeLine("collider = collider.obj");
 			f->writeLine("[packages]");
 			f->writeLine("unnatural/base/base.pack");
+			f->close();
 		}
 
 		{ // write scene file
 			Holder<File> f = newFile(pathJoin(baseDirectory, "scene.ini"), FileMode(false, true));
 			f->writeLine("[]");
 			f->writeLine("object = planet.object");
+			f->close();
 		}
 
 		{ // object file
@@ -88,12 +92,14 @@ namespace
 			f->writeLine("[]");
 			for (uint32 i = 0; i < renderChunksCount; i++)
 				f->writeLine(stringizer() + "chunk-" + i + ".obj");
+			f->close();
 		}
 
 		{ // pack file
 			Holder<File> f = newFile(pathJoin(assetsDirectory, "planet.pack"), FileMode(false, true));
 			f->writeLine("[]");
 			f->writeLine("planet.object");
+			f->close();
 		}
 
 		{ // generate asset configuration
@@ -132,6 +138,7 @@ namespace
 			f->writeLine("[]");
 			f->writeLine("scheme = pack");
 			f->writeLine("planet.pack");
+			f->close();
 		}
 	}
 
@@ -144,8 +151,7 @@ namespace
 			Holder<Polyhedron> mesh = baseMesh->copy();
 			meshSimplifyNavmesh(mesh);
 			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh tiles: " + mesh->verticesCount());
-			std::vector<uint8> terrainTypes = generateTileProperties(mesh, pathJoin(baseDirectory, "stats.log"));
-			saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), mesh, terrainTypes);
+			navMesh = templates::move(mesh);
 		}
 
 		NavmeshProcessor()
@@ -176,12 +182,12 @@ namespace
 	{
 		Holder<Thread> thr;
 
-		SplitResult split;
+		std::vector<Holder<Polyhedron>> split;
 		std::atomic<uint32> completedChunks{ 0 };
 
 		void processOneChunk(uint32 index)
 		{
-			const auto &msh = split.meshes[index];
+			const auto &msh = split[index];
 			const uint32 resolution = meshUnwrap(msh);
 			saveRenderMesh(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + ".obj"), msh);
 			Holder<Image> albedo, special, heightMap;
@@ -191,14 +197,14 @@ namespace
 			heightMap->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-height.png"));
 			{
 				uint32 completed = ++completedChunks;
-				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "render chunks: " + (100.0 * completed / split.meshes.size()) + " %");
+				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "render chunks: " + (100.0 * completed / split.size()) + " %");
 			}
 		}
 
 		void poolEntry(uint32 threadIndex, uint32 threadsCount)
 		{
 			uint32 b, e;
-			threadPoolTasksSplit(threadIndex, threadsCount, numeric_cast<uint32>(split.meshes.size()), b, e);
+			threadPoolTasksSplit(threadIndex, threadsCount, numeric_cast<uint32>(split.size()), b, e);
 			for (uint32 i = b; i < e; i++)
 				processOneChunk(i);
 		}
@@ -216,8 +222,8 @@ namespace
 			Holder<Polyhedron> mesh = baseMesh->copy();
 			meshSimplifyRender(mesh);
 			split = meshSplit(mesh);
-			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "render mesh separated into " + split.meshes.size() + " chunks");
-			exportConfiguration(numeric_cast<uint32>(split.meshes.size()));
+			renderChunksCount = numeric_cast<uint32>(split.size());
+			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "render mesh split into " + renderChunksCount + " chunks");
 			poolProcess();
 		}
 
@@ -226,19 +232,47 @@ namespace
 			thr = newThread(Delegate<void()>().bind<RenderProcessor, &RenderProcessor::processEntry>(this), "render");
 		}
 	};
+
+	struct TilesProcessor
+	{
+		Holder<Thread> thr;
+
+		void processEntry()
+		{
+			std::vector<TerrainTypeEnum> tileTypes;
+			std::vector<BiomeEnum> tileBiomes;
+			std::vector<real> tileElevations;
+			std::vector<real> tileTemperatures;
+			std::vector<real> tilePrecipitations;
+			generateTileProperties(navMesh, tileTypes, tileBiomes, tileElevations, tileTemperatures, tilePrecipitations, pathJoin(baseDirectory, "stats.log"));
+			static_assert(sizeof(TerrainTypeEnum) == sizeof(uint8), "invalid reinterpret cast");
+			saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), navMesh, (std::vector<uint8>&)tileTypes);
+			generateDoodads(navMesh, tileTypes, tileBiomes, tileElevations, tileTemperatures, tilePrecipitations, pathJoin(baseDirectory, "doodads.ini"));
+		}
+
+		TilesProcessor()
+		{
+			thr = newThread(Delegate<void()>().bind<TilesProcessor, &TilesProcessor::processEntry>(this), "tiles");
+		}
+	};
 }
 
 void generateEntry()
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "tmp directory: " + baseDirectory);
-	baseMesh = generateBaseMesh(250, 200).cast<const Polyhedron>();
+	baseMesh = generateBaseMesh(250, 200);
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: vertices: " + baseMesh->verticesCount() + ", triangles: " + (baseMesh->indicesCount() / 3));
 	
 	{
-		NavmeshProcessor nav;
-		ColliderProcessor col;
-		RenderProcessor ren;
+		NavmeshProcessor navigation;
+		ColliderProcessor collider;
 	}
+	{
+		RenderProcessor render;
+		TilesProcessor tiles;
+	}
+
+	exportConfiguration();
 
 	CAGE_LOG(SeverityEnum::Info, "generator", "generated");
 

@@ -1,6 +1,6 @@
-#include "generator.h"
-#include "functions.h"
 #include <cage-core/marchingCubes.h>
+
+#include "generator.h"
 
 Holder<Polyhedron> generateBaseMesh(real size, uint32 resolution)
 {
