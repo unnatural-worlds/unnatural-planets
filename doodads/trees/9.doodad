@@ -1,3 +1,7 @@
 [doodad]
 package = unnatural/package/trees/trees.pack
 prototype = unnatural/package/trees/9/tree_9.proto
+
+[requirements]
+temperature = 20, 30
+precipitation = 200, 300

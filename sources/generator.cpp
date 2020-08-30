@@ -247,10 +247,10 @@ namespace
 			std::vector<real> tileElevations;
 			std::vector<real> tileTemperatures;
 			std::vector<real> tilePrecipitations;
-			generateTileProperties(navMesh, tileTypes, tileBiomes, tileElevations, tileTemperatures, tilePrecipitations, pathJoin(baseDirectory, "stats.log"));
+			generateTileProperties(navMesh, tileTypes, tileBiomes, tileElevations, tileTemperatures, tilePrecipitations, pathJoin(baseDirectory, "tileStats.log"));
 			static_assert(sizeof(TerrainTypeEnum) == sizeof(uint8), "invalid reinterpret cast");
 			saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), navMesh, (std::vector<uint8>&)tileTypes);
-			generateDoodads(navMesh, tileTypes, tileBiomes, tileElevations, tileTemperatures, tilePrecipitations, assetPackages, pathJoin(baseDirectory, "doodads.ini"));
+			generateDoodads(navMesh, tileTypes, tileBiomes, tileElevations, tileTemperatures, tilePrecipitations, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
 		}
 
 		TilesProcessor()

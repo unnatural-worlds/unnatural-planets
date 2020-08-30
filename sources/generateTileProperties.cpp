@@ -6,9 +6,9 @@ namespace
 {
 	void statistics(const string &name, uint32 current, uint32 maxc, uint32 total)
 	{
-		string c = stringizer() + current;
-		string r = stringizer() + 100 * real(current) / total;
-		string g = string().fill(30 * current / maxc, '#');
+		const string c = stringizer() + current;
+		const string r = stringizer() + 100 * real(current) / total;
+		const string g = string().fill(30 * current / maxc, '#');
 		CAGE_LOG_CONTINUE(SeverityEnum::Info, "tileStats", stringizer() + name.fill(28) + c.reverse().fill(6).reverse() + " ~ " + r.reverse().fill(9).reverse() + " % " + g);
 	}
 

@@ -43,17 +43,30 @@ enum class TerrainTypeEnum : uint8
 stringizer &operator + (stringizer &str, const BiomeEnum &other);
 stringizer &operator + (stringizer &str, const TerrainTypeEnum &other);
 
+template <class T>
+T rescale(const T &v, real ia, real ib, real oa, real ob)
+{
+	return (v - ia) / (ib - ia) * (ob - oa) + oa;
+}
+
+real sharpEdge(real v, real p = 0.05);
+vec3 colorDeviation(const vec3 &color, real deviation = 0.05);
+vec3 normalDeviation(const vec3 &normal, real strength);
+bool isUnit(const vec3 &v);
+vec3 anyPerpendicular(const vec3 &a);
+
 void functionsConfigure(const Holder<Ini> &cmd);
 void meshConfigure(const Holder<Ini> &cmd);
 
 real functionDensity(const vec3 &pos);
 void functionTileProperties(const vec3 &pos, const vec3 &normal, BiomeEnum &biome, TerrainTypeEnum &terrainType, real &elevation, real &temperature, real &precipitation);
 void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height);
+void functionAuxiliaryProperties(const vec3 &pos, real &nationality, real &fertility);
 
 Holder<Polyhedron> generateBaseMesh(real size, uint32 resolution);
 void generateTileProperties(const Holder<Polyhedron> &navMesh, std::vector<TerrainTypeEnum> &tileTypes, std::vector<BiomeEnum> &tileBiomes, std::vector<real> &tileElevations, std::vector<real> &tileTemperatures, std::vector<real> &tilePrecipitations, const string &statsLogPath);
 void generateMaterials(const Holder<Polyhedron> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap);
-void generateDoodads(const Holder<Polyhedron> &navMesh, const std::vector<TerrainTypeEnum> &tileTypes, const std::vector<BiomeEnum> &tileBiomes, const std::vector<real> &tileElevations, const std::vector<real> &tileTemperatures, const std::vector<real> &tilePrecipitations, std::vector<string> &assetPackages, const string &doodadsPath);
+void generateDoodads(const Holder<Polyhedron> &navMesh, const std::vector<TerrainTypeEnum> &tileTypes, const std::vector<BiomeEnum> &tileBiomes, const std::vector<real> &tileElevations, const std::vector<real> &tileTemperatures, const std::vector<real> &tilePrecipitations, std::vector<string> &assetPackages, const string &doodadsPath, const string &statsLogPath);
 
 std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh);
 void meshSimplifyNavmesh(Holder<Polyhedron> &mesh);
