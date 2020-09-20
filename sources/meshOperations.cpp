@@ -75,7 +75,7 @@ void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)
 		PolyhedronRegularizationConfig cfg;
 		cfg.iterations = iterations;
 		cfg.targetEdgeLength = targetScale;
-		mesh->regularize(cfg);
+		polyhedronRegularize(+mesh, cfg);
 	}
 }
 
@@ -90,7 +90,7 @@ void meshSimplifyCollider(Holder<Polyhedron> &mesh)
 	cfg.maxEdgeLength = 10 * targetScale;
 	cfg.approximateError = 0.03 * targetScale;
 	Holder<Polyhedron> m = mesh->copy();
-	m->simplify(cfg);
+	polyhedronSimplify(+m, cfg);
 
 	if (m->indicesCount() < mesh->indicesCount())
 		mesh = templates::move(m);
@@ -109,7 +109,7 @@ void meshSimplifyRender(Holder<Polyhedron> &mesh)
 	cfg.maxEdgeLength = 10 * targetScale;
 	cfg.approximateError = 0.03 * targetScale;
 	Holder<Polyhedron> m = mesh->copy();
-	m->simplify(cfg);
+	polyhedronSimplify(+m, cfg);
 
 	if (m->indicesCount() < mesh->indicesCount())
 		mesh = templates::move(m);
@@ -132,7 +132,7 @@ std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 		for (real position : { 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.7 })
 		{
 			Holder<Polyhedron> p = mesh->copy();
-			p->clip(clippingBox(myBox, a, interpolate(myBox.a[a], myBox.b[a], position)));
+			polyhedronClip(+p, clippingBox(myBox, a, interpolate(myBox.a[a], myBox.b[a], position)));
 			real area = meshSurfaceArea(p.get());
 			real score = abs(0.5 - area / myArea);
 			if (score < bestSplitScore)
@@ -144,8 +144,8 @@ std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 		real split = interpolate(myBox.a[a], myBox.b[a], bestSplitPosition);
 		Holder<Polyhedron> m1 = mesh->copy();
 		Holder<Polyhedron> m2 = mesh->copy();
-		m1->clip(clippingBox(myBox, a, split));
-		m2->clip(clippingBox(myBox, a, split, true));
+		polyhedronClip(+m1, clippingBox(myBox, a, split));
+		polyhedronClip(+m2, clippingBox(myBox, a, split, true));
 		result = meshSplit(m1);
 		std::vector<Holder<Polyhedron>> r2 = meshSplit(m2);
 		for (auto &it : r2)
@@ -172,7 +172,7 @@ uint32 meshUnwrap(const Holder<Polyhedron> &mesh)
 	cfg.texelsPerUnit = 20;
 #endif // CAGE_DEBUG
 	cfg.padding = 6;
-	return mesh->unwrap(cfg);
+	return polyhedronUnwrap(+mesh, cfg);
 }
 
 void meshConfigure(const Holder<Ini> &cmd)

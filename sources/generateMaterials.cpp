@@ -33,13 +33,13 @@ namespace
 		{
 			albedo = newImage();
 			albedo->initialize(width, height, 3, ImageFormatEnum::Float);
-			albedo->fill(vec3::Nan());
+			imageFill(+albedo, vec3::Nan());
 			special = newImage();
 			special->initialize(width, height, 2, ImageFormatEnum::Float);
-			special->fill(vec2::Nan());
+			imageFill(+special, vec2::Nan());
 			heightMap = newImage();
 			heightMap->initialize(width, height, 1, ImageFormatEnum::Float);
-			heightMap->fill(real::Nan());
+			imageFill(+heightMap, real::Nan());
 
 			{
 				OPTICK_EVENT("generate textures");
@@ -47,23 +47,23 @@ namespace
 				cfg.width = width;
 				cfg.height = height;
 				cfg.generator.bind<Generator, &Generator::pixel>(this);
-				mesh->generateTexture(cfg);
+				polyhedronGenerateTexture(+mesh, cfg);
 			}
 
 			{
 				OPTICK_EVENT("inpaint");
-				albedo->inpaint(7, true);
-				special->inpaint(7, true);
-				heightMap->inpaint(7, true);
+				imageDilation(+albedo, 7, true);
+				imageDilation(+special, 7, true);
+				imageDilation(+heightMap, 7, true);
 			}
 
-			albedo->convert(ImageFormatEnum::U8);
-			special->convert(ImageFormatEnum::U8);
-			heightMap->convert(ImageFormatEnum::U8);
+			imageConvert(+albedo, ImageFormatEnum::U8);
+			imageConvert(+special, ImageFormatEnum::U8);
+			imageConvert(+heightMap, ImageFormatEnum::U8);
 
-			albedo->verticalFlip();
-			special->verticalFlip();
-			heightMap->verticalFlip();
+			imageVerticalFlip(+albedo);
+			imageVerticalFlip(+special);
+			imageVerticalFlip(+heightMap);
 		}
 	};
 }

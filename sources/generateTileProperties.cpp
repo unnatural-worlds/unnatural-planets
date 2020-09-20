@@ -1,4 +1,5 @@
 #include <cage-core/logger.h>
+#include <cage-core/string.h>
 
 #include "generator.h"
 
@@ -8,8 +9,8 @@ namespace
 	{
 		const string c = stringizer() + current;
 		const string r = stringizer() + 100 * real(current) / total;
-		const string g = string().fill(30 * current / maxc, '#');
-		CAGE_LOG_CONTINUE(SeverityEnum::Info, "tileStats", stringizer() + name.fill(28) + c.reverse().fill(6).reverse() + " ~ " + r.reverse().fill(9).reverse() + " % " + g);
+		const string g = fill(string(), 30 * current / maxc, '#');
+		CAGE_LOG_CONTINUE(SeverityEnum::Info, "tileStats", stringizer() + fill(name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 9)) + " % " + g);
 	}
 
 	struct PropertyCounters

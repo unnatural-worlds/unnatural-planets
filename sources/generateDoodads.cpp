@@ -2,6 +2,7 @@
 #include <cage-core/ini.h>
 #include <cage-core/enumerate.h>
 #include <cage-core/logger.h>
+#include <cage-core/string.h>
 
 #include "generator.h"
 
@@ -61,7 +62,7 @@ namespace
 				auto ds = loadDoodads(root, pathJoin(path, dl->name()));
 				result.insert(result.end(), ds.begin(), ds.end());
 			}
-			else if (dl->name().isPattern("", "", ".doodad"))
+			else if (isPattern(dl->name(), "", "", ".doodad"))
 			{
 				result.push_back(loadDoodad(root, pathJoin(path, dl->name())));
 			}
@@ -152,8 +153,8 @@ namespace
 		{
 			const string c = stringizer() + d.instances;
 			const string r = stringizer() + 100 * real(d.instances) / total;
-			const string g = string().fill(30 * d.instances / maxc, '#');
-			CAGE_LOG_CONTINUE(SeverityEnum::Info, "doodadStats", stringizer() + d.name.fill(28) + c.reverse().fill(6).reverse() + " ~ " + r.reverse().fill(9).reverse() + " % " + g);
+			const string g = fill(string(), 30 * d.instances / maxc, '#');
+			CAGE_LOG_CONTINUE(SeverityEnum::Info, "doodadStats", stringizer() + fill(d.name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 9)) + " % " + g);
 		}
 		CAGE_LOG(SeverityEnum::Info, "doodadStats", stringizer() + "placed " + total + " doodads in total (covers " + (100.0 * total / verticesCount) + " % tiles)");
 	}

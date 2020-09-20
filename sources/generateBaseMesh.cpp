@@ -19,11 +19,11 @@ Holder<Polyhedron> generateBaseMesh(real size, uint32 resolution)
 	Holder<Polyhedron> poly = cubes->makePolyhedron();
 	{
 		OPTICK_EVENT("discardInvalid");
-		poly->discardInvalid(); // todo fix polyhedron clipping and remove this
+		polyhedronDiscardInvalid(+poly); // todo fix polyhedron clipping and remove this
 	}
 	{
 		OPTICK_EVENT("discardDisconnected");
-		poly->discardDisconnected();
+		polyhedronDiscardDisconnected(+poly);
 	}
 	return poly;
 }
