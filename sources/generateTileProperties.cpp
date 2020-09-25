@@ -10,7 +10,7 @@ namespace
 		const string c = stringizer() + current;
 		const string r = stringizer() + 100 * real(current) / total;
 		const string g = fill(string(), 30 * current / maxc, '#');
-		CAGE_LOG_CONTINUE(SeverityEnum::Info, "tileStats", stringizer() + fill(name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 9)) + " % " + g);
+		CAGE_LOG_CONTINUE(SeverityEnum::Info, "tileStats", stringizer() + fill(name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 11)) + " % " + g);
 	}
 
 	struct PropertyCounters

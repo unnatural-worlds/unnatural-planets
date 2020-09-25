@@ -1,5 +1,5 @@
 #include <cage-core/geometry.h>
-#include <cage-core/ini.h>
+#include <cage-core/config.h>
 #include <unnatural-navmesh/navmesh.h>
 
 #include "generator.h"
@@ -8,6 +8,16 @@
 
 namespace
 {
+#ifdef CAGE_DEBUG
+	constexpr uint32 iterations = 1;
+	constexpr float targetScale = 3;
+#else
+	constexpr uint32 iterations = 10;
+	constexpr float targetScale = 1;
+#endif // CAGE_DEBUG
+
+	ConfigBool navmeshOptimize("unnatural-planets/navmesh/optimize");
+
 	real meshSurfaceArea(const Polyhedron *mesh)
 	{
 		const auto inds = mesh->indices();
@@ -44,16 +54,6 @@ namespace
 			r.b[axis] = pos;
 		return r;
 	}
-
-#ifdef CAGE_DEBUG
-	constexpr uint32 iterations = 1;
-	constexpr float targetScale = 3;
-	bool navmeshOptimize = false;
-#else
-	constexpr uint32 iterations = 10;
-	constexpr float targetScale = 1;
-	bool navmeshOptimize = true;
-#endif // CAGE_DEBUG
 }
 
 void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)
@@ -173,12 +173,4 @@ uint32 meshUnwrap(const Holder<Polyhedron> &mesh)
 #endif // CAGE_DEBUG
 	cfg.padding = 6;
 	return polyhedronUnwrap(+mesh, cfg);
-}
-
-void meshConfigure(const Holder<Ini> &cmd)
-{
-	{ // optimizations
-		navmeshOptimize = cmd->cmdBool('o', "optimize", navmeshOptimize);
-		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "navmesh optimizations: " + navmeshOptimize);
-	}
 }

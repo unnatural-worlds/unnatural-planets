@@ -1,6 +1,7 @@
 #include <cage-core/threadPool.h>
 #include <cage-core/concurrent.h>
 #include <cage-core/files.h>
+#include <cage-core/config.h>
 #include <cage-core/random.h>
 #include <cage-core/image.h>
 #include <cage-core/timer.h> // formatDateTime
@@ -9,7 +10,6 @@
 
 #include <atomic>
 
-extern const char *baseShapeName;
 string generateName();
 
 namespace
@@ -43,10 +43,13 @@ namespace
 
 	const string baseDirectory = findTmpDirectory();
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
+	const string debugDirectory = pathJoin(baseDirectory, "intermediate");
 	Holder<Polyhedron> baseMesh;
 	Holder<Polyhedron> navMesh;
 	std::vector<string> assetPackages;
 	uint32 renderChunksCount;
+	ConfigString baseShapeName("unnatural-planets/planet/shape");
+	ConfigBool saveDebugIntermediates("unnatural-planets/generator/saveIntermediateSteps");
 
 	void exportConfiguration()
 	{
@@ -60,15 +63,13 @@ namespace
 			f->writeLine("version = 0");
 			f->writeLine("[description]");
 			f->writeLine(baseShapeName);
-			//f->writeLine(stringizer() + "seed1: " + detail::getApplicationRandomGenerator().s[0]);
-			//f->writeLine(stringizer() + "seed2: " + detail::getApplicationRandomGenerator().s[1]);
 			{
 				uint32 y, M, d, h, m, s;
 				detail::getSystemDateTime(y, M, d, h, m, s);
 				f->writeLine(stringizer() + "date: " + detail::formatDateTime(y, M, d, h, m, s));
 			}
 #ifdef CAGE_DEBUG
-			f->writeLine("debug build");
+			f->writeLine("generated with debug build");
 #endif // CAGE_DEBUG
 			f->writeLine("[authors]");
 			f->writeLine("unnatural-planets procedural generator https://github.com/unnatural-worlds/unnatural-planets");
@@ -126,6 +127,7 @@ namespace
 				f->writeLine("[]");
 				f->writeLine("scheme = mesh");
 				f->writeLine("tangents = true");
+				f->writeLine("instancesLimit = 1");
 				f->writeLine(stringizer() + "material = chunk-" + i + ".cpm");
 				f->writeLine(stringizer() + "chunk-" + i + ".obj");
 			}
@@ -199,8 +201,8 @@ namespace
 			special->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-special.png"));
 			heightMap->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-height.png"));
 			{
-				uint32 completed = ++completedChunks;
-				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "render chunks: " + (100.0 * completed / split.size()) + " %");
+				const uint32 completed = ++completedChunks;
+				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "render chunks: " + (100.0f * completed / split.size()) + " %");
 			}
 		}
 
@@ -224,6 +226,8 @@ namespace
 		{
 			Holder<Polyhedron> mesh = baseMesh->copy();
 			meshSimplifyRender(mesh);
+			if (saveDebugIntermediates)
+				saveDebugMesh(pathJoin(debugDirectory, "renderMesh.obj"), mesh);
 			split = meshSplit(mesh);
 			renderChunksCount = numeric_cast<uint32>(split.size());
 			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "render mesh split into " + renderChunksCount + " chunks");
@@ -263,8 +267,12 @@ namespace
 void generateEntry()
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "tmp directory: " + baseDirectory);
+
+	preseedTerrainFunctions();
 	baseMesh = generateBaseMesh(250, 200);
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: vertices: " + baseMesh->verticesCount() + ", triangles: " + (baseMesh->indicesCount() / 3));
+	if (saveDebugIntermediates)
+		saveDebugMesh(pathJoin(debugDirectory, "baseMesh.obj"), baseMesh);
 	
 	{
 		NavmeshProcessor navigation;
@@ -277,7 +285,7 @@ void generateEntry()
 
 	exportConfiguration();
 
-	CAGE_LOG(SeverityEnum::Info, "generator", "generated");
+	CAGE_LOG(SeverityEnum::Info, "generator", "finished generating");
 
 	{
 		const string outPath = findOutputDirectory();
@@ -287,4 +295,3 @@ void generateEntry()
 
 	CAGE_LOG(SeverityEnum::Info, "generator", "all done");
 }
-

@@ -55,14 +55,13 @@ vec3 normalDeviation(const vec3 &normal, real strength);
 bool isUnit(const vec3 &v);
 vec3 anyPerpendicular(const vec3 &a);
 
-void functionsConfigure(const Holder<Ini> &cmd);
-void meshConfigure(const Holder<Ini> &cmd);
-
 real functionDensity(const vec3 &pos);
 void functionTileProperties(const vec3 &pos, const vec3 &normal, BiomeEnum &biome, TerrainTypeEnum &terrainType, real &elevation, real &temperature, real &precipitation);
 void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height);
 void functionAuxiliaryProperties(const vec3 &pos, real &nationality, real &fertility);
 
+void updateBaseShapeFunctionPointer();
+void preseedTerrainFunctions();
 Holder<Polyhedron> generateBaseMesh(real size, uint32 resolution);
 void generateTileProperties(const Holder<Polyhedron> &navMesh, std::vector<TerrainTypeEnum> &tileTypes, std::vector<BiomeEnum> &tileBiomes, std::vector<real> &tileElevations, std::vector<real> &tileTemperatures, std::vector<real> &tilePrecipitations, const string &statsLogPath);
 void generateMaterials(const Holder<Polyhedron> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap);

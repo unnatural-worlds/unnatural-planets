@@ -154,9 +154,9 @@ namespace
 			const string c = stringizer() + d.instances;
 			const string r = stringizer() + 100 * real(d.instances) / total;
 			const string g = fill(string(), 30 * d.instances / maxc, '#');
-			CAGE_LOG_CONTINUE(SeverityEnum::Info, "doodadStats", stringizer() + fill(d.name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 9)) + " % " + g);
+			CAGE_LOG_CONTINUE(SeverityEnum::Info, "doodadStats", stringizer() + fill(d.name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 11)) + " % " + g);
 		}
-		CAGE_LOG(SeverityEnum::Info, "doodadStats", stringizer() + "placed " + total + " doodads in total (covers " + (100.0 * total / verticesCount) + " % tiles)");
+		CAGE_LOG(SeverityEnum::Info, "doodadStats", stringizer() + "placed " + total + " doodads in total (covers " + (100.0f * total / verticesCount) + " % tiles)");
 	}
 }
 

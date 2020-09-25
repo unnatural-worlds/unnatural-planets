@@ -2,15 +2,17 @@
 #include <cage-core/color.h>
 #include <cage-core/random.h>
 #include <cage-core/geometry.h>
-#include <cage-core/ini.h>
+#include <cage-core/config.h>
 
 #include "generator.h"
 #include "sdf.h"
 
-const char *baseShapeName;
-
 namespace
 {
+	ConfigString baseShapeName("unnatural-planets/planet/shape");
+	ConfigBool useTerrainPoles("unnatural-planets/planet/poles");
+	ConfigBool useTerrainElevation("unnatural-planets/planet/elevation");
+
 	const uint32 globalSeed = (uint32)detail::getApplicationRandomGenerator().next();
 
 	uint32 noiseSeed()
@@ -165,8 +167,6 @@ namespace
 	// terrain
 	//---------
 
-	bool useTerrainElevation = true;
-
 	real terrainElevation(const vec3 &pos)
 	{
 		static const Holder<NoiseFunction> scaleNoise = []() {
@@ -232,8 +232,6 @@ namespace
 		t = t * 2 - 1;
 		return 30 + t * 5 - abs(elev) * 2.8;
 	}
-
-	bool useTerrainPoles = false;
 
 	void terrainPoles(const vec3 &pos, real &temp)
 	{
@@ -535,23 +533,6 @@ namespace
 		p = clamp(p, -1, 1);
 		return p;
 	}
-
-	void preseedTerrainFunctions()
-	{
-		functionDensity(vec3());
-		BiomeEnum biom;
-		TerrainTypeEnum terrainType;
-		real elev;
-		real temp;
-		real precp;
-		vec3 albedo;
-		vec2 special;
-		real height;
-		terrain(vec3(), vec3(0, 1, 0), biom, terrainType, elev, temp, precp, albedo, special, height);
-		real nationality;
-		real fertility;
-		functionAuxiliaryProperties(vec3(), nationality, fertility);
-	}
 }
 
 real functionDensity(const vec3 &pos)
@@ -586,7 +567,7 @@ void functionAuxiliaryProperties(const vec3 &pos, real &nationality, real &ferti
 	fertility = terrainFertility(pos);
 }
 
-void functionsConfigure(const Holder<Ini> &cmd)
+void updateBaseShapeFunctionPointer()
 {
 	constexpr BaseShapeDensity baseShapeFunctions[] = {
 		&sdfPlane,
@@ -618,45 +599,41 @@ void functionsConfigure(const Holder<Ini> &cmd)
 
 	static_assert(baseShapesCount == sizeof(baseShapeNames) / sizeof(baseShapeNames[0]), "number of functions and names must match");
 
-	{ // base shape
-		string name = cmd->cmdString('s', "shape", "random");
-		if (name == "random")
-		{
-			const uint32 i = randomRange(0u, baseShapesCount);
-			baseShapeDensity = baseShapeFunctions[i];
-			baseShapeName = baseShapeNames[i];
-			CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "randomly chosen base shape: '" + baseShapeName + "'");
-		}
-		else
-		{
-			for (uint32 i = 0; i < baseShapesCount; i++)
-			{
-				if (name == baseShapeNames[i])
-				{
-					baseShapeDensity = baseShapeFunctions[i];
-					baseShapeName = baseShapeNames[i];
-				}
-			}
-			CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using base shape: '" + baseShapeName + "'");
-		}
-		if (!baseShapeDensity)
-		{
-			CAGE_LOG(SeverityEnum::Note, "exception", stringizer() + "base shape: '" + name + "'");
-			CAGE_THROW_ERROR(Exception, "unknown base shape configuration");
-		}
+	string name = baseShapeName;
+	if (name == "random")
+	{
+		const uint32 i = randomRange(0u, baseShapesCount);
+		baseShapeDensity = baseShapeFunctions[i];
+		baseShapeName = name = baseShapeNames[i];
+		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "randomly chosen base shape: '" + name + "'");
 	}
-
-	{ // poles
-		useTerrainPoles = baseShapeDensity == baseShapeFunctions[1];
-		useTerrainPoles = cmd->cmdBool('p', "poles", useTerrainPoles);
-		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using poles: " + useTerrainPoles);
+	else
+	{
+		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using base shape: '" + name + "'");
+		for (uint32 i = 0; i < baseShapesCount; i++)
+			if (name == baseShapeNames[i])
+				baseShapeDensity = baseShapeFunctions[i];
 	}
-
-	{ // elevation
-		useTerrainElevation = cmd->cmdBool('e', "elevation", useTerrainElevation);
-		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using terrain elevation: " + useTerrainElevation);
+	if (!baseShapeDensity)
+	{
+		CAGE_LOG(SeverityEnum::Note, "exception", stringizer() + "base shape: '" + name + "'");
+		CAGE_THROW_ERROR(Exception, "unknown base shape configuration");
 	}
-
-	preseedTerrainFunctions();
 }
 
+void preseedTerrainFunctions()
+{
+	functionDensity(vec3());
+	BiomeEnum biom;
+	TerrainTypeEnum terrainType;
+	real elev;
+	real temp;
+	real precp;
+	vec3 albedo;
+	vec2 special;
+	real height;
+	terrain(vec3(), vec3(0, 1, 0), biom, terrainType, elev, temp, precp, albedo, special, height);
+	real nationality;
+	real fertility;
+	functionAuxiliaryProperties(vec3(), nationality, fertility);
+}
