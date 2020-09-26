@@ -29,6 +29,8 @@ real sdfSphere(const vec3 &pos)
 real sdfTorus(const vec3 &pos, real major, real minor)
 {
 	vec3 c = normalize(pos * vec3(1, 0, 1)) * major;
+	if (!valid(c))
+		return real::Infinity();
 	return minor - distance(pos, c);
 }
 

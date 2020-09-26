@@ -156,6 +156,8 @@ namespace
 			Holder<Polyhedron> mesh = baseMesh->copy();
 			meshSimplifyNavmesh(mesh);
 			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh tiles: " + mesh->verticesCount());
+			if (saveDebugIntermediates)
+				saveDebugMesh(pathJoin(debugDirectory, "navMeshBase.obj"), mesh);
 			navMesh = templates::move(mesh);
 		}
 

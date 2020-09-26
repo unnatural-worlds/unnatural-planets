@@ -479,6 +479,7 @@ namespace
 
 	void terrain(const vec3 &pos, const vec3 &normal, BiomeEnum &biom, TerrainTypeEnum &terrainType, real &elev, real &temp, real &precp, vec3 &albedo, vec2 &special, real &height)
 	{
+		CAGE_ASSERT(isUnit(normal));
 		elev = terrainElevation(pos);
 		rads slope = terrainSlope(pos, normal);
 		temp = terrainTemperature(pos, elev);
@@ -540,7 +541,10 @@ real functionDensity(const vec3 &pos)
 	CAGE_ASSERT(baseShapeDensity != nullptr);
 	real base = baseShapeDensity(pos);
 	real elev = terrainElevation(pos);
-	return base + max(elev, 0);
+	real result = base + max(elev, 0);
+	if (!valid(result))
+		CAGE_THROW_ERROR(Exception, "invalid density function value");
+	return result;
 }
 
 void functionTileProperties(const vec3 &pos, const vec3 &normal, BiomeEnum &biome, TerrainTypeEnum &terrainType, real &elevation, real &temperature, real &precipitation)
