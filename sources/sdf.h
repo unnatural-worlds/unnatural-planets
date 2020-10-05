@@ -17,6 +17,8 @@ real sdfTetrahedron(const vec3 &pos, real size, real rounding);
 real sdfTetrahedron(const vec3 &pos);
 real sdfOctahedron(const vec3 &pos, real size, real rounding);
 real sdfOctahedron(const vec3 &pos);
+real sdfKnot(const vec3 &pos, real k);
+real sdfKnot(const vec3 &pos);
 real sdfPretzel(const vec3 &pos);
 real sdfMobiusStrip(const vec3 &pos, real radius, real majorAxis, real minorAxis, real rounding);
 real sdfMobiusStrip(const vec3 &pos);

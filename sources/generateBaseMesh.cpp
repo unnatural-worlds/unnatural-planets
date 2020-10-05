@@ -8,7 +8,7 @@ Holder<Polyhedron> generateBaseMesh(real size, uint32 resolution)
 	OPTICK_EVENT();
 
 #ifdef CAGE_DEBUG
-	resolution /= 4;
+	resolution /= 3;
 #endif
 
 	MarchingCubesCreateConfig cfg;
@@ -23,6 +23,8 @@ Holder<Polyhedron> generateBaseMesh(real size, uint32 resolution)
 		polyhedronDiscardDisconnected(+poly);
 	}
 	//poly->exportObjFile({}, "debug/2.obj");
+	if (poly->indicesCount() == 0)
+		CAGE_THROW_ERROR(Exception, "generated empty base mesh");
 	return poly;
 }
 

@@ -134,6 +134,28 @@ real sdfOctahedron(const vec3 &pos)
 	return sdfOctahedron(pos, 100, 5);
 }
 
+real sdfKnot(const vec3 &pos, real k)
+{
+	constexpr real TAU = real::Pi() * 2;
+	constexpr real scale = 13;
+	vec3 p = pos / scale;
+	real r = length(vec2(p[0], p[1]));
+	rads a = atan2(p[0], p[1]);
+	rads oa = k * a;
+	a = (a % (0.001 * TAU)) - 0.001 * TAU / 2;
+	p[0] = r * cos(a) - 5;
+	p[1] = r * sin(a);
+	vec2 p2 = cos(oa) * vec2(p[0], p[2]) + sin(oa) * vec2(-p[2], p[0]);
+	p[0] = abs(p2[0]) - 1.5;
+	p[2] = p2[1];
+	return (length(p) - 0.7) * -scale;
+}
+
+real sdfKnot(const vec3 &pos)
+{
+	return sdfKnot(pos, 1.5);
+}
+
 real sdfPretzel(const vec3 &pos)
 {
 	vec3 c = normalize(pos * vec3(1, 0, 1));
