@@ -10,10 +10,10 @@ namespace
 {
 #ifdef CAGE_DEBUG
 	constexpr uint32 iterations = 1;
-	constexpr float targetScale = 3;
+	constexpr float tileSize = 30;
 #else
 	constexpr uint32 iterations = 10;
-	constexpr float targetScale = 1;
+	constexpr float tileSize = 10;
 #endif // CAGE_DEBUG
 
 	ConfigBool navmeshOptimize("unnatural-planets/navmesh/optimize");
@@ -45,8 +45,8 @@ namespace
 
 	aabb clippingBox(const aabb &box, uint32 axis, real pos, bool second = false)
 	{
-		vec3 c = box.center();
-		vec3 hs = box.size() * 0.6; // slightly larger box to avoid clipping due to floating point imprecisions
+		const vec3 c = box.center();
+		const vec3 hs = box.size() * 0.6; // slightly larger box to avoid clipping due to floating point imprecisions
 		aabb r = aabb(c - hs, c + hs);
 		if (second)
 			r.a[axis] = pos;
@@ -67,14 +67,14 @@ void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)
 #ifdef CAGE_DEBUG
 		cfg.iterations = 1;
 #endif
-		cfg.targetScale = targetScale;
+		cfg.tileSize = tileSize;
 		mesh = unnatural::navmeshOptimize(templates::move(mesh), cfg);
 	}
 	else
 	{
 		PolyhedronRegularizationConfig cfg;
 		cfg.iterations = iterations;
-		cfg.targetEdgeLength = targetScale;
+		cfg.targetEdgeLength = tileSize;
 		polyhedronRegularize(+mesh, cfg);
 	}
 }
@@ -86,9 +86,9 @@ void meshSimplifyCollider(Holder<Polyhedron> &mesh)
 
 	PolyhedronSimplificationConfig cfg;
 	cfg.iterations = iterations;
-	cfg.minEdgeLength = 0.5 * targetScale;
-	cfg.maxEdgeLength = 10 * targetScale;
-	cfg.approximateError = 0.03 * targetScale;
+	cfg.minEdgeLength = 0.5 * tileSize;
+	cfg.maxEdgeLength = 10 * tileSize;
+	cfg.approximateError = 0.03 * tileSize;
 	Holder<Polyhedron> m = mesh->copy();
 	polyhedronSimplify(+m, cfg);
 
@@ -105,9 +105,9 @@ void meshSimplifyRender(Holder<Polyhedron> &mesh)
 
 	PolyhedronSimplificationConfig cfg;
 	cfg.iterations = iterations;
-	cfg.minEdgeLength = 0.5 * targetScale;
-	cfg.maxEdgeLength = 10 * targetScale;
-	cfg.approximateError = 0.03 * targetScale;
+	cfg.minEdgeLength = 0.5 * tileSize;
+	cfg.maxEdgeLength = 10 * tileSize;
+	cfg.approximateError = 0.03 * tileSize;
 	Holder<Polyhedron> m = mesh->copy();
 	polyhedronSimplify(+m, cfg);
 
@@ -123,7 +123,7 @@ std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 	const real myArea = meshSurfaceArea(mesh.get());
 	OPTICK_TAG("area", myArea.value);
 	std::vector<Holder<Polyhedron>> result;
-	if (myArea > 2500)
+	if (myArea > 250000)
 	{
 		const aabb myBox = mesh->boundingBox();
 		const uint32 a = boxLongestAxis(myBox);
@@ -133,15 +133,15 @@ std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 		{
 			Holder<Polyhedron> p = mesh->copy();
 			polyhedronClip(+p, clippingBox(myBox, a, interpolate(myBox.a[a], myBox.b[a], position)));
-			real area = meshSurfaceArea(p.get());
-			real score = abs(0.5 - area / myArea);
+			const real area = meshSurfaceArea(p.get());
+			const real score = abs(0.5 - area / myArea);
 			if (score < bestSplitScore)
 			{
 				bestSplitScore = score;
 				bestSplitPosition = position;
 			}
 		}
-		real split = interpolate(myBox.a[a], myBox.b[a], bestSplitPosition);
+		const real split = interpolate(myBox.a[a], myBox.b[a], bestSplitPosition);
 		Holder<Polyhedron> m1 = mesh->copy();
 		Holder<Polyhedron> m2 = mesh->copy();
 		polyhedronClip(+m1, clippingBox(myBox, a, split));
@@ -164,12 +164,12 @@ uint32 meshUnwrap(const Holder<Polyhedron> &mesh)
 	OPTICK_EVENT("unwrapping");
 	PolyhedronUnwrapConfig cfg;
 	cfg.maxChartIterations = 10;
-	cfg.maxChartBoundaryLength = 50;
+	cfg.maxChartBoundaryLength = 500;
 	cfg.chartRoundness = 0.3;
 #ifdef CAGE_DEBUG
-	cfg.texelsPerUnit = 1;
+	cfg.texelsPerUnit = 0.1;
 #else
-	cfg.texelsPerUnit = 20;
+	cfg.texelsPerUnit = 2;
 #endif // CAGE_DEBUG
 	cfg.padding = 6;
 	return polyhedronUnwrap(+mesh, cfg);

@@ -534,13 +534,15 @@ namespace
 		p = clamp(p, -1, 1);
 		return p;
 	}
+
+	constexpr real globalPositionScale = 0.1;
 }
 
 real functionDensity(const vec3 &pos)
 {
 	CAGE_ASSERT(baseShapeDensity != nullptr);
 	real base = baseShapeDensity(pos);
-	real elev = terrainElevation(pos);
+	real elev = terrainElevation(pos * globalPositionScale) / globalPositionScale;
 	real result = base + max(elev, 0);
 	if (!valid(result))
 		CAGE_THROW_ERROR(Exception, "invalid density function value");
@@ -552,7 +554,7 @@ void functionTileProperties(const vec3 &pos, const vec3 &normal, BiomeEnum &biom
 	vec3 albedo;
 	vec2 special;
 	real height;
-	terrain(pos, normal, biome, terrainType, elevation, temperature, precipitation, albedo, special, height);
+	terrain(pos * globalPositionScale, normal, biome, terrainType, elevation, temperature, precipitation, albedo, special, height);
 }
 
 void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &special, real &height)
@@ -562,13 +564,13 @@ void functionMaterial(const vec3 &pos, const vec3 &normal, vec3 &albedo, vec2 &s
 	real elevation;
 	real temperature;
 	real precipitation;
-	terrain(pos, normal, biome, terrainType, elevation, temperature, precipitation, albedo, special, height);
+	terrain(pos * globalPositionScale, normal, biome, terrainType, elevation, temperature, precipitation, albedo, special, height);
 }
 
 void functionAuxiliaryProperties(const vec3 &pos, real &nationality, real &fertility)
 {
-	nationality = terrainNationality(pos);
-	fertility = terrainFertility(pos);
+	nationality = terrainNationality(pos * globalPositionScale);
+	fertility = terrainFertility(pos * globalPositionScale);
 }
 
 void updateBaseShapeFunctionPointer()

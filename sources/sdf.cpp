@@ -23,7 +23,7 @@ real sdfSphere(const vec3 &pos, real radius)
 
 real sdfSphere(const vec3 &pos)
 {
-	return sdfSphere(pos, 100);
+	return sdfSphere(pos, 1000);
 }
 
 real sdfTorus(const vec3 &pos, real major, real minor)
@@ -36,7 +36,7 @@ real sdfTorus(const vec3 &pos, real major, real minor)
 
 real sdfTorus(const vec3 &pos)
 {
-	return sdfTorus(pos, 75, 25);
+	return sdfTorus(pos, 750, 250);
 }
 
 real sdfCylinder(const vec3 &pos, real r, real h, real rounding)
@@ -47,7 +47,7 @@ real sdfCylinder(const vec3 &pos, real r, real h, real rounding)
 
 real sdfCylinder(const vec3 &pos)
 {
-	return sdfCylinder(pos, 80, 70, 5);
+	return sdfCylinder(pos, 800, 700, 50);
 }
 
 real sdfBox(const vec3 &pos, const vec3 &size, real rounding)
@@ -59,7 +59,7 @@ real sdfBox(const vec3 &pos, const vec3 &size, real rounding)
 
 real sdfBox(const vec3 &pos)
 {
-	return sdfBox(pos, vec3(100, 50, 50), 5);
+	return sdfBox(pos, vec3(1000, 500, 500), 50);
 }
 
 real sdfTetrahedron(const vec3 &pos, real size, real rounding)
@@ -109,7 +109,7 @@ real sdfTetrahedron(const vec3 &pos, real size, real rounding)
 
 real sdfTetrahedron(const vec3 &pos)
 {
-	return sdfTetrahedron(pos, 100, 5);
+	return sdfTetrahedron(pos, 1000, 50);
 }
 
 real sdfOctahedron(const vec3 &pos, real size, real rounding)
@@ -131,13 +131,12 @@ real sdfOctahedron(const vec3 &pos, real size, real rounding)
 
 real sdfOctahedron(const vec3 &pos)
 {
-	return sdfOctahedron(pos, 100, 5);
+	return sdfOctahedron(pos, 1000, 50);
 }
 
-real sdfKnot(const vec3 &pos, real k)
+real sdfKnot(const vec3 &pos, real scale, real k)
 {
 	constexpr real TAU = real::Pi() * 2;
-	constexpr real scale = 13;
 	vec3 p = pos / scale;
 	real r = length(vec2(p[0], p[1]));
 	rads a = atan2(p[0], p[1]);
@@ -153,17 +152,17 @@ real sdfKnot(const vec3 &pos, real k)
 
 real sdfKnot(const vec3 &pos)
 {
-	return sdfKnot(pos, 1.5);
+	return sdfKnot(pos, 130, 1.5);
 }
 
 real sdfPretzel(const vec3 &pos)
 {
 	vec3 c = normalize(pos * vec3(1, 0, 1));
 	rads yaw = atan2(c[0], c[2]);
-	rads pitch = atan2(pos[1], 70 - length(vec2(pos[0], pos[2])));
+	rads pitch = atan2(pos[1], 700 - length(vec2(pos[0], pos[2])));
 	rads ang = yaw + pitch;
-	real t = length(vec2(sin(ang) * 25, cos(ang) * 5));
-	real l = distance(pos, c * 70);
+	real t = length(vec2(sin(ang) * 250, cos(ang) * 50));
+	real l = distance(pos, c * 700);
 	return t - l;
 }
 
@@ -191,7 +190,7 @@ real sdfMobiusStrip(const vec3 &pos, real radius, real majorAxis, real minorAxis
 
 real sdfMobiusStrip(const vec3 &pos)
 {
-	return sdfMobiusStrip(pos, 70, 30, 2, 5);
+	return sdfMobiusStrip(pos, 700, 300, 20, 50);
 }
 
 real sdfMolecule(const vec3 &pos)
@@ -204,7 +203,7 @@ real sdfMolecule(const vec3 &pos)
 		return abs(dot(a, b) + bias) / scale - thickness;
 	};
 
-	constexpr real scale = 0.02;
+	constexpr real scale = 0.2;
 	static const vec3 offset = randomRange3(-1000, 1000);
 	real box = -sdfBox(pos * scale, vec3(1.5), 0.05);
 	const vec3 p = (pos + offset) * scale;
