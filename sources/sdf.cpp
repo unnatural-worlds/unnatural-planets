@@ -203,14 +203,14 @@ real sdfMolecule(const vec3 &pos)
 		return abs(dot(a, b) + bias) / scale - thickness;
 	};
 
-	constexpr real scale = 0.2;
-	static const vec3 offset = randomRange3(-1000, 1000);
-	real box = -sdfBox(pos * scale, vec3(1.5), 0.05);
-	const vec3 p = (pos + offset) * scale;
+	constexpr real scale = 0.002;
+	static const vec3 offset = randomRange3(-100, 100);
+	const vec3 p = pos * scale + offset;
 	real g1 = sdGyroid(p, 3.23, 0.03, 1.4);
 	real g2 = sdGyroid(p, 5.78, 0.05, 0.3);
 	real g3 = sdGyroid(p, 12.21, 0.02, 0.1);
 	real g4 = sdGyroid(p, 17.13, 0.03, 0.3);
-	real g = g1 - g2*0.37 + g3*0.2 + g4*0.11;
-	return -max(box, g * 0.7) / scale;
+	real g = g1 - g2 * 0.37 + g3 * 0.2 + g4 * 0.11;
+	const real box = -sdfBox(pos);
+	return -max(box, g * 0.7 / scale);
 }
