@@ -211,6 +211,6 @@ real sdfMolecule(const vec3 &pos)
 	real g3 = sdGyroid(p, 12.21, 0.02, 0.1);
 	real g4 = sdGyroid(p, 17.13, 0.03, 0.3);
 	real g = g1 - g2 * 0.37 + g3 * 0.2 + g4 * 0.11;
-	const real box = -sdfBox(pos);
-	return -max(box, g * 0.7 / scale);
+	const real bounds = -sdfSphere(pos);
+	return -max(bounds, g * 0.7 / scale);
 }

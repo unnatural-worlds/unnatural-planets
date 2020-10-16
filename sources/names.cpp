@@ -1,4 +1,5 @@
 #include <cage-core/math.h>
+#include <cage-core/string.h>
 
 using namespace cage;
 
@@ -23,23 +24,30 @@ namespace
 		" VI", " VII", " VIII", " IX", " X",
 	};
 #define PICK(NAMES) NAMES[randomRange(std::size_t(0), sizeof(NAMES)/sizeof(NAMES[0]))]
+
+	string generateNameImpl()
+	{
+		stringizer name;
+		if (randomChance() < 0.6)
+			name + PICK(Prefixes);
+		if (randomChance() < 0.6)
+			name + PICK(Stems);
+		if (randomChance() < 0.1)
+			name + PICK(Stems);
+		if (randomChance() < 0.6)
+			name + PICK(Suffixes);
+		if (string(name).length() < 2)
+			return generateNameImpl();
+		if (randomChance() < 0.4)
+			name + PICK(Appendixes);
+		return name;
+	}
 }
 
 string generateName()
 {
-	stringizer name;
-	if (randomChance() < 0.6)
-		name + PICK(Prefixes);
-	if (randomChance() < 0.6)
-		name + PICK(Stems);
-	if (randomChance() < 0.1)
-		name + PICK(Stems);
-	if (randomChance() < 0.6)
-		name + PICK(Suffixes);
-	if (string(name).empty())
-		return generateName();
-	if (randomChance() < 0.4)
-		name + PICK(Appendixes);
+	string name = generateNameImpl();
+	name[0] = toUpper(string(name[0]))[0];
 	CAGE_LOG(SeverityEnum::Info, "unnatural-planets", stringizer() + "generated name: '" + name + "'");
 	return name;
 }
