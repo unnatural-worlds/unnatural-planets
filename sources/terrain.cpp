@@ -187,7 +187,7 @@ namespace
 			return 1;
 		real scale = scaleNoise->evaluate(pos * 0.005) * 0.005 + 0.015;
 		real a = elevNoise->evaluate(pos * scale);
-		a += 0.1; // slightly prefer terrain over ocean
+		a += 0.11; // slightly prefer terrain over ocean
 		if (a < 0)
 			a = -pow(-a, 0.85);
 		else

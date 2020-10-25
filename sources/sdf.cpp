@@ -206,11 +206,11 @@ real sdfMolecule(const vec3 &pos)
 	constexpr real scale = 0.002;
 	static const vec3 offset = randomRange3(-100, 100);
 	const vec3 p = pos * scale + offset;
-	real g1 = sdGyroid(p, 3.23, 0.03, 1.4);
-	real g2 = sdGyroid(p, 5.78, 0.05, 0.3);
-	real g3 = sdGyroid(p, 12.21, 0.02, 0.1);
-	real g4 = sdGyroid(p, 17.13, 0.03, 0.3);
-	real g = g1 - g2 * 0.37 + g3 * 0.2 + g4 * 0.11;
-	const real bounds = -sdfSphere(pos);
-	return -max(bounds, g * 0.7 / scale);
+	const real g1 = sdGyroid(p, 3.23, 0.03, 1.4);
+	const real g2 = sdGyroid(p, 7.78, 0.05, 0.3);
+	const real g3 = sdGyroid(p, 12.21, 0.02, 0.1);
+	const real g = g1 - g2 * 0.27 - g3 * 0.11;
+	const real v = -g * 0.7 / scale;
+	const real d = -max(length(pos) - 900, 0) * 0.5;
+	return v + d;
 }
