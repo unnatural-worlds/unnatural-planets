@@ -624,7 +624,7 @@ void updateBaseShapeFunctionPointer()
 	}
 	if (!baseShapeDensity)
 	{
-		CAGE_LOG(SeverityEnum::Note, "exception", stringizer() + "base shape: '" + name + "'");
+		CAGE_LOG_THROW(stringizer() + "base shape: '" + name + "'");
 		CAGE_THROW_ERROR(Exception, "unknown base shape configuration");
 	}
 }

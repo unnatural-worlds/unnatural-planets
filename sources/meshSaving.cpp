@@ -25,7 +25,7 @@ void saveRenderMesh(const string &path, const Holder<Polyhedron> &mesh)
 	cfg.materialName = cfg.objectName;
 	mesh->exportObjFile(cfg, path);
 
-	const string directory = pathExtractPath(path);
+	const string directory = pathExtractDirectory(path);
 	const string cpmName = cfg.objectName + ".cpm";
 
 	{ // write mtl file with link to albedo texture
