@@ -4,6 +4,21 @@
 
 #include "sdf.h"
 
+namespace
+{
+	real smoothMin(real a, real b, real k)
+	{
+		// https://www.shadertoy.com/view/3ssGWj
+		const real h = clamp(0.5 + 0.5 * (b - a) / k, 0, 1);
+		return interpolate(b, a, h) - k * h * (1 - h);
+	}
+
+	real smoothMax(real a, real b, real k)
+	{
+		return -smoothMin(-a, -b, k);
+	}
+}
+
 real sdfPlane(const vec3 &pos, const plane &pln)
 {
 	CAGE_ASSERT(pln.valid());
@@ -214,3 +229,37 @@ real sdfMolecule(const vec3 &pos)
 	const real d = -max(length(pos) - 900, 0) * 0.5;
 	return v + d;
 }
+
+real sdfH2O(const vec3 &pos)
+{
+	const real h1 = sdfSphere(pos - vec3(-550, 300, 0), 450);
+	const real h2 = sdfSphere(pos - vec3(+550, 300, 0), 450);
+	const real o = sdfSphere(pos - vec3(0, -100, 0), 650);
+	return smoothMax(o, max(h1, h2), 50);
+}
+
+real sdfH3O(const vec3 &pos)
+{
+	const real hs[] = {
+		sdfSphere(pos - quat({}, {}, degs(  0)) * vec3(680, 0, 0), 450),
+		sdfSphere(pos - quat({}, {}, degs(120)) * vec3(680, 0, 0), 450),
+		sdfSphere(pos - quat({}, {}, degs(240)) * vec3(680, 0, 0), 450),
+	};
+	const real o = sdfSphere(pos, 650);
+	const real h = max(max(hs[0], hs[1]), hs[2]);
+	return smoothMax(o, h, 50);
+}
+
+real sdfH4O(const vec3 &pos)
+{
+	const real hs[] = {
+		sdfSphere(pos - vec3(-550, +400, 0), 450),
+		sdfSphere(pos - vec3(+550, +400, 0), 450),
+		sdfSphere(pos - vec3(0, -400, -550), 450),
+		sdfSphere(pos - vec3(0, -400, +550), 450),
+	};
+	const real o = sdfSphere(pos, 650);
+	const real h = max(max(hs[0], hs[1]), max(hs[2], hs[3]));
+	return smoothMax(o, h, 50);
+}
+

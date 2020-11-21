@@ -48,6 +48,7 @@ int main(int argc, const char *args[])
 			applyConfiguration(cmd);
 			cmd->checkUnused();
 		}
+
 		generateEntry();
 		return 0;
 	}

@@ -23,5 +23,8 @@ real sdfPretzel(const vec3 &pos);
 real sdfMobiusStrip(const vec3 &pos, real radius, real majorAxis, real minorAxis, real rounding);
 real sdfMobiusStrip(const vec3 &pos);
 real sdfMolecule(const vec3 &pos);
+real sdfH2O(const vec3 &pos);
+real sdfH3O(const vec3 &pos);
+real sdfH4O(const vec3 &pos);
 
 #endif

@@ -587,6 +587,9 @@ void updateBaseShapeFunctionPointer()
 		&sdfPretzel,
 		&sdfMobiusStrip,
 		&sdfMolecule,
+		&sdfH2O,
+		&sdfH3O,
+		&sdfH4O,
 	};
 
 	constexpr uint32 baseShapesCount = sizeof(baseShapeFunctions) / sizeof(baseShapeFunctions[0]);
@@ -603,6 +606,9 @@ void updateBaseShapeFunctionPointer()
 		"pretzel",
 		"mobiusStrip",
 		"molecule",
+		"h2o",
+		"h3o",
+		"h4o",
 	};
 
 	static_assert(baseShapesCount == sizeof(baseShapeNames) / sizeof(baseShapeNames[0]), "number of functions and names must match");
