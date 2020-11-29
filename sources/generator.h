@@ -44,7 +44,7 @@ stringizer &operator + (stringizer &str, const BiomeEnum &other);
 stringizer &operator + (stringizer &str, const TerrainTypeEnum &other);
 
 template <class T>
-T rescale(const T &v, real ia, real ib, real oa, real ob)
+inline T rescale(const T &v, real ia, real ib, real oa, real ob)
 {
 	return (v - ia) / (ib - ia) * (ob - oa) + oa;
 }

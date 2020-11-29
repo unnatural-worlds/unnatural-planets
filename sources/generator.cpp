@@ -15,7 +15,7 @@ string generateName();
 
 namespace
 {
-	string findOutputDirectory()
+	string findOutputDirectory(const string &planetName)
 	{
 		string root;
 		try
@@ -27,10 +27,16 @@ namespace
 			root = "output";
 		}
 
+		{
+			const string pth = pathJoin(root, pathReplaceInvalidCharacters(planetName));
+			if (pathType(pth) == PathTypeFlags::NotFound)
+				return pth;
+		}
+
 		uint32 index = 1;
 		while (true)
 		{
-			string pth = pathJoin(root, stringizer() + index);
+			const string pth = pathJoin(root, stringizer() + index);
 			if (pathType(pth) == PathTypeFlags::NotFound)
 				return pth;
 			index++;
@@ -52,7 +58,7 @@ namespace
 	ConfigString baseShapeName("unnatural-planets/planet/shape");
 	ConfigBool saveDebugIntermediates("unnatural-planets/generator/saveIntermediateSteps");
 
-	void exportConfiguration()
+	void exportConfiguration(const string &planetName)
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "exporting");
 		OPTICK_EVENT();
@@ -60,7 +66,7 @@ namespace
 		{ // write unnatural-map
 			Holder<File> f = newFile(pathJoin(baseDirectory, "unnatural-map.ini"), FileMode(false, true));
 			f->writeLine("[map]");
-			f->writeLine(stringizer() + "name = " + generateName());
+			f->writeLine(stringizer() + "name = " + planetName);
 			f->writeLine("version = 0");
 			f->writeLine("[description]");
 			f->writeLine(baseShapeName);
@@ -287,12 +293,14 @@ void generateEntry()
 		TilesProcessor tiles;
 	}
 
-	exportConfiguration();
+	const string planetName = generateName();
+
+	exportConfiguration(planetName);
 
 	CAGE_LOG(SeverityEnum::Info, "generator", "finished generating");
 
 	{
-		const string outPath = findOutputDirectory();
+		const string outPath = findOutputDirectory(planetName);
 		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "output directory: " + outPath);
 		pathMove(baseDirectory, outPath);
 	}
