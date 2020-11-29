@@ -4,11 +4,12 @@
 #include <cage-core/config.h>
 #include <cage-core/random.h>
 #include <cage-core/image.h>
-#include <cage-core/timer.h> // formatDateTime
 
 #include "generator.h"
 
 #include <atomic>
+#include <chrono>
+#include <ctime>
 
 string generateName();
 
@@ -64,9 +65,10 @@ namespace
 			f->writeLine("[description]");
 			f->writeLine(baseShapeName);
 			{
-				uint32 y, M, d, h, m, s;
-				detail::getSystemDateTime(y, M, d, h, m, s);
-				f->writeLine(stringizer() + "date: " + detail::formatDateTime(y, M, d, h, m, s));
+				const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+				char buffer[50];
+				std::strftime(buffer, 50, "%Y-%m-%d %H:%M:%S", std::localtime(&now));
+				f->writeLine(stringizer() + "date: " + buffer);
 			}
 #ifdef CAGE_DEBUG
 			f->writeLine("generated with debug build");
