@@ -46,7 +46,7 @@ int main(int argc, const char *args[])
 			Holder<Ini> cmd = newIni();
 			cmd->parseCmd(argc, args);
 			applyConfiguration(cmd);
-			cmd->checkUnused();
+			cmd->checkUnusedWithHelp();
 		}
 
 		generateEntry();
