@@ -1,5 +1,7 @@
 #include <cage-core/image.h>
+#include <cage-core/polyhedron.h>
 
+#include "terrain.h"
 #include "generator.h"
 
 namespace
@@ -18,15 +20,13 @@ namespace
 
 		void pixel(uint32 x, uint32 y, const ivec3 &indices, const vec3 &weights)
 		{
-			const vec3 position = mesh->positionAt(indices, weights);
-			const vec3 normal = mesh->normalAt(indices, weights);
-			vec3 a;
-			vec2 s;
-			real h;
-			functionMaterial(position, normal, a, s, h);
-			albedo->set(x, y, a);
-			special->set(x, y, s);
-			heightMap->set(x, y, h);
+			Tile tile;
+			tile.position = mesh->positionAt(indices, weights);
+			tile.normal = mesh->normalAt(indices, weights);
+			terrainTile(tile);
+			albedo->set(x, y, tile.albedo);
+			special->set(x, y, tile.special);
+			heightMap->set(x, y, tile.height);
 		}
 
 		void generate()
@@ -42,7 +42,6 @@ namespace
 			imageFill(+heightMap, real::Nan());
 
 			{
-				OPTICK_EVENT("generate textures");
 				PolyhedronTextureGenerationConfig cfg;
 				cfg.width = width;
 				cfg.height = height;
@@ -51,7 +50,6 @@ namespace
 			}
 
 			{
-				OPTICK_EVENT("inpaint");
 				imageDilation(+albedo, 7, true);
 				imageDilation(+special, 7, true);
 				imageDilation(+heightMap, 7, true);
@@ -68,13 +66,8 @@ namespace
 	};
 }
 
-void generateMaterials(const Holder<Polyhedron> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
+void generateTextures(const Holder<Polyhedron> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
 {
-	OPTICK_EVENT();
-
-	Generator gen(mesh, width, height, albedo, special, heightMap);
+	Generator gen(renderMesh, width, height, albedo, special, heightMap);
 	gen.generate();
 }
-
-
-

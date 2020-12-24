@@ -4,14 +4,15 @@
 #include <cage-core/config.h>
 #include <cage-core/random.h>
 #include <cage-core/image.h>
+#include <cage-core/polyhedron.h>
 
+#include "terrain.h"
 #include "generator.h"
+#include "mesh.h"
 
 #include <atomic>
 #include <chrono>
 #include <ctime>
-
-string generateName();
 
 namespace
 {
@@ -61,7 +62,6 @@ namespace
 	void exportConfiguration(const string &planetName)
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "exporting");
-		OPTICK_EVENT();
 
 		{ // write unnatural-map
 			Holder<File> f = newFile(pathJoin(baseDirectory, "unnatural-map.ini"), FileMode(false, true));
@@ -165,7 +165,7 @@ namespace
 			meshSimplifyNavmesh(mesh);
 			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh tiles: " + mesh->verticesCount());
 			if (saveDebugIntermediates)
-				saveDebugMesh(pathJoin(debugDirectory, "navMeshBase.obj"), mesh);
+				meshSaveDebug(pathJoin(debugDirectory, "navMeshBase.obj"), mesh);
 			navMesh = templates::move(mesh);
 		}
 
@@ -184,7 +184,7 @@ namespace
 			Holder<Polyhedron> mesh = baseMesh->copy();
 			meshSimplifyCollider(mesh);
 			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "collider: vertices: " + mesh->verticesCount() + ", triangles: " + (mesh->indicesCount() / 3));
-			saveCollider(pathJoin(assetsDirectory, "collider.obj"), mesh);
+			meshSaveCollider(pathJoin(assetsDirectory, "collider.obj"), mesh);
 		}
 
 		ColliderProcessor()
@@ -204,9 +204,9 @@ namespace
 		{
 			const auto &msh = split[index];
 			const uint32 resolution = meshUnwrap(msh);
-			saveRenderMesh(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + ".obj"), msh);
+			meshSaveRender(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + ".obj"), msh);
 			Holder<Image> albedo, special, heightMap;
-			generateMaterials(msh, resolution, resolution, albedo, special, heightMap);
+			generateTextures(msh, resolution, resolution, albedo, special, heightMap);
 			albedo->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-albedo.png"));
 			special->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-special.png"));
 			heightMap->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-height.png"));
@@ -237,7 +237,7 @@ namespace
 			Holder<Polyhedron> mesh = baseMesh->copy();
 			meshSimplifyRender(mesh);
 			if (saveDebugIntermediates)
-				saveDebugMesh(pathJoin(debugDirectory, "renderMesh.obj"), mesh);
+				meshSaveDebug(pathJoin(debugDirectory, "renderMesh.obj"), mesh);
 			split = meshSplit(mesh);
 			renderChunksCount = numeric_cast<uint32>(split.size());
 			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "render mesh split into " + renderChunksCount + " chunks");
@@ -256,15 +256,10 @@ namespace
 
 		void processEntry()
 		{
-			std::vector<TerrainTypeEnum> tileTypes;
-			std::vector<BiomeEnum> tileBiomes;
-			std::vector<real> tileElevations;
-			std::vector<real> tileTemperatures;
-			std::vector<real> tilePrecipitations;
-			generateTileProperties(navMesh, tileTypes, tileBiomes, tileElevations, tileTemperatures, tilePrecipitations, pathJoin(baseDirectory, "tileStats.log"));
-			static_assert(sizeof(TerrainTypeEnum) == sizeof(uint8), "invalid reinterpret cast");
-			saveNavigationMesh(pathJoin(assetsDirectory, "navmesh.obj"), navMesh, (std::vector<uint8>&)tileTypes);
-			generateDoodads(navMesh, tileTypes, tileBiomes, tileElevations, tileTemperatures, tilePrecipitations, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
+			std::vector<Tile> tiles;
+			generateTileProperties(navMesh, tiles, pathJoin(baseDirectory, "tileStats.log"));
+			meshSaveNavigation(pathJoin(assetsDirectory, "navmesh.obj"), navMesh, tiles);
+			generateDoodads(navMesh, tiles, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
 		}
 
 		TilesProcessor()
@@ -278,11 +273,11 @@ void generateEntry()
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "tmp directory: " + baseDirectory);
 
-	preseedTerrainFunctions();
+	terrainPreseed();
 	baseMesh = generateBaseMesh(2500, 200);
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: vertices: " + baseMesh->verticesCount() + ", triangles: " + (baseMesh->indicesCount() / 3));
 	if (saveDebugIntermediates)
-		saveDebugMesh(pathJoin(debugDirectory, "baseMesh.obj"), baseMesh);
+		meshSaveDebug(pathJoin(debugDirectory, "baseMesh.obj"), baseMesh);
 	
 	{
 		NavmeshProcessor navigation;

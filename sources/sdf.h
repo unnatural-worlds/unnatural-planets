@@ -1,7 +1,9 @@
 #ifndef sdf_h_wefdzwdf
 #define sdf_h_wefdzwdf
 
-#include "generator.h"
+#include <cage-core/math.h>
+
+using namespace cage;
 
 real sdfPlane(const vec3 &pos, const plane &pln);
 real sdfPlane(const vec3 &pos);

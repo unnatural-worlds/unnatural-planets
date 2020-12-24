@@ -2,7 +2,7 @@
 #include <cage-core/config.h>
 #include <unnatural-navmesh/navmesh.h>
 
-#include "generator.h"
+#include "mesh.h"
 
 #include <initializer_list>
 
@@ -59,7 +59,6 @@ namespace
 void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "regularizing navigation mesh");
-	OPTICK_EVENT();
 
 	if (navmeshOptimize)
 	{
@@ -82,7 +81,6 @@ void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)
 void meshSimplifyCollider(Holder<Polyhedron> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "simplifying collider mesh");
-	OPTICK_EVENT();
 
 	PolyhedronSimplificationConfig cfg;
 	cfg.iterations = iterations;
@@ -101,7 +99,6 @@ void meshSimplifyCollider(Holder<Polyhedron> &mesh)
 void meshSimplifyRender(Holder<Polyhedron> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "simplifying render mesh");
-	OPTICK_EVENT();
 
 	PolyhedronSimplificationConfig cfg;
 	cfg.iterations = iterations;
@@ -119,9 +116,7 @@ void meshSimplifyRender(Holder<Polyhedron> &mesh)
 
 std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 {
-	OPTICK_EVENT();
 	const real myArea = meshSurfaceArea(mesh.get());
-	OPTICK_TAG("area", myArea.value);
 	std::vector<Holder<Polyhedron>> result;
 	if (myArea > 250000)
 	{
@@ -161,7 +156,6 @@ std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 
 uint32 meshUnwrap(const Holder<Polyhedron> &mesh)
 {
-	OPTICK_EVENT("unwrapping");
 	PolyhedronUnwrapConfig cfg;
 	cfg.maxChartIterations = 10;
 	cfg.maxChartBoundaryLength = 500;

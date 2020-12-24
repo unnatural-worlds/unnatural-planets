@@ -2,6 +2,7 @@
 #include <cage-core/ini.h>
 #include <cage-core/config.h>
 
+#include "terrain.h"
 #include "generator.h"
 
 namespace
@@ -10,7 +11,7 @@ namespace
 	{
 		ConfigString baseShapeName("unnatural-planets/planet/shape", "random");
 		baseShapeName = cmd->cmdString('s', "shape", baseShapeName);
-		updateBaseShapeFunctionPointer();
+		terrainApplyConfig();
 
 		ConfigBool useTerrainPoles("unnatural-planets/planet/poles", (string)baseShapeName == "sphere");
 		useTerrainPoles = cmd->cmdBool('p', "poles", useTerrainPoles);

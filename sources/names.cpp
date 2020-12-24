@@ -38,6 +38,8 @@ namespace
 			name + PICK(Suffixes);
 		if (string(name).length() < 2)
 			return generateNameImpl();
+		if (randomChance() < 0.1)
+			name = stringizer() + reverse(string(name));
 		if (randomChance() < 0.4)
 			name + PICK(Appendixes);
 		return name;
@@ -51,4 +53,3 @@ string generateName()
 	CAGE_LOG(SeverityEnum::Info, "unnatural-planets", stringizer() + "generated name: '" + name + "'");
 	return name;
 }
-

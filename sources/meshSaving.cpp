@@ -1,21 +1,21 @@
 #include <cage-core/files.h>
+#include <cage-core/polyhedron.h>
 
-#include "generator.h"
+#include "terrain.h"
+#include "mesh.h"
 
-void saveDebugMesh(const string &path, const Holder<Polyhedron> &mesh)
+void meshSaveDebug(const string &path, const Holder<Polyhedron> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving debug mesh: " + path);
-	OPTICK_EVENT();
 
 	PolyhedronObjExportConfig cfg;
 	cfg.objectName = pathExtractFilenameNoExtension(path);
 	mesh->exportObjFile(cfg, path);
 }
 
-void saveRenderMesh(const string &path, const Holder<Polyhedron> &mesh)
+void meshSaveRender(const string &path, const Holder<Polyhedron> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving render mesh: " + path);
-	OPTICK_EVENT();
 
 	CAGE_ASSERT(mesh->normals().size() == mesh->verticesCount());
 	CAGE_ASSERT(mesh->uvs().size() == mesh->verticesCount());
@@ -44,18 +44,20 @@ void saveRenderMesh(const string &path, const Holder<Polyhedron> &mesh)
 	}
 }
 
-void saveNavigationMesh(const string &path, const Holder<Polyhedron> &mesh, const std::vector<uint8> &terrainTypes)
+void meshSaveNavigation(const string &path, const Holder<Polyhedron> &mesh, const std::vector<Tile> &tiles)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving navigation mesh: " + path);
-	OPTICK_EVENT();
 
 	CAGE_ASSERT(mesh->normals().size() == mesh->verticesCount());
-	CAGE_ASSERT(terrainTypes.size() == mesh->verticesCount());
+	CAGE_ASSERT(tiles.size() == mesh->verticesCount());
 	Holder<Polyhedron> m = mesh->copy();
 	std::vector<vec2> uvs;
-	uvs.reserve(terrainTypes.size());
-	for (uint8 t : terrainTypes)
-		uvs.push_back(vec2((t + 0.5) / 32, 0));
+	uvs.reserve(tiles.size());
+	for (const Tile &t : tiles)
+	{
+		static_assert((uint8)TerrainTypeEnum::_Total <= 32);
+		uvs.push_back(vec2(((uint8)(t.type) + 0.5) / 32, 0));
+	}
 	m->uvs(uvs);
 
 	PolyhedronObjExportConfig cfg;
@@ -63,10 +65,9 @@ void saveNavigationMesh(const string &path, const Holder<Polyhedron> &mesh, cons
 	m->exportObjFile(cfg, path);
 }
 
-void saveCollider(const string &path, const Holder<Polyhedron> &mesh)
+void meshSaveCollider(const string &path, const Holder<Polyhedron> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving collider: " + path);
-	OPTICK_EVENT();
 
 	Holder<Polyhedron> m = mesh->copy();
 	m->normals({});
@@ -75,7 +76,3 @@ void saveCollider(const string &path, const Holder<Polyhedron> &mesh)
 	cfg.objectName = "collider";
 	m->exportObjFile(cfg, path);
 }
-
-
-
-

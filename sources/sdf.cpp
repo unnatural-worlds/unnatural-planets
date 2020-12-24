@@ -262,4 +262,3 @@ real sdfH4O(const vec3 &pos)
 	const real h = max(max(hs[0], hs[1]), max(hs[2], hs[3]));
 	return smoothMax(o, h, 50);
 }
-
