@@ -48,7 +48,7 @@ real terrainDensity(const vec3 &pos)
 {
 	CAGE_ASSERT(baseShapeDensity != nullptr);
 	real base = baseShapeDensity(pos);
-	real elev = terrainElevation(pos);
+	real elev = terrainElevation(pos) * 10;
 	real result = base + max(elev, 0);
 	if (!valid(result))
 		CAGE_THROW_ERROR(Exception, "invalid density function value");

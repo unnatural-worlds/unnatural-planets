@@ -12,8 +12,6 @@ namespace
 {
 	ConfigBool useTerrainPoles("unnatural-planets/planet/poles");
 
-	constexpr real globalPositionScale = 0.1;
-
 	//--------
 	// biomes
 	//--------
@@ -166,7 +164,7 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		real p = precpNoise->evaluate(tile.position * 0.015) * 0.5 + 0.5;
+		real p = precpNoise->evaluate(tile.position * 0.0015) * 0.5 + 0.5;
 		p = clamp(p, 0, 1);
 		p = smootherstep(p);
 		p = smootherstep(p);
@@ -186,7 +184,7 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		real t = tempNoise->evaluate(tile.position * 0.015) * 0.5 + 0.5;
+		real t = tempNoise->evaluate(tile.position * 0.0015) * 0.5 + 0.5;
 		t = clamp(t, 0, 1);
 		t = smootherstep(t);
 		t = smootherstep(t);
@@ -207,11 +205,11 @@ namespace
 			return;
 		real polar = abs(atan(tile.position[1] / length(vec2(tile.position[0], tile.position[2]))).value) / real::Pi() * 2;
 		polar = pow(polar, 1.7);
-		polar += polarNoise->evaluate(tile.position * 0.07) * 0.1;
+		polar += polarNoise->evaluate(tile.position * 0.007) * 0.1;
 		tile.temperature += 15 - polar * 80;
 	}
 
-	void terrainSlope(Tile &tile, real radius = 0.05)
+	void terrainSlope(Tile &tile, real radius = 0.5)
 	{
 		vec3 a = anyPerpendicular(tile.normal);
 		vec3 b = cross(tile.normal, a);
@@ -220,14 +218,14 @@ namespace
 		vec3 c = (a + b) / sqrt(2);
 		vec3 d = (a - b) / sqrt(2);
 		real elevs[8] = {
-			terrainElevation((tile.position + a) / globalPositionScale),
-			terrainElevation((tile.position + b) / globalPositionScale),
-			terrainElevation((tile.position - a) / globalPositionScale),
-			terrainElevation((tile.position - b) / globalPositionScale),
-			terrainElevation((tile.position + c) / globalPositionScale),
-			terrainElevation((tile.position + d) / globalPositionScale),
-			terrainElevation((tile.position - c) / globalPositionScale),
-			terrainElevation((tile.position - d) / globalPositionScale),
+			terrainElevation(tile.position + a),
+			terrainElevation(tile.position + b),
+			terrainElevation(tile.position - a),
+			terrainElevation(tile.position - b),
+			terrainElevation(tile.position + c),
+			terrainElevation(tile.position + d),
+			terrainElevation(tile.position - c),
+			terrainElevation(tile.position - d),
 		};
 		real difs[4] = {
 			abs(elevs[2] - elevs[0]),
@@ -236,7 +234,7 @@ namespace
 			abs(elevs[7] - elevs[5]),
 		};
 		real md = max(max(difs[0], difs[1]), max(difs[2], difs[3]));
-		tile.slope = atan(md / radius);
+		tile.slope = atan(10 * md / radius);
 	}
 
 	void oceanOverrides(Tile &tile)
@@ -274,7 +272,7 @@ namespace
 				cfg.seed = noiseSeed();
 				return newNoiseFunction(cfg);
 			}();
-			vec3 s = tile.position * 0.01;
+			vec3 s = tile.position * 0.001;
 			real x = xNoise->evaluate(s);
 			real y = yNoise->evaluate(s);
 			real z = zNoise->evaluate(s);
@@ -283,7 +281,7 @@ namespace
 			//dir = normalize(dir - dot(dir, normal) * normal);
 			CAGE_ASSERT(isUnit(dir));
 			real dist = dot(dir, tile.position) * length(tile.position);
-			real wave = sin(rads(dist * 0.05));
+			real wave = sin(rads(dist * 0.005));
 			tile.height = wave * 0.05 + 0.05;
 		}
 	}
@@ -307,8 +305,8 @@ namespace
 		}();
 		if (tile.elevation > -2 || tile.temperature > -5)
 			return;
-		real scale = 0.5 + scaleNoise->evaluate(tile.position * 0.3) * 0.02;
-		real crack = cracksNoise->evaluate(tile.position * scale);
+		real scale = 0.5 + scaleNoise->evaluate(tile.position * 0.03) * 0.02;
+		real crack = cracksNoise->evaluate(tile.position * 0.1 * scale);
 		crack = pow(crack, 0.3);
 		tile.type = TerrainTypeEnum::Slow;
 		tile.albedo = vec3(61, 81, 82) / 255 + crack * 0.3;
@@ -345,7 +343,7 @@ namespace
 			return;
 		real factor = rescale(tile.slope.value, 0, real::Pi() * 0.5, -1, 2);
 		factor = sharpEdge(factor);
-		real scale = 3;
+		real scale = 0.3;
 		real crack = cracksNoise->evaluate(tile.position * scale) * 0.5 + 0.5;
 		crack = pow(crack, 0.8);
 		real type = typeNoise->evaluate(tile.position * scale) * 0.5 + 0.5;
@@ -389,9 +387,9 @@ namespace
 		thriving *= clamp(rescale(tile.slope.value, 0, real::Pi() / 2, 1.5, -0.5), 0, 1);
 		thriving *= 2000 / (pow(abs(tile.temperature - 20), 4) + 2000);
 		thriving *= pow(tile.precipitation, 0.5) / (abs(tile.precipitation - 70) + 10);
-		real threshold = thresholdNoise->evaluate(tile.position * 1.5) * 0.5 + 0.5;
+		real threshold = thresholdNoise->evaluate(tile.position * 0.15) * 0.5 + 0.5;
 		real factor = sharpEdge(thriving - threshold + 0.5, 0.15);
-		real blend = threadsNoise->evaluate(tile.position * (2 + perturbNoise->evaluate(tile.position) * 0.1)) * 0.5 + 0.5;
+		real blend = threadsNoise->evaluate(tile.position * 0.1 * (2 + perturbNoise->evaluate(tile.position * 0.1) * 0.1)) * 0.5 + 0.5;
 		vec3 grassAlbedo = interpolate(vec3(128, 152, 74), vec3(72, 106, 39), blend) / 255;
 		tile.albedo = interpolate(tile.albedo, grassAlbedo, factor);
 		tile.special[0] = interpolate(tile.special[0], 0.5, factor);
@@ -411,7 +409,7 @@ namespace
 			return;
 		if (tile.precipitation < 50 || tile.type == TerrainTypeEnum::SteepSlope)
 			return;
-		real factor = (thresholdNoise->evaluate(tile.position) * 0.5 + 0.5) * 0.6 + 0.4;
+		real factor = (thresholdNoise->evaluate(tile.position * 0.1) * 0.5 + 0.5) * 0.6 + 0.4;
 		tile.type = TerrainTypeEnum::Slow;
 		tile.albedo = interpolate(tile.albedo, vec3(248) / 255, factor);
 		tile.special[0] = interpolate(tile.special[0], 0.7, factor);
@@ -430,7 +428,7 @@ namespace
 		if (tile.elevation < 0 || tile.elevation > 0.3)
 			return;
 		real solid = tile.elevation / 0.3;
-		solid += solidNoise->evaluate(tile.position * 1.5) * 0.3;
+		solid += solidNoise->evaluate(tile.position * 0.15) * 0.3;
 		solid = clamp(solid, 0, 1);
 		tile.type = TerrainTypeEnum::ShallowWater;
 		tile.albedo = interpolate(shallowWaterColor, tile.albedo, solid);
@@ -448,7 +446,7 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		real p = fertNoise->evaluate(tile.position * 0.035) * 2;
+		real p = fertNoise->evaluate(tile.position * 0.0035) * 2;
 		p = clamp(p, -1, 1);
 		tile.fertility = p;
 	}
@@ -463,7 +461,7 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		real p = natNoise->evaluate(tile.position * 0.015) * 5;
+		real p = natNoise->evaluate(tile.position * 0.0015) * 5;
 		p = clamp(p, -1, 1);
 		tile.nationality = p;
 	}
@@ -471,9 +469,8 @@ namespace
 
 void terrainTile(Tile &tile)
 {
-	tile.position *= globalPositionScale;
 	CAGE_ASSERT(isUnit(tile.normal));
-	tile.elevation = terrainElevation(tile.position / globalPositionScale);
+	tile.elevation = terrainElevation(tile.position);
 	terrainSlope(tile);
 	terrainTemperature(tile);
 	terrainPoles(tile);
@@ -498,7 +495,6 @@ void terrainTile(Tile &tile)
 	tile.height = saturate(tile.height);
 	terrainNationality(tile);
 	terrainFertility(tile);
-	tile.position /= globalPositionScale;
 }
 
 void terrainPreseed()
