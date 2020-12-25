@@ -12,6 +12,8 @@ namespace
 {
 	ConfigBool useTerrainPoles("unnatural-planets/planet/poles");
 
+	constexpr real globalPositionScale = 0.1;
+
 	//--------
 	// biomes
 	//--------
@@ -218,14 +220,14 @@ namespace
 		vec3 c = (a + b) / sqrt(2);
 		vec3 d = (a - b) / sqrt(2);
 		real elevs[8] = {
-			terrainElevation(tile.position + a),
-			terrainElevation(tile.position + b),
-			terrainElevation(tile.position - a),
-			terrainElevation(tile.position - b),
-			terrainElevation(tile.position + c),
-			terrainElevation(tile.position + d),
-			terrainElevation(tile.position - c),
-			terrainElevation(tile.position - d),
+			terrainElevation((tile.position + a) / globalPositionScale),
+			terrainElevation((tile.position + b) / globalPositionScale),
+			terrainElevation((tile.position - a) / globalPositionScale),
+			terrainElevation((tile.position - b) / globalPositionScale),
+			terrainElevation((tile.position + c) / globalPositionScale),
+			terrainElevation((tile.position + d) / globalPositionScale),
+			terrainElevation((tile.position - c) / globalPositionScale),
+			terrainElevation((tile.position - d) / globalPositionScale),
 		};
 		real difs[4] = {
 			abs(elevs[2] - elevs[0]),
@@ -465,15 +467,13 @@ namespace
 		p = clamp(p, -1, 1);
 		tile.nationality = p;
 	}
-
-	constexpr real globalPositionScale = 0.1;
 }
 
 void terrainTile(Tile &tile)
 {
 	tile.position *= globalPositionScale;
 	CAGE_ASSERT(isUnit(tile.normal));
-	tile.elevation = terrainElevation(tile.position);
+	tile.elevation = terrainElevation(tile.position / globalPositionScale);
 	terrainSlope(tile);
 	terrainTemperature(tile);
 	terrainPoles(tile);

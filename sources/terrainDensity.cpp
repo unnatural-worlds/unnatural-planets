@@ -12,8 +12,6 @@ namespace
 
 	typedef real (*BaseShapeDensity)(const vec3 &);
 	BaseShapeDensity baseShapeDensity = 0;
-
-	constexpr real globalPositionScale = 0.1;
 }
 
 real terrainElevation(const vec3 &pos)
@@ -36,7 +34,7 @@ real terrainElevation(const vec3 &pos)
 	if (!useTerrainElevation)
 		return 1;
 
-	real scale = scaleNoise->evaluate(pos * 0.005) * 0.005 + 0.015;
+	real scale = scaleNoise->evaluate(pos * 0.0005) * 0.0005 + 0.0015;
 	real a = elevNoise->evaluate(pos * scale);
 	a += 0.11; // slightly prefer terrain over ocean
 	if (a < 0)
@@ -50,7 +48,7 @@ real terrainDensity(const vec3 &pos)
 {
 	CAGE_ASSERT(baseShapeDensity != nullptr);
 	real base = baseShapeDensity(pos);
-	real elev = terrainElevation(pos * globalPositionScale) / globalPositionScale;
+	real elev = terrainElevation(pos);
 	real result = base + max(elev, 0);
 	if (!valid(result))
 		CAGE_THROW_ERROR(Exception, "invalid density function value");
