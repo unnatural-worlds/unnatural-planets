@@ -159,8 +159,8 @@ namespace
 		static const Holder<NoiseFunction> precpNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.octaves = 4;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -179,8 +179,8 @@ namespace
 		static const Holder<NoiseFunction> tempNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.octaves = 4;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -197,6 +197,7 @@ namespace
 		static const Holder<NoiseFunction> polarNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
@@ -254,6 +255,7 @@ namespace
 			static const Holder<NoiseFunction> xNoise = []() {
 				NoiseFunctionCreateConfig cfg;
 				cfg.type = NoiseTypeEnum::Value;
+				cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 				cfg.octaves = 4;
 				cfg.seed = noiseSeed();
 				return newNoiseFunction(cfg);
@@ -261,6 +263,7 @@ namespace
 			static const Holder<NoiseFunction> yNoise = []() {
 				NoiseFunctionCreateConfig cfg;
 				cfg.type = NoiseTypeEnum::Value;
+				cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 				cfg.octaves = 4;
 				cfg.seed = noiseSeed();
 				return newNoiseFunction(cfg);
@@ -268,6 +271,7 @@ namespace
 			static const Holder<NoiseFunction> zNoise = []() {
 				NoiseFunctionCreateConfig cfg;
 				cfg.type = NoiseTypeEnum::Value;
+				cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 				cfg.octaves = 4;
 				cfg.seed = noiseSeed();
 				return newNoiseFunction(cfg);
@@ -291,14 +295,16 @@ namespace
 		static const Holder<NoiseFunction> cracksNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cellular;
-			cfg.distance = NoiseDistanceEnum::Natural;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
 			cfg.operation = NoiseOperationEnum::Subtract;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
 		static const Holder<NoiseFunction> scaleNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
@@ -306,7 +312,7 @@ namespace
 		if (tile.elevation > -2 || tile.temperature > -5)
 			return;
 		real scale = 0.5 + scaleNoise->evaluate(tile.position * 0.03) * 0.02;
-		real crack = cracksNoise->evaluate(tile.position * 0.1 * scale);
+		real crack = cracksNoise->evaluate(tile.position * 0.1 * scale) * 0.5 + 0.5;
 		crack = pow(crack, 0.3);
 		tile.type = TerrainTypeEnum::Slow;
 		tile.albedo = vec3(61, 81, 82) / 255 + crack * 0.3;
@@ -320,24 +326,20 @@ namespace
 		static const Holder<NoiseFunction> cracksNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cellular;
-			cfg.distance = NoiseDistanceEnum::Natural;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
 			cfg.operation = NoiseOperationEnum::Subtract;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.seed = seed;
 			return newNoiseFunction(cfg);
 		}();
 		static const Holder<NoiseFunction> typeNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cellular;
-			cfg.distance = NoiseDistanceEnum::Natural;
-			cfg.operation = NoiseOperationEnum::NoiseLookup;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
+			cfg.operation = NoiseOperationEnum::Cell;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.seed = seed;
-			return newNoiseFunction(cfg, []() {
-				NoiseFunctionCreateConfig cfg;
-				cfg.type = NoiseTypeEnum::Value;
-				cfg.octaves = 2;
-				cfg.seed = noiseSeed();
-				return newNoiseFunction(cfg);
-			}());
+			return newNoiseFunction(cfg);
 		}();
 		if (tile.elevation < 0)
 			return;
@@ -362,6 +364,7 @@ namespace
 		static const Holder<NoiseFunction> thresholdNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
@@ -369,7 +372,7 @@ namespace
 		static const Holder<NoiseFunction> threadsNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Simplex;
-			cfg.fractalType = NoiseFractalTypeEnum::RigidMulti;
+			cfg.fractalType = NoiseFractalTypeEnum::Ridged;
 			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
@@ -377,6 +380,7 @@ namespace
 		static const Holder<NoiseFunction> perturbNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
@@ -401,6 +405,7 @@ namespace
 		static const Holder<NoiseFunction> thresholdNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
@@ -421,6 +426,7 @@ namespace
 		static const Holder<NoiseFunction> solidNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
@@ -441,8 +447,8 @@ namespace
 		static const Holder<NoiseFunction> fertNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.octaves = 4;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -456,8 +462,8 @@ namespace
 		static const Holder<NoiseFunction> natNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.octaves = 4;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();

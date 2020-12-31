@@ -278,7 +278,7 @@ void generateEntry()
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: vertices: " + baseMesh->verticesCount() + ", triangles: " + (baseMesh->indicesCount() / 3));
 	if (saveDebugIntermediates)
 		meshSaveDebug(pathJoin(debugDirectory, "baseMesh.obj"), baseMesh);
-	
+
 	{
 		NavmeshProcessor navigation;
 		ColliderProcessor collider;

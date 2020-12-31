@@ -19,6 +19,7 @@ real terrainElevation(const vec3 &pos)
 	static const Holder<NoiseFunction> scaleNoise = []() {
 		NoiseFunctionCreateConfig cfg;
 		cfg.type = NoiseTypeEnum::Value;
+		cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 		cfg.octaves = 4;
 		cfg.seed = noiseSeed();
 		return newNoiseFunction(cfg);
@@ -26,6 +27,7 @@ real terrainElevation(const vec3 &pos)
 	static const Holder<NoiseFunction> elevNoise = []() {
 		NoiseFunctionCreateConfig cfg;
 		cfg.type = NoiseTypeEnum::Value;
+		cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 		cfg.octaves = 4;
 		cfg.seed = noiseSeed();
 		return newNoiseFunction(cfg);
