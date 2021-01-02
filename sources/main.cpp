@@ -32,6 +32,9 @@ namespace
 		
 		ConfigBool saveDebugIntermediates("unnatural-planets/generator/saveIntermediateSteps", false);
 		saveDebugIntermediates = cmd->cmdBool('i', "intermediate", saveDebugIntermediates);
+
+		ConfigBool runPreview("unnatural-planets/preview/run", false);
+		runPreview = cmd->cmdBool('r', "preview", runPreview);
 	}
 }
 

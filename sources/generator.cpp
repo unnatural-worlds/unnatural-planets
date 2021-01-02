@@ -5,6 +5,7 @@
 #include <cage-core/random.h>
 #include <cage-core/image.h>
 #include <cage-core/polyhedron.h>
+#include <cage-core/process.h>
 
 #include "terrain.h"
 #include "generator.h"
@@ -58,13 +59,14 @@ namespace
 	uint32 renderChunksCount;
 	ConfigString baseShapeName("unnatural-planets/planet/shape");
 	ConfigBool saveDebugIntermediates("unnatural-planets/generator/saveIntermediateSteps");
+	ConfigBool runPreview("unnatural-planets/preview/run");
 
 	void exportConfiguration(const string &planetName)
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "exporting");
 
 		{ // write unnatural-map
-			Holder<File> f = newFile(pathJoin(baseDirectory, "unnatural-map.ini"), FileMode(false, true));
+			Holder<File> f = writeFile(pathJoin(baseDirectory, "unnatural-map.ini"));
 			f->writeLine("[map]");
 			f->writeLine(stringizer() + "name = " + planetName);
 			f->writeLine("version = 0");
@@ -77,7 +79,7 @@ namespace
 				f->writeLine(stringizer() + "date: " + buffer);
 			}
 #ifdef CAGE_DEBUG
-			f->writeLine("generated with debug build");
+			f->writeLine("generated with DEBUG build");
 #endif // CAGE_DEBUG
 			f->writeLine("[authors]");
 			f->writeLine("unnatural-planets procedural generator https://github.com/unnatural-worlds/unnatural-planets");
@@ -93,14 +95,14 @@ namespace
 		}
 
 		{ // write scene file
-			Holder<File> f = newFile(pathJoin(baseDirectory, "scene.ini"), FileMode(false, true));
+			Holder<File> f = writeFile(pathJoin(baseDirectory, "scene.ini"));
 			f->writeLine("[]");
 			f->writeLine("object = planet.object");
 			f->close();
 		}
 
 		{ // object file
-			Holder<File> f = newFile(pathJoin(assetsDirectory, "planet.object"), FileMode(false, true));
+			Holder<File> f = writeFile(pathJoin(assetsDirectory, "planet.object"));
 			f->writeLine("[]");
 			for (uint32 i = 0; i < renderChunksCount; i++)
 				f->writeLine(stringizer() + "chunk-" + i + ".obj");
@@ -108,14 +110,14 @@ namespace
 		}
 
 		{ // pack file
-			Holder<File> f = newFile(pathJoin(assetsDirectory, "planet.pack"), FileMode(false, true));
+			Holder<File> f = writeFile(pathJoin(assetsDirectory, "planet.pack"));
 			f->writeLine("[]");
 			f->writeLine("planet.object");
 			f->close();
 		}
 
 		{ // generate asset configuration
-			Holder<File> f = newFile(pathJoin(assetsDirectory, "planet.assets"), FileMode(false, true));
+			Holder<File> f = writeFile(pathJoin(assetsDirectory, "planet.assets"));
 			f->writeLine("[]");
 			f->writeLine("scheme = texture");
 			f->writeLine("srgb = true");
@@ -152,6 +154,24 @@ namespace
 			f->writeLine("scheme = pack");
 			f->writeLine("planet.pack");
 			f->close();
+		}
+
+		{ // generate blender import script
+			Holder<File> f = writeFile(pathJoin(assetsDirectory, "blender-import.py"));
+			f->writeLine("import os");
+			f->writeLine("import bpy");
+			f->writeLine(stringizer() + "for i in range(0, " + renderChunksCount + "):");
+			f->writeLine("\tn = \"chunk-\" + str(i) + \".obj\"");
+			f->writeLine("\tbpy.ops.import_scene.obj(filepath = n)");
+			f->writeLine(R"Python(
+for a in bpy.data.window_managers[0].windows[0].screen.areas:
+	if a.type == 'VIEW_3D':
+		for s in a.spaces:
+			if s.type == 'VIEW_3D':
+				s.clip_start = 0.1
+				s.clip_end = 10000
+				s.shading.type = 'MATERIAL'
+				)Python");
 		}
 	}
 
@@ -294,10 +314,25 @@ void generateEntry()
 
 	CAGE_LOG(SeverityEnum::Info, "generator", "finished generating");
 
+	const string outPath = findOutputDirectory(planetName);
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "output directory: " + outPath);
+	pathMove(baseDirectory, outPath);
+
+	if (runPreview)
 	{
-		const string outPath = findOutputDirectory(planetName);
-		CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "output directory: " + outPath);
-		pathMove(baseDirectory, outPath);
+		CAGE_LOG(SeverityEnum::Info, "generator", "starting the preview");
+		try
+		{
+			ProcessCreateConfig cfg("blender -y -P blender-import.py", pathJoin(outPath, "data"));
+			cfg.discardStdErr = cfg.discardStdIn = cfg.discardStdOut = true;
+			Holder<Process> p = newProcess(cfg);
+			p->wait();
+		}
+		catch (...)
+		{
+			CAGE_LOG(SeverityEnum::Error, "generator", "preview failure:");
+			detail::logCurrentCaughtException();
+		}
 	}
 
 	CAGE_LOG(SeverityEnum::Info, "generator", "all done");

@@ -32,7 +32,7 @@ void meshSaveRender(const string &path, const Holder<Polyhedron> &mesh)
 		Holder<File> f = writeFile(pathJoin(directory, cfg.materialLibraryName));
 		f->writeLine(stringizer() + "newmtl " + cfg.materialName);
 		f->writeLine(stringizer() + "map_Kd " + cfg.objectName + "-albedo.png");
-		f->writeLine(stringizer() + "map_bump " + cfg.objectName + "-height.png");
+		//f->writeLine(stringizer() + "map_bump " + cfg.objectName + "-height.png");
 	}
 
 	{ // write cpm material file
