@@ -6,6 +6,7 @@
 #include <cage-core/image.h>
 #include <cage-core/polyhedron.h>
 #include <cage-core/process.h>
+#include <cage-core/string.h>
 
 #include "terrain.h"
 #include "generator.h"
@@ -30,7 +31,12 @@ namespace
 		}
 
 		{
-			const string pth = pathJoin(root, pathReplaceInvalidCharacters(planetName));
+			string name = pathReplaceInvalidCharacters(planetName);
+			name = replace(name, " ", "_");
+#ifdef CAGE_DEBUG
+			name += "_debug";
+#endif // CAGE_DEBUG
+			const string pth = pathJoin(root, name);
 			if (pathType(pth) == PathTypeFlags::NotFound)
 				return pth;
 		}

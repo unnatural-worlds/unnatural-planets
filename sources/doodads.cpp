@@ -85,7 +85,7 @@ namespace
 	{
 		struct Eligible
 		{
-			const Doodad *doodad;
+			const Doodad *doodad = nullptr;
 			real prob;
 		};
 
@@ -94,7 +94,7 @@ namespace
 
 		for (const Doodad &d : doodads)
 		{
-			if (d.ocean != (tile.biome == TerrainBiomeEnum::_Ocean))
+			if (d.ocean != (tile.biome == TerrainBiomeEnum::Ocean))
 				continue;
 			if (d.slope != (tile.type == TerrainTypeEnum::SteepSlope))
 				continue;

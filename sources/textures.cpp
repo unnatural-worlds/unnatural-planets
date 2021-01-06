@@ -25,7 +25,7 @@ namespace
 			tile.normal = mesh->normalAt(indices, weights);
 			terrainTile(tile);
 			albedo->set(x, y, tile.albedo);
-			special->set(x, y, tile.special);
+			special->set(x, y, vec2(tile.roughness, tile.metallic));
 			heightMap->set(x, y, tile.height);
 		}
 

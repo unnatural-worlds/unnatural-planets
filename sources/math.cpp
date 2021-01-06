@@ -12,7 +12,14 @@ vec3 colorDeviation(const vec3 &color, real deviation)
 {
 	vec3 hsl = colorRgbToHsluv(color) + (randomChance3() - 0.5) * deviation;
 	hsl[0] = (hsl[0] + 1) % 1;
-	return colorHsluvToRgb(clamp(hsl, 0, 1));
+	return colorHsluvToRgb(saturate(hsl));
+}
+
+vec3 colorHueShift(const vec3 &rgb, real shift)
+{
+	vec3 hsv = colorRgbToHsv(rgb);
+	hsv[0] = (hsv[0] + shift + 1) % 1;
+	return colorHsvToRgb(hsv);
 }
 
 vec3 normalDeviation(const vec3 &normal, real strength)

@@ -161,7 +161,7 @@ uint32 meshUnwrap(const Holder<Polyhedron> &mesh)
 	cfg.maxChartBoundaryLength = 500;
 	cfg.chartRoundness = 0.3;
 #ifdef CAGE_DEBUG
-	cfg.texelsPerUnit = 0.1;
+	cfg.texelsPerUnit = 0.3;
 #else
 	cfg.texelsPerUnit = 2;
 #endif // CAGE_DEBUG
