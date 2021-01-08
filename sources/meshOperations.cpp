@@ -116,7 +116,7 @@ void meshSimplifyRender(Holder<Polyhedron> &mesh)
 
 std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 {
-	const real myArea = meshSurfaceArea(mesh.get());
+	const real myArea = meshSurfaceArea(+mesh);
 	std::vector<Holder<Polyhedron>> result;
 	if (myArea > 250000)
 	{
@@ -163,7 +163,7 @@ uint32 meshUnwrap(const Holder<Polyhedron> &mesh)
 #ifdef CAGE_DEBUG
 	cfg.texelsPerUnit = 0.3;
 #else
-	cfg.texelsPerUnit = 2;
+	cfg.texelsPerUnit = 2.5;
 #endif // CAGE_DEBUG
 	cfg.padding = 6;
 	return polyhedronUnwrap(+mesh, cfg);

@@ -89,7 +89,7 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 		real p = precpNoise->evaluate(tile.position * 0.0015) * 0.5 + 0.5;
-		p = clamp(p, 0, 1);
+		p = saturate(p);
 		p = smootherstep(p);
 		p = smootherstep(p);
 		p = smootherstep(p);
@@ -109,11 +109,11 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 		real t = tempNoise->evaluate(tile.position * 0.0015) * 0.5 + 0.5;
-		t = clamp(t, 0, 1);
+		t = saturate(t);
 		t = smootherstep(t);
 		t = smootherstep(t);
 		t = t * 2 - 1;
-		tile.temperature = 30 + t * 5 - abs(tile.elevation) * 2.8;
+		tile.temperature = 30 + t * 5 - max(tile.elevation, 0) * 2.8;
 	}
 
 	void generatePoles(Tile &tile)
@@ -203,6 +203,22 @@ namespace
 	void generateBedrock(Tile &tile)
 	{
 		static const uint32 seed = noiseSeed();
+		static const Holder<NoiseFunction> scaleNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cubic;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> freqNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cubic;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
 		static const Holder<NoiseFunction> cracksNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cellular;
@@ -229,7 +245,41 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> scaleNoise = []() {
+
+		real scale = scaleNoise->evaluate(tile.position * 0.05) * 0.5 + 0.501;
+		scale = sqr(scale) * 0.9;
+		real freq = 0.25 + freqNoise->evaluate(tile.position * 0.009) * 0.05;
+		real cracks = cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5;
+		cracks = pow(cracks, 0.8);
+		real value = valueNoise->evaluate(tile.position * freq) * 0.5 + 0.5;
+		real saturation = saturationNoise->evaluate(tile.position * 0.003) * 0.5 + 0.5;
+		vec3 hsv = vec3(0.07, saturate(sharpEdge(saturation, 0.2)), (value * 0.6 + 0.2) * cracks);
+		tile.albedo = colorHsvToRgb(hsv);
+		tile.roughness = interpolate(0.9, 0.3 + value * 0.6, cracks);
+		tile.height = cracks * scale;
+	}
+
+	void generateSand(Tile &tile)
+	{
+		static const Holder<NoiseFunction> xNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> yNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> zNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> hueNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -238,15 +288,35 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real scale = 0.3 + scaleNoise->evaluate(tile.position * 0.02) * 0.03;
-		real crack = cracksNoise->evaluate(tile.position * scale) * 0.5 + 0.5;
-		crack = pow(crack, 0.8);
-		real value = valueNoise->evaluate(tile.position * scale) * 0.5 + 0.5;
-		real saturation = saturationNoise->evaluate(tile.position * 0.003) * 0.5 + 0.5;
-		vec3 hsv = vec3(0.07, saturate(sharpEdge(saturation, 0.2)), (value * 0.6 + 0.2) * crack);
-		tile.albedo = colorHsvToRgb(hsv);
-		tile.roughness = interpolate(0.9, 0.3 + value * 0.6, crack);
-		tile.height = 0.4 + crack * 0.4;
+		real bf = saturate((tile.temperature - 17.5) * 0.2) * saturate((35 - tile.precipitation) * 0.1) * sharpEdge(saturate(1 - tile.slope.value * 1.5));
+		if (bf < 1e-7)
+			return;
+
+		real height = 0;
+		{ // waves
+			vec3 s = tile.position * 0.0003;
+			real x = xNoise->evaluate(s);
+			real y = yNoise->evaluate(s);
+			real z = zNoise->evaluate(s);
+			vec3 dir = normalize(vec3(x, y, z));
+			CAGE_ASSERT(isUnit(dir));
+			real dist = dot(dir, normalize(tile.position)) * length(tile.position);
+			height = sin(rads(dist * 0.001)) * 0.5 + 0.5;
+			height = height * 0.4 + 0.3;
+		}
+
+		bf *= sharpEdge(saturate(height - tile.height + 0.4));
+
+		real hueShift = hueNoise->evaluate(tile.position * 0.01) * 0.1;
+		vec3 color = colorHueShift(vec3(172, 159, 139) / 255, hueShift);
+		color = colorDeviation(color, 0.08);
+		real roughness = 0.6 * randomChance() * 0.2;
+		real metallic = 0;
+
+		tile.albedo = interpolate(tile.albedo, color, bf);
+		tile.roughness = interpolate(tile.roughness, roughness, bf);
+		tile.metallic = interpolate(tile.metallic, metallic, bf);
+		tile.height = interpolate(tile.height, height, bf);
 	}
 
 	void generateWater(Tile &tile)
@@ -254,24 +324,18 @@ namespace
 		static const Holder<NoiseFunction> xNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
 		static const Holder<NoiseFunction> yNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
 		static const Holder<NoiseFunction> zNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -295,6 +359,7 @@ namespace
 		vec3 color = colorHueShift(interpolate(vec3(54, 54, 97), vec3(26, 102, 125), shallow) / 255, hueShift);
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, 0.3, bf);
+		tile.metallic = interpolate(tile.metallic, 0, bf);
 		tile.biome = TerrainBiomeEnum::Ocean;
 		tile.type = shallow > 0.5 ? TerrainTypeEnum::ShallowWater : TerrainTypeEnum::DeepWater;
 
@@ -305,8 +370,8 @@ namespace
 			real z = zNoise->evaluate(s);
 			vec3 dir = normalize(vec3(x, y, z));
 			CAGE_ASSERT(isUnit(dir));
-			real dist = dot(dir, tile.position) * length(tile.position);
-			real wave = sin(rads(dist * 0.005)) * 0.05 + 0.8;
+			real dist = dot(dir, normalize(tile.position)) * length(tile.position);
+			real wave = sin(rads(dist * 0.005)) * 0.05 + 0.5;
 			tile.height = interpolate(tile.height, wave, bf);
 		}
 	}
@@ -324,16 +389,16 @@ void terrainTile(Tile &tile)
 	generatePoles(tile);
 	generateBiome(tile);
 	generateType(tile);
-	generateBedrock(tile);
+	generateBedrock(tile); // 0 .. 1 -> 0.13
 	// mica (slída)
-	// dirt
-	// sand
+	// dirt // 0.3 .. 0.7 -> 0.5
+	generateSand(tile); // 0.3 .. 0.7 -> 0.5
 	// corals
 	// seaweed
 	// boulders
 	// tree stumps
 	// small grass / moss / leaves
-	generateWater(tile);
+	generateWater(tile); // 0.45 .. 0.55 -> 0.5
 	// ice
 	// large grass / flowers
 	// snow
@@ -347,6 +412,7 @@ void terrainPreseed()
 {
 	terrainDensity(vec3());
 	Tile tile;
+	tile.position = vec3(0, 1, 0);
 	tile.normal = vec3(0, 1, 0);
 	terrainTile(tile);
 }
