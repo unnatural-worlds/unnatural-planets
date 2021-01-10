@@ -94,7 +94,7 @@ namespace
 
 		for (const Doodad &d : doodads)
 		{
-			if (d.ocean != (tile.biome == TerrainBiomeEnum::Ocean))
+			if (d.ocean != (tile.biome == TerrainBiomeEnum::Water))
 				continue;
 			if (d.slope != (tile.type == TerrainTypeEnum::SteepSlope))
 				continue;

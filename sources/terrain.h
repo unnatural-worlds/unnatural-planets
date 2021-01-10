@@ -21,7 +21,7 @@ enum class TerrainBiomeEnum : uint8
 	Savanna,                  //  20 .. 30   //   40 .. 130   //    10    // (TropicalGrassland)
 	TropicalSeasonalForest,   //  20 .. 30   //  130 .. 230   //     6    //
 	TropicalRainForest,       //  20 .. 30   //  230 .. 440   //     6    //
-	Ocean,
+	Water,
 	_Total
 };
 

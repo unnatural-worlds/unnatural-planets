@@ -21,6 +21,7 @@ real terrainElevation(const vec3 &pos)
 		cfg.type = NoiseTypeEnum::Value;
 		cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 		cfg.octaves = 4;
+		cfg.frequency = 0.0005;
 		cfg.seed = noiseSeed();
 		return newNoiseFunction(cfg);
 	}();
@@ -36,7 +37,7 @@ real terrainElevation(const vec3 &pos)
 	if (!useTerrainElevation)
 		return 1;
 
-	real scale = scaleNoise->evaluate(pos * 0.0005) * 0.0005 + 0.0015;
+	real scale = scaleNoise->evaluate(pos) * 0.0005 + 0.0015;
 	real a = elevNoise->evaluate(pos * scale);
 	a += 0.11; // slightly prefer terrain over ocean
 	if (a < 0)

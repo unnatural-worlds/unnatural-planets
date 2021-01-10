@@ -41,14 +41,8 @@ vec3 anyPerpendicular(const vec3 &a)
 	return normalize(cross(a, b));
 }
 
-namespace
-{
-	const uint32 globalSeed = (uint32)detail::getApplicationRandomGenerator().next();
-}
-
 uint32 noiseSeed()
 {
-	static uint32 offset = 0;
-	offset++;
-	return hash(globalSeed + offset);
+	static RandomGenerator gen = detail::getApplicationRandomGenerator();
+	return (uint32)gen.next();
 }

@@ -15,7 +15,7 @@ stringizer &operator + (stringizer &str, const TerrainBiomeEnum &other)
 	case TerrainBiomeEnum::Savanna: str + "Savanna"; break;
 	case TerrainBiomeEnum::TropicalSeasonalForest: str + "TropicalSeasonalForest"; break;
 	case TerrainBiomeEnum::TropicalRainForest: str + "TropicalRainForest"; break;
-	case TerrainBiomeEnum::Ocean: str + "Ocean"; break;
+	case TerrainBiomeEnum::Water: str + "Water"; break;
 	default: str + "<unknown>"; break;
 	}
 	return str;
