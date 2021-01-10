@@ -164,12 +164,39 @@ namespace
 
 		{ // generate blender import script
 			Holder<File> f = writeFile(pathJoin(assetsDirectory, "blender-import.py"));
-			f->writeLine("import os");
-			f->writeLine("import bpy");
-			f->writeLine(stringizer() + "for i in range(0, " + renderChunksCount + "):");
-			f->writeLine("\tn = \"chunk-\" + str(i) + \".obj\"");
-			f->writeLine("\tbpy.ops.import_scene.obj(filepath = n)");
-			f->writeLine(R"Python(
+			f->write(R"Python(
+import os
+import bpy
+)Python");
+			f->writeLine(stringizer() + "renderChunksCount = " + renderChunksCount);
+			f->write(R"Python(
+for i in range(0, renderChunksCount):
+	bpy.ops.import_scene.obj(filepath = "chunk-" + str(i) + ".obj")
+	bpy.ops.image.open(filepath = os.getcwd() + "/chunk-" + str(i) + "-special.png")
+	bpy.ops.image.open(filepath = os.getcwd() + "/chunk-" + str(i) + "-height.png")
+	mat = bpy.data.materials["chunk-" + str(i)]
+	nodes = mat.node_tree.nodes
+	links = mat.node_tree.links
+	shader = nodes[0]
+	shader.inputs["Specular"].default_value = 0.1
+	specialMap = nodes.new('ShaderNodeTexImage')
+	specialMap.image = bpy.data.images["chunk-" + str(i) + "-special.png"]
+	specialMap.image.colorspace_settings.name = "Non-Color"
+	mth = nodes.new('ShaderNodeMath')
+	mth.operation = 'SQRT'
+	links.new(specialMap.outputs['Color'], mth.inputs['Value'])
+	links.new(mth.outputs['Value'], shader.inputs['Roughness'])
+	links.new(specialMap.outputs['Alpha'], shader.inputs['Metallic'])
+	heightMap = nodes.new('ShaderNodeTexImage')
+	heightMap.image = bpy.data.images["chunk-" + str(i) + "-height.png"]
+	heightMap.image.colorspace_settings.name = "Non-Color"
+	bump = nodes.new('ShaderNodeBump')
+	bump.inputs["Strength"].default_value = 2
+	bump.inputs["Distance"].default_value = 5
+	links.new(heightMap.outputs['Color'], bump.inputs['Height'])
+	links.new(bump.outputs['Normal'], shader.inputs['Normal'])
+	bpy.data.objects["chunk-" + str(i)].material_slots[0].material = mat
+
 for a in bpy.data.window_managers[0].windows[0].screen.areas:
 	if a.type == 'VIEW_3D':
 		for s in a.spaces:
@@ -177,7 +204,9 @@ for a in bpy.data.window_managers[0].windows[0].screen.areas:
 				s.clip_start = 0.1
 				s.clip_end = 10000
 				s.shading.type = 'MATERIAL'
-				)Python");
+
+bpy.ops.object.select_all(action='DESELECT')
+)Python");
 		}
 	}
 
