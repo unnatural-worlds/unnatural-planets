@@ -43,8 +43,9 @@ namespace
 		vec3 b = cross(tile.normal, a);
 		a *= radius;
 		b *= radius;
-		vec3 c = (a + b) / sqrt(2);
-		vec3 d = (a - b) / sqrt(2);
+		const real div = 1 / sqrt(2);
+		vec3 c = (a + b) * div;
+		vec3 d = (a - b) * div;
 		real elevs[8] = {
 			terrainElevation(tile.position + a),
 			terrainElevation(tile.position + b),
@@ -233,6 +234,7 @@ namespace
 			cfg.distance = NoiseDistanceEnum::Hybrid;
 			cfg.operation = NoiseOperationEnum::Subtract;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 3;
 			cfg.seed = seed;
 			return newNoiseFunction(cfg);
 		}();
@@ -242,6 +244,7 @@ namespace
 			cfg.distance = NoiseDistanceEnum::Hybrid;
 			cfg.operation = NoiseOperationEnum::Cell;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 3;
 			cfg.seed = seed;
 			return newNoiseFunction(cfg);
 		}();
@@ -257,14 +260,14 @@ namespace
 
 		real scale = scaleNoise->evaluate(tile.position) * 0.5 + 0.501;
 		scale = sqr(scale) * 2;
-		real freq = 0.15 + freqNoise->evaluate(tile.position) * 0.05;
+		real freq = freqNoise->evaluate(tile.position) * 0.05 + 0.15;
 		real cracks = cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5;
 		cracks = pow(cracks, 0.8);
 		real value = valueNoise->evaluate(tile.position * freq) * 0.5 + 0.5;
 		real saturation = saturationNoise->evaluate(tile.position) * 0.5 + 0.5;
 		vec3 hsv = vec3(0.07, saturate(sharpEdge(saturation, 0.2)), (value * 0.6 + 0.2) * cracks);
 		tile.albedo = colorHsvToRgb(hsv);
-		tile.roughness = interpolate(0.9, 0.7 + value * 0.2, cracks);
+		tile.roughness = interpolate(0.9, value * 0.2 + 0.7, cracks);
 		tile.height = cracks * scale;
 	}
 
@@ -293,10 +296,12 @@ namespace
 		}();
 
 		real bf = saturate((maskNoise->evaluate(tile.position) - 1) * 10);
+		if (bf < 1e-7)
+			return;
 
 		real cracks = sharpEdge(saturate((cracksNoise->evaluate(tile.position) + 0.6)));
 		vec3 color = interpolate(vec3(122, 90, 88) / 255, vec3(184, 209, 187) / 255, cracks);
-		real roughness = 0.5 + cracks * 0.3;
+		real roughness = cracks * 0.3 + 0.5;
 		real metallic = 1;
 		real height = tile.height - 0.05;
 
@@ -344,7 +349,7 @@ namespace
 			return;
 
 		vec3 color = vec3(84, 47, 14) / 255;
-		real roughness = 0.7 + randomChance() * 0.1;
+		real roughness = randomChance() * 0.1 + 0.7;
 		real metallic = 0;
 
 		{ // cracks
@@ -392,7 +397,7 @@ namespace
 		real hueShift = hueNoise->evaluate(tile.position) * 0.1;
 		vec3 color = colorHueShift(vec3(172, 159, 139) / 255, hueShift);
 		color = colorDeviation(color, 0.08);
-		real roughness = 0.6 + randomChance() * 0.3;
+		real roughness = randomChance() * 0.3 + 0.6;
 		real metallic = 0;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
@@ -438,6 +443,9 @@ namespace
 			return;
 
 		real bf = smoothstep(saturate(-tile.elevation - tile.height));
+		if (bf < 1e-7)
+			return;
+
 		real shallow = -0.5 / (tile.elevation - 0.5);
 		shallow = saturate(shallow);
 		shallow = smoothstep(shallow);
@@ -468,6 +476,95 @@ namespace
 			tile.type = shallow > 0.5 ? TerrainTypeEnum::ShallowWater : TerrainTypeEnum::DeepWater;
 		}
 	}
+
+	void generateIce(Tile &tile)
+	{
+		static const Holder<NoiseFunction> scaleNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
+			cfg.frequency = 0.03;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> cracksNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
+			cfg.operation = NoiseOperationEnum::Subtract;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 3;
+			cfg.frequency = 0.1;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		if (tile.biome != TerrainBiomeEnum::Water)
+			return;
+
+		real bf = sharpEdge(saturate(tile.temperature * -0.3));
+		if (bf < 1e-7)
+			return;
+
+		real scale = scaleNoise->evaluate(tile.position) * 0.02 + 0.5;
+		real crack = cracksNoise->evaluate(tile.position * scale) * 0.5 + 0.5;
+		crack = pow(crack, 0.3);
+		vec3 color = vec3(61, 81, 82) / 255 + crack * 0.3;
+		real roughness = (1 - crack) * 0.6 + 0.15;
+		real metallic = 0;
+		real height = crack * 0.2 + 0.4;
+
+		tile.albedo = interpolate(tile.albedo, color, bf);
+		tile.roughness = interpolate(tile.roughness, roughness, bf);
+		tile.metallic = interpolate(tile.metallic, metallic, bf);
+		tile.height = interpolate(tile.height, height, bf);
+
+		if (bf > 0.1)
+		{
+			tile.biome = TerrainBiomeEnum::Bare;
+			if (tile.type != TerrainTypeEnum::SteepSlope)
+				tile.type = TerrainTypeEnum::Slow;
+		}
+	}
+
+	void generateSnow(Tile &tile)
+	{
+		static const Holder<NoiseFunction> thresholdNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cubic;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 3;
+			cfg.frequency = 0.1;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		if (tile.biome == TerrainBiomeEnum::Water)
+			return;
+
+		real bf = saturate(tile.temperature * -0.5) * saturate((tile.precipitation - 50) * 0.1) * saturate(1.2 - tile.slope.value * 1.5);
+		if (bf < 1e-7)
+			return;
+		real factor = (thresholdNoise->evaluate(tile.position) * 0.5 + 0.5) * 0.5 + 0.7;
+		bf *= saturate(factor);
+
+		vec3 color = vec3(248) / 255;
+		real roughness = randomChance() * 0.3 + 0.2;
+		real metallic = 0;
+		real height = tile.height * 0.1 + factor * 0.2 + 0.7;
+
+		tile.albedo = interpolate(tile.albedo, color, bf);
+		tile.roughness = interpolate(tile.roughness, roughness, bf);
+		tile.metallic = interpolate(tile.metallic, metallic, bf);
+		tile.height = interpolate(tile.height, height, bf);
+
+		if (bf > 0.1)
+		{
+			if (tile.type != TerrainTypeEnum::SteepSlope)
+				tile.type = TerrainTypeEnum::Slow;
+		}
+	}
 }
 
 void terrainTile(Tile &tile)
@@ -492,9 +589,9 @@ void terrainTile(Tile &tile)
 	// tree stumps
 	// small grass / moss / leaves
 	generateWater(tile);
-	// ice
+	generateIce(tile);
 	// large grass / flowers
-	// snow
+	generateSnow(tile);
 	tile.albedo = saturate(tile.albedo);
 	tile.roughness = saturate(tile.roughness);
 	tile.metallic = saturate(tile.metallic);
