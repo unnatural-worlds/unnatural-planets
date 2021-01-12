@@ -256,7 +256,7 @@ namespace
 		}();
 
 		real scale = scaleNoise->evaluate(tile.position) * 0.5 + 0.501;
-		scale = sqr(scale) * 0.9;
+		scale = sqr(scale) * 2;
 		real freq = 0.15 + freqNoise->evaluate(tile.position) * 0.05;
 		real cracks = cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5;
 		cracks = pow(cracks, 0.8);
@@ -264,7 +264,7 @@ namespace
 		real saturation = saturationNoise->evaluate(tile.position) * 0.5 + 0.5;
 		vec3 hsv = vec3(0.07, saturate(sharpEdge(saturation, 0.2)), (value * 0.6 + 0.2) * cracks);
 		tile.albedo = colorHsvToRgb(hsv);
-		tile.roughness = interpolate(0.9, 0.3 + value * 0.6, cracks);
+		tile.roughness = interpolate(0.9, 0.7 + value * 0.2, cracks);
 		tile.height = cracks * scale;
 	}
 
@@ -296,7 +296,7 @@ namespace
 
 		real cracks = sharpEdge(saturate((cracksNoise->evaluate(tile.position) + 0.6)));
 		vec3 color = interpolate(vec3(122, 90, 88) / 255, vec3(184, 209, 187) / 255, cracks);
-		real roughness = 0.3 + cracks * 0.5;
+		real roughness = 0.5 + cracks * 0.3;
 		real metallic = 1;
 		real height = tile.height - 0.05;
 
@@ -310,10 +310,12 @@ namespace
 	{
 		static const Holder<NoiseFunction> heightNoise = []() {
 			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cubic;
+			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.01;
+			cfg.octaves = 3;
+			cfg.lacunarity = 2.3;
+			cfg.gain = 0.4;
+			cfg.frequency = 0.05;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -337,12 +339,12 @@ namespace
 		}();
 
 		real height = heightNoise->evaluate(tile.position) * 0.2 + 0.5;
-		real bf = sharpEdge(saturate(height - tile.height + 0.4)) * sharpEdge(saturate(1.2 - tile.slope.value * 1.5));
+		real bf = sharpEdge(saturate(height - tile.height + 0.4)) * sharpEdge(saturate(1 - tile.slope.value * 1.5));
 		if (bf < 1e-7)
 			return;
 
-		vec3 color = vec3(150, 86, 54) / 255;
-		real roughness = 0.6 * randomChance() * 0.2;
+		vec3 color = vec3(84, 47, 14) / 255;
+		real roughness = 0.7 + randomChance() * 0.1;
 		real metallic = 0;
 
 		{ // cracks
@@ -362,24 +364,13 @@ namespace
 
 	void generateSand(Tile &tile)
 	{
-		static const Holder<NoiseFunction> xNoise = []() {
+		static const Holder<NoiseFunction> heightNoise = []() {
 			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.frequency = 0.0003;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> yNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.frequency = 0.0003;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> zNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.frequency = 0.0003;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 2;
+			cfg.gain = 0.3;
+			cfg.frequency = 0.04;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -397,24 +388,11 @@ namespace
 		if (bf < 1e-7)
 			return;
 
-		real height = 0;
-		{ // waves
-			real x = xNoise->evaluate(tile.position);
-			real y = yNoise->evaluate(tile.position);
-			real z = zNoise->evaluate(tile.position);
-			vec3 dir = normalize(vec3(x, y, z));
-			CAGE_ASSERT(isUnit(dir));
-			real dist = dot(dir, normalize(tile.position)) * length(tile.position);
-			height = sin(rads(dist * 0.001)) * 0.5 + 0.5;
-			height = height * 0.4 + 0.3;
-		}
-
-		bf *= sharpEdge(saturate(height - tile.height + 0.45));
-
+		real height = heightNoise->evaluate(tile.position) * 0.2 + 0.5;
 		real hueShift = hueNoise->evaluate(tile.position) * 0.1;
 		vec3 color = colorHueShift(vec3(172, 159, 139) / 255, hueShift);
 		color = colorDeviation(color, 0.08);
-		real roughness = 0.5 * randomChance() * 0.2;
+		real roughness = 0.6 + randomChance() * 0.3;
 		real metallic = 0;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
@@ -425,6 +403,15 @@ namespace
 
 	void generateWater(Tile &tile)
 	{
+		static const Holder<NoiseFunction> hueNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cubic;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
+			cfg.frequency = 0.01;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
 		static const Holder<NoiseFunction> xNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
@@ -446,15 +433,6 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> hueNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.01;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
 
 		if (tile.elevation > 0)
 			return;
@@ -465,6 +443,7 @@ namespace
 		shallow = smoothstep(shallow);
 		real hueShift = hueNoise->evaluate(tile.position) * 0.06;
 		vec3 color = colorHueShift(interpolate(vec3(54, 54, 97), vec3(26, 102, 125), shallow) / 255, hueShift);
+
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, 0.3, bf);
 		tile.metallic = interpolate(tile.metallic, 0, bf);
@@ -475,9 +454,12 @@ namespace
 			real z = zNoise->evaluate(tile.position);
 			vec3 dir = normalize(vec3(x, y, z));
 			CAGE_ASSERT(isUnit(dir));
-			real dist = dot(dir, normalize(tile.position)) * length(tile.position);
-			real wave = sin(rads(dist * 0.005)) * 0.05 + 0.5;
-			tile.height = interpolate(tile.height, wave, bf);
+			real dist = dot(dir, tile.position) * length(tile.position);
+			rads a = rads(dist * 0.002);
+			rads b = rads(sin(a + sin(a) * 0.5)); // skewed wave
+			real c = sin(b + sin(b) * 0.5);
+			real wave = c * 0.1 + 0.5;
+			tile.height = interpolate(tile.height, wave, sharpEdge(bf));
 		}
 
 		if (bf > 0.1)
@@ -500,16 +482,16 @@ void terrainTile(Tile &tile)
 	generatePoles(tile);
 	generateBiome(tile);
 	generateType(tile);
-	generateBedrock(tile); // 0 .. 1 -> 0.13
+	generateBedrock(tile);
 	generateMica(tile);
-	generateDirt(tile); // 0.3 .. 0.7 -> 0.5
-	generateSand(tile); // 0.3 .. 0.7 -> 0.5
+	generateDirt(tile);
+	generateSand(tile);
 	// corals
 	// seaweed
 	// boulders
 	// tree stumps
 	// small grass / moss / leaves
-	generateWater(tile); // 0.45 .. 0.55 -> 0.5
+	generateWater(tile);
 	// ice
 	// large grass / flowers
 	// snow

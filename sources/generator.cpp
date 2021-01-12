@@ -182,10 +182,11 @@ for i in range(0, renderChunksCount):
 	specialMap = nodes.new('ShaderNodeTexImage')
 	specialMap.image = bpy.data.images["chunk-" + str(i) + "-special.png"]
 	specialMap.image.colorspace_settings.name = "Non-Color"
-	mth = nodes.new('ShaderNodeMath')
-	mth.operation = 'SQRT'
-	links.new(specialMap.outputs['Color'], mth.inputs['Value'])
-	links.new(mth.outputs['Value'], shader.inputs['Roughness'])
+	#mth = nodes.new('ShaderNodeMath')
+	#mth.operation = 'SQRT'
+	#links.new(specialMap.outputs['Color'], mth.inputs['Value'])
+	#links.new(mth.outputs['Value'], shader.inputs['Roughness'])
+	links.new(specialMap.outputs['Color'], shader.inputs['Roughness'])
 	links.new(specialMap.outputs['Alpha'], shader.inputs['Metallic'])
 	heightMap = nodes.new('ShaderNodeTexImage')
 	heightMap.image = bpy.data.images["chunk-" + str(i) + "-height.png"]
