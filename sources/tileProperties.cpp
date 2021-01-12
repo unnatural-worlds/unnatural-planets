@@ -56,6 +56,11 @@ namespace
 			CAGE_LOG(SeverityEnum::Info, "tileStats", "");
 		}
 	};
+
+	bool logFilterSameThread(const detail::LoggerInfo &info)
+	{
+		return info.createThreadId == info.currentThreadId;
+	}
 }
 
 void generateTileProperties(const Holder<Polyhedron> &navMesh, std::vector<Tile> &tiles, const string &statsLogPath)
@@ -64,10 +69,10 @@ void generateTileProperties(const Holder<Polyhedron> &navMesh, std::vector<Tile>
 
 	CAGE_ASSERT(tiles.empty());
 
+	Holder<LoggerOutputFile> loggerFile = newLoggerOutputFile(statsLogPath, false); // the file must be destroyed after the logger
 	Holder<Logger> logger = newLogger();
-	Holder<LoggerOutputFile> loggerFile = newLoggerOutputFile(statsLogPath, false);
-	logger->format.bind<logFormatConsole>();
-	logger->output.bind<LoggerOutputFile, &LoggerOutputFile::output>(loggerFile.get());
+	logger->filter.bind<&logFilterSameThread>();
+	logger->output.bind<LoggerOutputFile, &LoggerOutputFile::output>(+loggerFile);
 
 	const uint32 cnt = navMesh->verticesCount();
 	tiles.reserve(cnt);

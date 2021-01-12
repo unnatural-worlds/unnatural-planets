@@ -134,12 +134,17 @@ namespace
 		return nullptr;
 	}
 
+	bool logFilterSameThread(const detail::LoggerInfo &info)
+	{
+		return info.createThreadId == info.currentThreadId;
+	}
+
 	void printStatistics(const std::vector<Doodad> &doodads, const uint32 verticesCount, const string &statsLogPath)
 	{
+		Holder<LoggerOutputFile> loggerFile = newLoggerOutputFile(statsLogPath, false); // the file must be destroyed after the logger
 		Holder<Logger> logger = newLogger();
-		Holder<LoggerOutputFile> loggerFile = newLoggerOutputFile(statsLogPath, false);
-		logger->format.bind<logFormatConsole>();
-		logger->output.bind<LoggerOutputFile, &LoggerOutputFile::output>(loggerFile.get());
+		logger->filter.bind<&logFilterSameThread>();
+		logger->output.bind<LoggerOutputFile, &LoggerOutputFile::output>(+loggerFile);
 
 		uint32 total = 0;
 		uint32 maxc = 0;
