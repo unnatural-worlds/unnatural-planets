@@ -49,8 +49,8 @@ struct Tile
 	real height; // bump map value
 	real elevation; // (meters) above sea
 	rads slope;
-	real temperature; // °C
-	real precipitation; // cm yearly
+	real temperature; // °C average annual
+	real precipitation; // cm total annual
 	real nationality;
 	real fertility;
 	TerrainBiomeEnum biome;
