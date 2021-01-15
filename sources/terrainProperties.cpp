@@ -66,22 +66,6 @@ namespace
 		tile.slope = atan(10 * md / radius);
 	}
 
-	void generateNationality(Tile &tile)
-	{
-		static const Holder<NoiseFunction> natNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.0015;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		real p = natNoise->evaluate(tile.position) * 5;
-		p = clamp(p, -1, 1);
-		tile.nationality = p;
-	}
-
 	void generatePrecipitation(Tile &tile)
 	{
 		static const Holder<NoiseFunction> precpNoise = []() {
@@ -676,7 +660,6 @@ void terrainTile(Tile &tile)
 	tile.elevation = terrainElevation(tile.position);
 	generateElevation(tile);
 	generateSlope(tile);
-	generateNationality(tile);
 	generatePrecipitation(tile);
 	generateTemperature(tile);
 	generatePoles(tile);

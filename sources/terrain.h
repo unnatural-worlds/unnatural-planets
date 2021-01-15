@@ -51,8 +51,6 @@ struct Tile
 	rads slope;
 	real temperature; // °C average annual
 	real precipitation; // cm total annual
-	real nationality;
-	real fertility;
 	TerrainBiomeEnum biome;
 	TerrainTypeEnum type;
 };

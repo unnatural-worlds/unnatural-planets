@@ -23,8 +23,6 @@ namespace
 		// requirements
 		vec2 temperature;
 		vec2 precipitation;
-		real nationality;
-		real fertility;
 		real probability;
 		bool ocean = false;
 		bool slope = false;
@@ -40,8 +38,6 @@ namespace
 		d.proto = ini->getString("doodad", "prototype");
 		d.temperature = vec2::parse(ini->getString("requirements", "temperature", "-50, 50"));
 		d.precipitation = vec2::parse(ini->getString("requirements", "precipitation", "0, 500"));
-		d.nationality = ini->getFloat("requirements", "nationality", 0);
-		d.fertility = ini->getFloat("requirements", "fertility", 0);
 		d.probability = ini->getFloat("requirements", "probability", 0.15f);
 		d.ocean = ini->getBool("requirements", "ocean", false);
 		d.slope = ini->getBool("requirements", "slope", false);
@@ -100,10 +96,8 @@ namespace
 				continue;
 			const real t = factorInRange(d.temperature, tile.temperature);
 			const real p = factorInRange(d.precipitation, tile.precipitation);
-			const real n = factorInRange(d.nationality + vec2(-1, 1), tile.nationality);
-			const real f = clamp(0.5 + tile.fertility - d.fertility, 0, 1) * 2;
 			Eligible e;
-			e.prob = d.probability * t * p * n * f;
+			e.prob = d.probability * t * p;
 			CAGE_ASSERT(e.prob >= 0 && e.prob < 1);
 			if (e.prob < 1e-3)
 				continue;

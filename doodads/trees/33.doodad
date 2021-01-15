@@ -5,4 +5,3 @@ prototype = unnatural/package/trees/33/tree_33.proto
 [requirements]
 temperature = 5, 20
 precipitation = 200, 300
-nationality = 1
