@@ -557,7 +557,7 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		real bf = saturate((tile.temperature - 10) * 0.1) * saturate((tile.precipitation - 200) * 0.02) * sharpEdge(saturate(1.5 - tile.slope.value * 1.5));
+		real bf = saturate((tile.temperature - 10) * 0.1) * saturate((tile.precipitation - 200) * 0.02) * sharpEdge(saturate(1.4 - tile.slope.value * 1.5));
 		if (bf < 1e-7)
 			return;
 
@@ -571,6 +571,58 @@ namespace
 		vec3 color = colorHueShift(vec3(99, 147, 65) / 255, hueShift);
 		color = interpolate(vec3(76, 61, 50) / 255, color, pores);
 		real roughness = interpolate(0.9, randomChance() * 0.2 + 0.3, min(cracks, pores));
+		real metallic = 0;
+
+		tile.albedo = interpolate(tile.albedo, color, bf);
+		tile.roughness = interpolate(tile.roughness, roughness, bf);
+		tile.metallic = interpolate(tile.metallic, metallic, bf);
+		tile.height = interpolate(tile.height, height, bf);
+	}
+
+	void generateGrass(Tile &tile)
+	{
+		constexpr const auto bladesNoiseGen = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.fractalType = NoiseFractalTypeEnum::None;
+			cfg.distance = NoiseDistanceEnum::EuclideanSq;
+			cfg.operation = NoiseOperationEnum::Divide;
+			cfg.frequency = 1.4;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		};
+		static const Holder<NoiseFunction> bladesNoise[] = {
+			bladesNoiseGen(),
+			bladesNoiseGen(),
+			bladesNoiseGen(),
+		};
+		static const Holder<NoiseFunction> hueNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 2;
+			cfg.frequency = 0.05;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		if (tile.biome == TerrainBiomeEnum::Water)
+			return;
+
+		real ratio = tile.temperature - (tile.precipitation + 100) * 30 / 400;
+		real bf = sharpEdge(saturate(1 - abs(tile.temperature - 15) * 0.07), 0.2) * sharpEdge(saturate(1 - abs(ratio) * 0.1), 0.2) * sharpEdge(saturate(1 - tile.slope.value * 1.5));
+		if (bf < 1e-7)
+			return;
+
+		real grass = 0;
+		for (uint32 i = 0; i < sizeof(bladesNoise) / sizeof(bladesNoise[0]); i++)
+			grass += sharpEdge(bladesNoise[i]->evaluate(tile.position) + 0.7);
+		bf *= saturate(grass);
+
+		real height = tile.height + grass * 0.05;
+		real hueShift = hueNoise->evaluate(tile.position) * 0.09 - max(ratio, 0) * 0.02;
+		vec3 color = colorHueShift(vec3(79, 114, 55) / 255, hueShift);
+		real roughness = randomChance() * 0.2 + 0.6 + min(ratio, 0) * 0.03;
 		real metallic = 0;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
@@ -641,8 +693,9 @@ void terrainTile(Tile &tile)
 	// boulders
 	// tree stumps
 	generateMoss(tile);
-	// small grass / leaves
-	// large grass / flowers
+	generateGrass(tile);
+	// leaves
+	// flowers
 	generateSnow(tile);
 	tile.albedo = saturate(tile.albedo);
 	tile.roughness = saturate(tile.roughness);
