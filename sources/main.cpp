@@ -1,6 +1,7 @@
 #include <cage-core/logger.h>
 #include <cage-core/ini.h>
 #include <cage-core/config.h>
+#include <cage-core/string.h>
 
 #include "terrain.h"
 #include "generator.h"
@@ -9,32 +10,36 @@ namespace
 {
 	void applyConfiguration(const Holder<Ini> &cmd)
 	{
-		ConfigString baseShapeName("unnatural-planets/planet/shape", "random");
-		baseShapeName = cmd->cmdString('s', "shape", baseShapeName);
+		ConfigString configShapeMode("unnatural-planets/shape/mode", "random");
+		configShapeMode = cmd->cmdString('s', "shape", configShapeMode);
+		configShapeMode = toLower((string)configShapeMode);
+
+		ConfigString configElevationMode("unnatural-planets/elevation/mode", "legacy");
+		configElevationMode = cmd->cmdString('e', "elevation", configElevationMode);
+		configElevationMode = toLower((string)configElevationMode);
+
 		terrainApplyConfig();
 
-		ConfigBool useTerrainPoles("unnatural-planets/planet/poles", (string)baseShapeName == "sphere");
-		useTerrainPoles = cmd->cmdBool('p', "poles", useTerrainPoles);
-		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using poles: " + !!useTerrainPoles);
-		
-		ConfigBool useTerrainElevation("unnatural-planets/planet/elevation", true);
-		useTerrainElevation = cmd->cmdBool('e', "elevation", useTerrainElevation);
-		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using terrain elevation: " + !!useTerrainElevation);
+		ConfigBool configPolesEnable("unnatural-planets/poles/enable", (string)configShapeMode == "sphere");
+		configPolesEnable = cmd->cmdBool('p', "poles", configPolesEnable);
+		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "enable poles: " + !!configPolesEnable);
 
 #ifdef CAGE_DEBUG
 		constexpr bool navmeshOptimizeInit = false;
 #else
 		constexpr bool navmeshOptimizeInit = true;
 #endif // CAGE_DEBUG
-		ConfigBool navmeshOptimize("unnatural-planets/navmesh/optimize", navmeshOptimizeInit);
-		navmeshOptimize = cmd->cmdBool('o', "optimize", navmeshOptimize);
-		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using navmesh optimizations: " + !!navmeshOptimize);
+		ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize", navmeshOptimizeInit);
+		configNavmeshOptimize = cmd->cmdBool('o', "optimize", configNavmeshOptimize);
+		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "enable navmesh optimizations: " + !!configNavmeshOptimize);
 		
-		ConfigBool saveDebugIntermediates("unnatural-planets/generator/saveIntermediateSteps", false);
-		saveDebugIntermediates = cmd->cmdBool('i', "intermediate", saveDebugIntermediates);
+		ConfigBool configDebugSaveIntermediate("unnatural-planets/debug/saveIntermediate", false);
+		configDebugSaveIntermediate = cmd->cmdBool('d', "debug", configDebugSaveIntermediate);
+		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "enable saving intermediates for debug: " + !!configDebugSaveIntermediate);
 
-		ConfigBool runPreview("unnatural-planets/preview/run", false);
-		runPreview = cmd->cmdBool('r', "preview", runPreview);
+		ConfigBool configPreviewEnable("unnatural-planets/preview/enable", false);
+		configPreviewEnable = cmd->cmdBool('r', "preview", configPreviewEnable);
+		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "enable preview: " + !!configPreviewEnable);
 	}
 }
 

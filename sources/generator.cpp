@@ -63,9 +63,9 @@ namespace
 	Holder<Polyhedron> navMesh;
 	std::vector<string> assetPackages;
 	uint32 renderChunksCount;
-	ConfigString baseShapeName("unnatural-planets/planet/shape");
-	ConfigBool saveDebugIntermediates("unnatural-planets/generator/saveIntermediateSteps");
-	ConfigBool runPreview("unnatural-planets/preview/run");
+	ConfigString configShapeMode("unnatural-planets/shape/mode");
+	ConfigBool configDebugSaveIntermediate("unnatural-planets/debug/saveIntermediate");
+	ConfigBool configPreviewEnable("unnatural-planets/preview/enable");
 
 	void exportConfiguration(const string &planetName)
 	{
@@ -77,7 +77,7 @@ namespace
 			f->writeLine(stringizer() + "name = " + planetName);
 			f->writeLine("version = 0");
 			f->writeLine("[description]");
-			f->writeLine(baseShapeName);
+			f->writeLine(configShapeMode);
 			{
 				const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 				char buffer[50];
@@ -182,10 +182,6 @@ for i in range(0, renderChunksCount):
 	specialMap = nodes.new('ShaderNodeTexImage')
 	specialMap.image = bpy.data.images["chunk-" + str(i) + "-special.png"]
 	specialMap.image.colorspace_settings.name = "Non-Color"
-	#mth = nodes.new('ShaderNodeMath')
-	#mth.operation = 'SQRT'
-	#links.new(specialMap.outputs['Color'], mth.inputs['Value'])
-	#links.new(mth.outputs['Value'], shader.inputs['Roughness'])
 	links.new(specialMap.outputs['Color'], shader.inputs['Roughness'])
 	links.new(specialMap.outputs['Alpha'], shader.inputs['Metallic'])
 	heightMap = nodes.new('ShaderNodeTexImage')
@@ -220,7 +216,7 @@ bpy.ops.object.select_all(action='DESELECT')
 			Holder<Polyhedron> mesh = baseMesh->copy();
 			meshSimplifyNavmesh(mesh);
 			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh tiles: " + mesh->verticesCount());
-			if (saveDebugIntermediates)
+			if (configDebugSaveIntermediate)
 				meshSaveDebug(pathJoin(debugDirectory, "navMeshBase.obj"), mesh);
 			navMesh = templates::move(mesh);
 		}
@@ -292,7 +288,7 @@ bpy.ops.object.select_all(action='DESELECT')
 		{
 			Holder<Polyhedron> mesh = baseMesh->copy();
 			meshSimplifyRender(mesh);
-			if (saveDebugIntermediates)
+			if (configDebugSaveIntermediate)
 				meshSaveDebug(pathJoin(debugDirectory, "renderMesh.obj"), mesh);
 			split = meshSplit(mesh);
 			renderChunksCount = numeric_cast<uint32>(split.size());
@@ -332,7 +328,7 @@ void generateEntry()
 	terrainPreseed();
 	baseMesh = generateBaseMesh(2500, 200);
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: vertices: " + baseMesh->verticesCount() + ", triangles: " + (baseMesh->indicesCount() / 3));
-	if (saveDebugIntermediates)
+	if (configDebugSaveIntermediate)
 		meshSaveDebug(pathJoin(debugDirectory, "baseMesh.obj"), baseMesh);
 
 	{
@@ -354,9 +350,9 @@ void generateEntry()
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "output directory: " + outPath);
 	pathMove(baseDirectory, outPath);
 
-	if (runPreview)
+	if (configPreviewEnable)
 	{
-		CAGE_LOG(SeverityEnum::Info, "generator", "starting the preview");
+		CAGE_LOG(SeverityEnum::Info, "generator", "starting preview");
 		try
 		{
 			ProcessCreateConfig cfg("blender -y -P blender-import.py", pathJoin(outPath, "data"));

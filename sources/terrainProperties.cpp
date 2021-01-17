@@ -10,7 +10,7 @@
 
 namespace
 {
-	ConfigBool useTerrainPoles("unnatural-planets/planet/poles");
+	ConfigBool configPolesEnable("unnatural-planets/poles/enable");
 
 	void generateElevation(Tile &tile)
 	{
@@ -117,8 +117,10 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		if (!useTerrainPoles)
+
+		if (!configPolesEnable)
 			return;
+
 		real polar = abs(atan(tile.position[1] / length(vec2(tile.position[0], tile.position[2]))).value) / real::Pi() * 2;
 		polar = pow(polar, 1.7);
 		polar += polarNoise->evaluate(tile.position) * 0.1;

@@ -16,7 +16,7 @@ namespace
 	constexpr float tileSize = 10;
 #endif // CAGE_DEBUG
 
-	ConfigBool navmeshOptimize("unnatural-planets/navmesh/optimize");
+	ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize");
 
 	real meshSurfaceArea(const Polyhedron *mesh)
 	{
@@ -60,7 +60,7 @@ void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "regularizing navigation mesh");
 
-	if (navmeshOptimize)
+	if (configNavmeshOptimize)
 	{
 		unnatural::NavmeshOptimizationConfig cfg;
 #ifdef CAGE_DEBUG
