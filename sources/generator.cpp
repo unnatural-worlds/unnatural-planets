@@ -247,10 +247,10 @@ bpy.ops.object.select_all(action='DESELECT')
 
 	struct RenderProcessor
 	{
-		Holder<Thread> thr;
-
 		std::vector<Holder<Polyhedron>> split;
-		std::atomic<uint32> completedChunks{ 0 };
+		std::atomic<uint32> completedChunks = 0;
+
+		Holder<Thread> thr; // make sure the thread is finished before the other members are destroyed
 
 		void processOneChunk(uint32 index)
 		{
