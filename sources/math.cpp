@@ -8,6 +8,12 @@ real sharpEdge(real v, real p)
 	return rescale(clamp(v, 0.5 - p, 0.5 + p), 0.5 - p, 0.5 + p, 0, 1);
 }
 
+real terrace(real x)
+{
+	// https://www.wolframalpha.com/input/?i=plot+sin%28%28x+-+round%28x%29%29+*+2.45%29%5E11+%2B+round%28x%29+%2C+x+%3D+0+to+5
+	return pow(sin(rads((x - round(x)) * 2.45)), 11) + round(x);
+}
+
 vec3 colorDeviation(const vec3 &color, real deviation)
 {
 	vec3 hsl = colorRgbToHsluv(color) + (randomChance3() - 0.5) * deviation;

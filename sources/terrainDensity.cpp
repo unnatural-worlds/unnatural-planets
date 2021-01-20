@@ -52,7 +52,38 @@ namespace
 
 	real elevationTerraces(const vec3 &pos)
 	{
-		return 1; // todo
+		static const Holder<NoiseFunction> baseNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 2;
+			cfg.gain = 0.3;
+			cfg.frequency = 0.001;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> clifsNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.0004;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> levelNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.0013;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		real b = baseNoise->evaluate(pos) / 0.62 * 0.5 + 0.5;
+		real c = clifsNoise->evaluate(pos) / 0.8 * 0.5 + 0.5;
+		c = c * 3 + 3;
+		real e = terrace(b * c) / c;
+		real l = levelNoise->evaluate(pos) / 0.8 * 0.5 + 0.5;
+		e += l / (c - 1);
+		return (e - 0.5) * 30;
 	}
 
 	real elevationEarth(const vec3 &pos)
