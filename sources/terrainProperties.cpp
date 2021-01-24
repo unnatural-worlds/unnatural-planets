@@ -12,6 +12,12 @@ namespace
 {
 	ConfigBool configPolesEnable("unnatural-planets/poles/enable");
 
+	real steepnessMask(degs slope, degs threshold = degs(20), degs smoothing = degs(5))
+	{
+		degs r = (threshold + smoothing - slope) / (2 * smoothing);
+		return sharpEdge(saturate(r.value));
+	}
+
 	void generateElevation(Tile &tile)
 	{
 		static const Holder<NoiseFunction> elevNoise = []() {
@@ -330,7 +336,7 @@ namespace
 		}();
 
 		real height = heightNoise->evaluate(tile.position) * 0.2 + 0.5;
-		real bf = sharpEdge(saturate(height - tile.height + 0.4)) * sharpEdge(saturate(1 - tile.slope.value * 1.5));
+		real bf = sharpEdge(saturate(height - tile.height + 0.4)) * steepnessMask(tile.slope);
 		if (bf < 1e-7)
 			return;
 
@@ -375,7 +381,7 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real bf = saturate((tile.temperature - 17.5) * 0.2) * saturate((35 - tile.precipitation) * 0.1) * sharpEdge(saturate(1 - tile.slope.value * 1.5));
+		real bf = saturate((tile.temperature - 17.5) * 0.2) * saturate((35 - tile.precipitation) * 0.1) * steepnessMask(tile.slope);
 		if (bf < 1e-7)
 			return;
 
@@ -543,7 +549,7 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		real bf = saturate((tile.temperature - 10) * 0.1) * saturate((tile.precipitation - 200) * 0.02) * sharpEdge(saturate(1.4 - tile.slope.value * 1.5));
+		real bf = saturate((tile.temperature - 10) * 0.1) * saturate((tile.precipitation - 200) * 0.02) * steepnessMask(tile.slope);
 		if (bf < 1e-7)
 			return;
 
@@ -596,7 +602,7 @@ namespace
 			return;
 
 		real ratio = tile.temperature - (tile.precipitation + 100) * 30 / 400;
-		real bf = sharpEdge(saturate(1 - abs(tile.temperature - 15) * 0.07), 0.2) * sharpEdge(saturate(1 - abs(ratio) * 0.1), 0.2) * sharpEdge(saturate(1 - tile.slope.value * 1.5));
+		real bf = sharpEdge(saturate(1 - abs(tile.temperature - 15) * 0.07), 0.2) * sharpEdge(saturate(1 - abs(ratio) * 0.1), 0.2) * steepnessMask(tile.slope);
 		if (bf < 1e-7)
 			return;
 
@@ -632,7 +638,7 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		real bf = saturate(tile.temperature * -0.5) * saturate((tile.precipitation - 50) * 0.1) * saturate(1.2 - tile.slope.value * 1.5);
+		real bf = saturate(tile.temperature * -0.5) * saturate((tile.precipitation - 50) * 0.1) * steepnessMask(tile.slope);
 		if (bf < 1e-7)
 			return;
 		real factor = (thresholdNoise->evaluate(tile.position) * 0.5 + 0.5) * 0.5 + 0.7;
@@ -690,7 +696,7 @@ void terrainTile(Tile &tile)
 
 void terrainPreseed()
 {
-	terrainDensity(vec3());
+	terrainShape(vec3());
 	Tile tile;
 	tile.position = vec3(0, 1, 0);
 	tile.normal = vec3(0, 1, 0);

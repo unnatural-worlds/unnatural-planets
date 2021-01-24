@@ -57,7 +57,7 @@ struct Tile
 
 void terrainTile(Tile &tile); // input: position and normal, output: everything else
 real terrainElevation(const vec3 &pos);
-real terrainDensity(const vec3 &pos);
+real terrainShape(const vec3 &pos);
 void terrainPreseed();
 void terrainApplyConfig();
 

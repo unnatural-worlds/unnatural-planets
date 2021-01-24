@@ -4,12 +4,14 @@
 
 #include "sdf.h"
 
+// https://iquilezles.org/www/articles/distfunctions/distfunctions.htm
+
 namespace
 {
 	real smoothMin(real a, real b, real k)
 	{
 		// https://www.shadertoy.com/view/3ssGWj
-		const real h = clamp(0.5 + 0.5 * (b - a) / k, 0, 1);
+		const real h = saturate((b - a) / k * 0.5 + 0.5);
 		return interpolate(b, a, h) - k * h * (1 - h);
 	}
 
@@ -23,17 +25,22 @@ real sdfPlane(const vec3 &pos, const plane &pln)
 {
 	CAGE_ASSERT(pln.valid());
 	vec3 c = pln.normal * pln.d;
-	return -dot(pln.normal, pos - c);
+	return dot(pln.normal, pos - c);
 }
 
-real sdfPlane(const vec3 &pos)
+real sdfHexagon(const vec3 &pos)
 {
 	return sdfPlane(pos, plane(vec3(), normalize(vec3(1))));
 }
 
+real sdfSquare(const vec3 &pos)
+{
+	return sdfPlane(pos, plane(vec3(), vec3(0, 1, 0)));
+}
+
 real sdfSphere(const vec3 &pos, real radius)
 {
-	return radius - length(pos);
+	return length(pos) - radius;
 }
 
 real sdfSphere(const vec3 &pos)
@@ -43,10 +50,8 @@ real sdfSphere(const vec3 &pos)
 
 real sdfTorus(const vec3 &pos, real major, real minor)
 {
-	vec3 c = normalize(pos * vec3(1, 0, 1)) * major;
-	if (!valid(c))
-		return real::Infinity();
-	return minor - distance(pos, c);
+	vec2 q = vec2(length(vec2(pos)) - major, pos[2]);
+	return length(q) - minor;
 }
 
 real sdfTorus(const vec3 &pos)
@@ -54,32 +59,54 @@ real sdfTorus(const vec3 &pos)
 	return sdfTorus(pos, 750, 250);
 }
 
-real sdfCylinder(const vec3 &pos, real r, real h, real rounding)
+real sdfCylinder(const vec3 &pos, real height, real radius)
 {
-	vec2 d = abs(vec2(length(vec2(pos[0], pos[2])), pos[1])) - vec2(r, h);
-	return -min(max(d[0], d[1]), 0) - length(max(d, 0)) + rounding;
+	vec2 d = abs(vec2(length(vec2(pos)), pos[2])) - vec2(radius, height * 0.5);
+	return min(max(d[0], d[1]), 0) + length(max(d, 0));
 }
 
-real sdfCylinder(const vec3 &pos)
+real sdfTube(const vec3 &pos)
 {
-	return sdfCylinder(pos, 800, 700, 50);
+	return sdfCylinder(pos, 1800, 300) - 100;
 }
 
-real sdfBox(const vec3 &pos, const vec3 &size, real rounding)
+real sdfDisk(const vec3 &pos)
 {
-	vec3 p = abs(pos) - size;
-	real box = length(max(p, 0)) + min(max(p[0], max(p[1], p[2])), 0) - rounding;
-	return -box;
+	return sdfCylinder(pos, 200, 800) - 100;
+}
+
+real sdfCapsule(const vec3 &pos, real height, real radius)
+{
+	vec3 p = pos;
+	p[2] += height * 0.5;
+	p[2] -= clamp(p[2], 0, height);
+	return length(p) - radius;
+}
+
+real sdfCapsule(const vec3 &pos)
+{
+	return sdfCapsule(pos, 1400, 300);
+}
+
+real sdfBox(const vec3 &pos, const vec3 &radius)
+{
+	vec3 p = abs(pos) - radius;
+	return length(max(p, 0)) + min(max(p[0], max(p[1], p[2])), 0);
 }
 
 real sdfBox(const vec3 &pos)
 {
-	return sdfBox(pos, vec3(1000, 500, 500), 50);
+	return sdfBox(pos, vec3(900, 500, 500)) - 100;
 }
 
-real sdfTetrahedron(const vec3 &pos, real size, real rounding)
+real sdfCube(const vec3 &pos)
 {
-	const vec3 corners[4] = { vec3(1,1,1)*size, vec3(1,-1,-1)*size, vec3(-1,1,-1)*size, vec3(-1,-1,1)*size };
+	return sdfBox(pos, vec3(900)) - 100;
+}
+
+real sdfTetrahedron(const vec3 &pos, real radius)
+{
+	const vec3 corners[4] = { vec3(1,1,1) * radius, vec3(1,-1,-1) * radius, vec3(-1,1,-1) * radius, vec3(-1,-1,1) * radius };
 	const triangle tris[4] = {
 		triangle(corners[0], corners[1], corners[2]),
 		triangle(corners[0], corners[3], corners[1]),
@@ -107,7 +134,7 @@ real sdfTetrahedron(const vec3 &pos, real size, real rounding)
 	{
 		real r = min(min(lens[0], lens[1]), min(lens[2], lens[3]));
 		CAGE_ASSERT(r.valid() && r.finite());
-		return r + rounding;
+		return -r;
 	}
 	else
 	{
@@ -118,19 +145,19 @@ real sdfTetrahedron(const vec3 &pos, real size, real rounding)
 				r = min(r, lens[i]);
 		}
 		CAGE_ASSERT(r.valid() && r.finite());
-		return -r + rounding;
+		return r;
 	}
 }
 
 real sdfTetrahedron(const vec3 &pos)
 {
-	return sdfTetrahedron(pos, 1000, 50);
+	return sdfTetrahedron(pos, 900) - 100;
 }
 
-real sdfOctahedron(const vec3 &pos, real size, real rounding)
+real sdfOctahedron(const vec3 &pos, real radius)
 {
 	vec3 p = abs(pos);
-	real m = p[0] + p[1] + p[2] - size;
+	real m = p[0] + p[1] + p[2] - radius;
 	vec3 q;
 	if (3.0 * p[0] < m)
 		q = p;
@@ -139,21 +166,21 @@ real sdfOctahedron(const vec3 &pos, real size, real rounding)
 	else if (3.0 * p[2] < m)
 		q = vec3(p[2], p[0], p[1]);
 	else
-		return m * -0.57735027 + rounding;
-	real k = clamp(0.5 * (q[2] - q[1] + size), 0.0, size);
-	return -length(vec3(q[0], q[1] - size + k, q[2] - k)) + rounding;
+		return m * 0.57735027;
+	real k = clamp(0.5 * (q[2] - q[1] + radius), 0.0, radius);
+	return length(vec3(q[0], q[1] - radius + k, q[2] - k));
 }
 
 real sdfOctahedron(const vec3 &pos)
 {
-	return sdfOctahedron(pos, 1000, 50);
+	return sdfOctahedron(pos, 900) - 100;
 }
 
 real sdfKnot(const vec3 &pos, real scale, real k)
 {
 	constexpr real TAU = real::Pi() * 2;
 	vec3 p = pos / scale;
-	real r = length(vec2(p[0], p[1]));
+	real r = length(vec2(p));
 	rads a = atan2(p[0], p[1]);
 	rads oa = k * a;
 	a = (a % (0.001 * TAU)) - 0.001 * TAU / 2;
@@ -162,7 +189,7 @@ real sdfKnot(const vec3 &pos, real scale, real k)
 	vec2 p2 = cos(oa) * vec2(p[0], p[2]) + sin(oa) * vec2(-p[2], p[0]);
 	p[0] = abs(p2[0]) - 1.5;
 	p[2] = p2[1];
-	return (length(p) - 0.7) * -scale;
+	return (length(p) - 0.7) * scale;
 }
 
 real sdfKnot(const vec3 &pos)
@@ -170,18 +197,7 @@ real sdfKnot(const vec3 &pos)
 	return sdfKnot(pos, 130, 1.5);
 }
 
-real sdfPretzel(const vec3 &pos)
-{
-	vec3 c = normalize(pos * vec3(1, 0, 1));
-	rads yaw = atan2(c[0], c[2]);
-	rads pitch = atan2(pos[1], 700 - length(vec2(pos[0], pos[2])));
-	rads ang = yaw + pitch;
-	real t = length(vec2(sin(ang) * 250, cos(ang) * 50));
-	real l = distance(pos, c * 700);
-	return t - l;
-}
-
-real sdfMobiusStrip(const vec3 &pos, real radius, real majorAxis, real minorAxis, real rounding)
+real sdfMobiusStrip(const vec3 &pos, real radius, real majorAxis, real minorAxis)
 {
 	const auto &sdAlignedRect = [](const vec2 &point, const vec2 &halfSizes) -> real
 	{
@@ -200,12 +216,12 @@ real sdfMobiusStrip(const vec3 &pos, real radius, real majorAxis, real minorAxis
 
 	rads planeRotation = atan2(pos[0], pos[2]);
 	vec2 proj = vec2(dot(vec2(pos[0], pos[2]), normalize(vec2(pos[0], pos[2]))), pos[1]);
-	return -sdRotatedRect(proj + vec2(-radius, 0), vec2(majorAxis, minorAxis), planeRotation / 2) + rounding;
+	return sdRotatedRect(proj + vec2(-radius, 0), vec2(majorAxis, minorAxis), planeRotation / 2);
 }
 
 real sdfMobiusStrip(const vec3 &pos)
 {
-	return sdfMobiusStrip(pos, 700, 300, 20, 50);
+	return sdfMobiusStrip(pos, 700, 300, 20) - 100;
 }
 
 real sdfMolecule(const vec3 &pos)
@@ -227,7 +243,7 @@ real sdfMolecule(const vec3 &pos)
 	const real g = g1 - g2 * 0.27 - g3 * 0.11;
 	const real v = -g * 0.7 / scale;
 	const real d = -max(length(pos) - 900, 0) * 0.5;
-	return v + d;
+	return -(v + d);
 }
 
 real sdfH2O(const vec3 &pos)
@@ -235,7 +251,7 @@ real sdfH2O(const vec3 &pos)
 	const real h1 = sdfSphere(pos - vec3(-550, 300, 0), 450);
 	const real h2 = sdfSphere(pos - vec3(+550, 300, 0), 450);
 	const real o = sdfSphere(pos - vec3(0, -100, 0), 650);
-	return smoothMax(o, max(h1, h2), 50);
+	return smoothMin(o, min(h1, h2), 100);
 }
 
 real sdfH3O(const vec3 &pos)
@@ -246,8 +262,8 @@ real sdfH3O(const vec3 &pos)
 		sdfSphere(pos - quat({}, {}, degs(240)) * vec3(680, 0, 0), 450),
 	};
 	const real o = sdfSphere(pos, 650);
-	const real h = max(max(hs[0], hs[1]), hs[2]);
-	return smoothMax(o, h, 50);
+	const real h = min(min(hs[0], hs[1]), hs[2]);
+	return smoothMin(o, h, 100);
 }
 
 real sdfH4O(const vec3 &pos)
@@ -259,6 +275,31 @@ real sdfH4O(const vec3 &pos)
 		sdfSphere(pos - vec3(0, -400, +550), 450),
 	};
 	const real o = sdfSphere(pos, 650);
-	const real h = max(max(hs[0], hs[1]), max(hs[2], hs[3]));
-	return smoothMax(o, h, 50);
+	const real h = min(min(hs[0], hs[1]), min(hs[2], hs[3]));
+	return smoothMin(o, h, 100);
+}
+
+real sdfTriangularPrism(const vec3 &pos, real height, real radius)
+{
+	const vec3 q = abs(pos);
+	return max(q[2] - height * 0.5, max(q[0] * 0.866025 + pos[1] * 0.5, -pos[1]) - radius * 0.5);
+}
+
+real sdfTriangularPrism(const vec3 &pos)
+{
+	return sdfTriangularPrism(pos, 1800, 1000) - 100;
+}
+
+real sdfHexagonalPrism(const vec3 &pos, real height, real radius)
+{
+	constexpr vec3 k = vec3(-0.8660254, 0.5, 0.57735);
+	vec3 p = abs(pos);
+	p -= vec3(2.0 * min(dot(vec2(k), vec2(p)), 0.0) * vec2(k), 0);
+	vec2 d = vec2(length(vec2(p) - vec2(clamp(p[0], -k[2] * radius, k[2] * radius), radius)) * sign(p[1] - radius), p[2] - height * 0.5);
+	return min(max(d[0], d[1]), 0.0) + length(max(d, 0.0));
+}
+
+real sdfHexagonalPrism(const vec3 &pos)
+{
+	return sdfHexagonalPrism(pos, 1800, 800) - 100;
 }

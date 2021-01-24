@@ -13,11 +13,26 @@ namespace
 
 	typedef real (*TerrainFunctor)(const vec3 &);
 	TerrainFunctor terrainElevationFnc = 0;
-	TerrainFunctor terrainDensityFnc = 0;
+	TerrainFunctor terrainShapeFnc = 0;
 
 	real elevationNone(const vec3 &)
 	{
 		return 1;
+	}
+
+	real elevationSimplex(const vec3 &pos)
+	{
+		static const Holder<NoiseFunction> elevNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::SimplexReduced;
+			cfg.frequency = 0.001;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		real a = elevNoise->evaluate(pos);
+		a += 0.5; // more land than water
+		return a * 10;
 	}
 
 	real elevationLegacy(const vec3 &pos)
@@ -58,7 +73,7 @@ namespace
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 2;
 			cfg.gain = 0.3;
-			cfg.frequency = 0.001;
+			cfg.frequency = 0.0008;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -69,6 +84,15 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
+		/*
+		static const Holder<NoiseFunction> rampsNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.0015;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		*/
 		static const Holder<NoiseFunction> levelNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
@@ -79,10 +103,13 @@ namespace
 
 		real b = baseNoise->evaluate(pos) / 0.62 * 0.5 + 0.5;
 		real c = clifsNoise->evaluate(pos) / 0.8 * 0.5 + 0.5;
-		c = c * 3 + 3;
-		real e = terrace(b * c) / c;
+		c = c * 2 + 3;
+		//real r = rampsNoise->evaluate(pos) / 0.75 * 0.5 + 0.5;
+		//r = sharpEdge(saturate(r), 0.1) * 3;
+		real r = 5;
+		real e = terrace(b * c, r) / c;
 		real l = levelNoise->evaluate(pos) / 0.8 * 0.5 + 0.5;
-		e += l / (c - 1);
+		e +=  2 * l / c;
 		return (e - 0.5) * 30;
 	}
 
@@ -95,6 +122,7 @@ namespace
 	{
 		constexpr TerrainFunctor elevationModeFunctions[] = {
 			&elevationNone,
+			&elevationSimplex,
 			&elevationLegacy,
 			&elevationTerraces,
 			&elevationEarth,
@@ -104,6 +132,7 @@ namespace
 
 		constexpr const char *const elevationModeNames[] = {
 			"none",
+			"simplex",
 			"legacy",
 			"terraces",
 			"earth",
@@ -122,42 +151,52 @@ namespace
 		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using elevation mode: '" + (string)configElevationMode + "'");
 	}
 
-	void chooseDensityFunction()
+	void chooseShapeFunction()
 	{
 		constexpr TerrainFunctor shapeModeFunctions[] = {
-			&sdfPlane,
+			&sdfHexagon,
+			&sdfSquare,
 			&sdfSphere,
 			&sdfTorus,
-			&sdfCylinder,
+			&sdfTube,
+			&sdfDisk,
+			&sdfCapsule,
 			&sdfBox,
+			&sdfCube,
 			&sdfTetrahedron,
 			&sdfOctahedron,
 			&sdfKnot,
-			&sdfPretzel,
 			&sdfMobiusStrip,
 			&sdfMolecule,
 			&sdfH2O,
 			&sdfH3O,
 			&sdfH4O,
+			&sdfTriangularPrism,
+			&sdfHexagonalPrism,
 		};
 
 		constexpr uint32 shapeModesCount = sizeof(shapeModeFunctions) / sizeof(shapeModeFunctions[0]);
 
 		constexpr const char *const shapeModeNames[] = {
-			"plane",
+			"hexagon",
+			"square",
 			"sphere",
 			"torus",
-			"cylinder",
+			"tube",
+			"disk",
+			"capsule",
 			"box",
+			"cube",
 			"tetrahedron",
 			"octahedron",
 			"knot",
-			"pretzel",
-			"mobiusStrip",
+			"mobiusstrip",
 			"molecule",
 			"h2o",
 			"h3o",
 			"h4o",
+			"triangularprism",
+			"hexagonalprism",
 		};
 
 		static_assert(shapeModesCount == sizeof(shapeModeNames) / sizeof(shapeModeNames[0]), "number of functions and names must match");
@@ -166,7 +205,7 @@ namespace
 		if (name == "random")
 		{
 			const uint32 i = randomRange(0u, shapeModesCount);
-			terrainDensityFnc = shapeModeFunctions[i];
+			terrainShapeFnc = shapeModeFunctions[i];
 			configShapeMode = name = shapeModeNames[i];
 			CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "randomly chosen shape mode: '" + name + "'");
 		}
@@ -174,8 +213,8 @@ namespace
 		{
 			for (uint32 i = 0; i < shapeModesCount; i++)
 				if (name == shapeModeNames[i])
-					terrainDensityFnc = shapeModeFunctions[i];
-			if (!terrainDensityFnc)
+					terrainShapeFnc = shapeModeFunctions[i];
+			if (!terrainShapeFnc)
 			{
 				CAGE_LOG_THROW(stringizer() + "shape mode: '" + name + "'");
 				CAGE_THROW_ERROR(Exception, "unknown shape mode configuration");
@@ -191,19 +230,20 @@ real terrainElevation(const vec3 &pos)
 	return terrainElevationFnc(pos);
 }
 
-real terrainDensity(const vec3 &pos)
+real terrainShape(const vec3 &pos)
 {
-	CAGE_ASSERT(terrainDensityFnc != nullptr);
-	real base = terrainDensityFnc(pos);
-	real elev = terrainElevation(pos) * 10;
-	real result = base + max(elev, 0);
+	CAGE_ASSERT(terrainShapeFnc != nullptr);
+	CAGE_ASSERT(terrainElevationFnc != nullptr);
+	real base = terrainShapeFnc(pos);
+	real elev = terrainElevationFnc(pos) * 10;
+	real result = base - max(elev, 0);
 	if (!valid(result))
-		CAGE_THROW_ERROR(Exception, "invalid density function value");
+		CAGE_THROW_ERROR(Exception, "invalid shape function value");
 	return result;
 }
 
 void terrainApplyConfig()
 {
-	chooseDensityFunction();
+	chooseShapeFunction();
 	chooseElevationFunction();
 }

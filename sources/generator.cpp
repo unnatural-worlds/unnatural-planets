@@ -326,7 +326,7 @@ void generateEntry()
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "tmp directory: " + baseDirectory);
 
 	terrainPreseed();
-	baseMesh = generateBaseMesh(2500, 200);
+	baseMesh = generateBaseMesh();
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: vertices: " + baseMesh->verticesCount() + ", triangles: " + (baseMesh->indicesCount() / 3));
 	if (configDebugSaveIntermediate)
 		meshSaveDebug(pathJoin(debugDirectory, "baseMesh.obj"), baseMesh);

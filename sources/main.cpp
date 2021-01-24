@@ -14,7 +14,7 @@ namespace
 		configShapeMode = cmd->cmdString('s', "shape", configShapeMode);
 		configShapeMode = toLower((string)configShapeMode);
 
-		ConfigString configElevationMode("unnatural-planets/elevation/mode", "terraces");
+		ConfigString configElevationMode("unnatural-planets/elevation/mode", "legacy");
 		configElevationMode = cmd->cmdString('e', "elevation", configElevationMode);
 		configElevationMode = toLower((string)configElevationMode);
 

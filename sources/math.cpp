@@ -3,15 +3,24 @@
 
 #include "math.h"
 
+real rescale(real v, real ia, real ib, real oa, real ob)
+{
+	return (v - ia) / (ib - ia) * (ob - oa) + oa;
+}
+
 real sharpEdge(real v, real p)
 {
 	return rescale(clamp(v, 0.5 - p, 0.5 + p), 0.5 - p, 0.5 + p, 0, 1);
 }
 
-real terrace(real x)
+real terrace(real x, real steepness)
 {
-	// https://www.wolframalpha.com/input/?i=plot+sin%28%28x+-+round%28x%29%29+*+2.45%29%5E11+%2B+round%28x%29+%2C+x+%3D+0+to+5
-	return pow(sin(rads((x - round(x)) * 2.45)), 11) + round(x);
+	CAGE_ASSERT(steepness >= 0);
+	const real f = floor(x);
+	const real t = smootherstep(saturate((x - f) * max(steepness, 1))) + f;
+	const real r = interpolate(x, t, saturate(steepness));
+	CAGE_ASSERT(r > f - 1e-3 && r < f + 1 + 1e-3);
+	return r;
 }
 
 vec3 colorDeviation(const vec3 &color, real deviation)
