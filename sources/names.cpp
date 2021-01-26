@@ -50,6 +50,5 @@ string generateName()
 {
 	string name = generateNameImpl();
 	name[0] = toUpper(string(name[0]))[0];
-	CAGE_LOG(SeverityEnum::Info, "unnatural-planets", stringizer() + "generated name: '" + name + "'");
 	return name;
 }

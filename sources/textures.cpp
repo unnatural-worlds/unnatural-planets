@@ -14,8 +14,9 @@ namespace
 		Holder<Image> &heightMap;
 		const uint32 width;
 		const uint32 height;
+		const bool water;
 
-		Generator(const Holder<Polyhedron> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap) : mesh(mesh), width(width), height(height), albedo(albedo), special(special), heightMap(heightMap)
+		Generator(const Holder<Polyhedron> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap, bool water) : mesh(mesh), width(width), height(height), albedo(albedo), special(special), heightMap(heightMap), water(water)
 		{}
 
 		void pixel(uint32 x, uint32 y, const ivec3 &indices, const vec3 &weights)
@@ -23,7 +24,7 @@ namespace
 			Tile tile;
 			tile.position = mesh->positionAt(indices, weights);
 			tile.normal = mesh->normalAt(indices, weights);
-			terrainTile(tile);
+			terrainTile(tile, water);
 			albedo->set(x, y, tile.albedo);
 			special->set(x, y, vec2(tile.roughness, tile.metallic));
 			heightMap->set(x, y, tile.height);
@@ -66,8 +67,14 @@ namespace
 	};
 }
 
-void generateTextures(const Holder<Polyhedron> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
+void generateTexturesLand(const Holder<Polyhedron> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
 {
-	Generator gen(renderMesh, width, height, albedo, special, heightMap);
+	Generator gen(renderMesh, width, height, albedo, special, heightMap, false);
+	gen.generate();
+}
+
+void generateTexturesWater(const Holder<Polyhedron> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
+{
+	Generator gen(renderMesh, width, height, albedo, special, heightMap, true);
 	gen.generate();
 }

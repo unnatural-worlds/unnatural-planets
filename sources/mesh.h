@@ -9,6 +9,9 @@ using namespace cage;
 
 struct Tile;
 
+Holder<Polyhedron> meshGenerateBaseLand();
+Holder<Polyhedron> meshGenerateBaseWater();
+Holder<Polyhedron> meshGenerateBaseNavigation();
 std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh);
 void meshSimplifyNavmesh(Holder<Polyhedron> &mesh);
 void meshSimplifyCollider(Holder<Polyhedron> &mesh);

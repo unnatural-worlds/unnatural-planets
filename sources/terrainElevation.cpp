@@ -224,21 +224,45 @@ namespace
 	}
 }
 
-real terrainElevation(const vec3 &pos)
+real terrainSdfElevation(const vec3 &pos)
 {
 	CAGE_ASSERT(terrainElevationFnc != nullptr);
-	return terrainElevationFnc(pos);
+	const real result = terrainElevationFnc(pos);
+	if (!valid(result))
+		CAGE_THROW_ERROR(Exception, "invalid elevation sdf value");
+	return result;
 }
 
-real terrainShape(const vec3 &pos)
+real terrainSdfLand(const vec3 &pos)
 {
 	CAGE_ASSERT(terrainShapeFnc != nullptr);
 	CAGE_ASSERT(terrainElevationFnc != nullptr);
-	real base = terrainShapeFnc(pos);
-	real elev = terrainElevationFnc(pos) * 10;
-	real result = base - max(elev, 0);
+	const real base = terrainShapeFnc(pos);
+	const real elev = terrainElevationFnc(pos) * 10;
+	const real result = base - elev;
 	if (!valid(result))
-		CAGE_THROW_ERROR(Exception, "invalid shape function value");
+		CAGE_THROW_ERROR(Exception, "invalid land sdf value");
+	return result;
+}
+
+real terrainSdfWater(const vec3 &pos)
+{
+	CAGE_ASSERT(terrainShapeFnc != nullptr);
+	const real result = terrainShapeFnc(pos);
+	if (!valid(result))
+		CAGE_THROW_ERROR(Exception, "invalid water sdf value");
+	return result;
+}
+
+real terrainSdfNavigation(const vec3 &pos)
+{
+	CAGE_ASSERT(terrainShapeFnc != nullptr);
+	CAGE_ASSERT(terrainElevationFnc != nullptr);
+	const real base = terrainShapeFnc(pos);
+	const real elev = terrainElevationFnc(pos) * 10;
+	const real result = base - max(elev, 0);
+	if (!valid(result))
+		CAGE_THROW_ERROR(Exception, "invalid navigation sdf value");
 	return result;
 }
 

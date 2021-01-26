@@ -42,36 +42,6 @@ namespace
 		tile.elevation += p * m * 0.3;
 	}
 
-	void generateSlope(Tile &tile)
-	{
-		constexpr real radius = 0.5;
-		vec3 a = anyPerpendicular(tile.normal);
-		vec3 b = cross(tile.normal, a);
-		a *= radius;
-		b *= radius;
-		const real div = 1 / sqrt(2);
-		vec3 c = (a + b) * div;
-		vec3 d = (a - b) * div;
-		real elevs[8] = {
-			terrainElevation(tile.position + a),
-			terrainElevation(tile.position + b),
-			terrainElevation(tile.position - a),
-			terrainElevation(tile.position - b),
-			terrainElevation(tile.position + c),
-			terrainElevation(tile.position + d),
-			terrainElevation(tile.position - c),
-			terrainElevation(tile.position - d),
-		};
-		real difs[4] = {
-			abs(elevs[2] - elevs[0]),
-			abs(elevs[3] - elevs[1]),
-			abs(elevs[6] - elevs[4]),
-			abs(elevs[7] - elevs[5]),
-		};
-		real md = max(max(difs[0], difs[1]), max(difs[2], difs[3]));
-		tile.slope = atan(10 * md / radius);
-	}
-
 	void generatePrecipitation(Tile &tile)
 	{
 		static const Holder<NoiseFunction> precpNoise = []() {
@@ -131,6 +101,97 @@ namespace
 		polar = pow(polar, 1.7);
 		polar += polarNoise->evaluate(tile.position) * 0.1;
 		tile.temperature += 15 - polar * 80;
+	}
+
+	void generateWater(Tile &tile)
+	{
+		static const Holder<NoiseFunction> hueNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cubic;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
+			cfg.frequency = 0.01;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> xNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.frequency = 0.001;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> yNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.frequency = 0.001;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> zNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.frequency = 0.001;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		real shallow = -0.5 / (tile.elevation - 0.5);
+		shallow = saturate(shallow);
+		shallow = smoothstep(shallow);
+		real hueShift = hueNoise->evaluate(tile.position) * 0.06;
+		vec3 color = colorHueShift(interpolate(vec3(54, 54, 97), vec3(26, 102, 125), shallow) / 255, hueShift);
+
+		tile.albedo = color;
+		tile.roughness = 0.3;
+		tile.metallic = 0;
+
+		{ // waves
+			real x = xNoise->evaluate(tile.position);
+			real y = yNoise->evaluate(tile.position);
+			real z = zNoise->evaluate(tile.position);
+			vec3 dir = normalize(vec3(x, y, z));
+			CAGE_ASSERT(isUnit(dir));
+			real dist = dot(dir, tile.position) * length(tile.position);
+			rads a = rads(dist * 0.002);
+			rads b = rads(sin(a + sin(a) * 0.5)); // skewed wave
+			real c = sin(b + sin(b) * 0.5);
+			real wave = c * 0.1 + 0.5;
+			tile.height = wave;
+		}
+
+		tile.biome = TerrainBiomeEnum::Water;
+		tile.type = shallow > 0.5 ? TerrainTypeEnum::ShallowWater : TerrainTypeEnum::DeepWater;
+	}
+
+	void generateSlope(Tile &tile)
+	{
+		constexpr real radius = 0.5;
+		vec3 a = anyPerpendicular(tile.normal);
+		vec3 b = cross(tile.normal, a);
+		a *= radius;
+		b *= radius;
+		const real div = 1 / sqrt(2);
+		vec3 c = (a + b) * div;
+		vec3 d = (a - b) * div;
+		real elevs[8] = {
+			terrainSdfElevation(tile.position + a),
+			terrainSdfElevation(tile.position + b),
+			terrainSdfElevation(tile.position - a),
+			terrainSdfElevation(tile.position - b),
+			terrainSdfElevation(tile.position + c),
+			terrainSdfElevation(tile.position + d),
+			terrainSdfElevation(tile.position - c),
+			terrainSdfElevation(tile.position - d),
+		};
+		real difs[4] = {
+			abs(elevs[2] - elevs[0]),
+			abs(elevs[3] - elevs[1]),
+			abs(elevs[6] - elevs[4]),
+			abs(elevs[7] - elevs[5]),
+		};
+		real md = max(max(difs[0], difs[1]), max(difs[2], difs[3]));
+		tile.slope = atan(10 * md / radius);
 	}
 
 	void generateBiome(Tile &tile)
@@ -398,77 +459,6 @@ namespace
 		tile.height = interpolate(tile.height, height, bf);
 	}
 
-	void generateWater(Tile &tile)
-	{
-		static const Holder<NoiseFunction> hueNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.01;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> xNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.frequency = 0.001;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> yNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.frequency = 0.001;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> zNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.frequency = 0.001;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-
-		if (tile.elevation > 0)
-			return;
-
-		real bf = smoothstep(saturate(-tile.elevation - tile.height));
-		if (bf < 1e-7)
-			return;
-
-		real shallow = -0.5 / (tile.elevation - 0.5);
-		shallow = saturate(shallow);
-		shallow = smoothstep(shallow);
-		real hueShift = hueNoise->evaluate(tile.position) * 0.06;
-		vec3 color = colorHueShift(interpolate(vec3(54, 54, 97), vec3(26, 102, 125), shallow) / 255, hueShift);
-
-		tile.albedo = interpolate(tile.albedo, color, bf);
-		tile.roughness = interpolate(tile.roughness, 0.3, bf);
-		tile.metallic = interpolate(tile.metallic, 0, bf);
-
-		{ // waves
-			real x = xNoise->evaluate(tile.position);
-			real y = yNoise->evaluate(tile.position);
-			real z = zNoise->evaluate(tile.position);
-			vec3 dir = normalize(vec3(x, y, z));
-			CAGE_ASSERT(isUnit(dir));
-			real dist = dot(dir, tile.position) * length(tile.position);
-			rads a = rads(dist * 0.002);
-			rads b = rads(sin(a + sin(a) * 0.5)); // skewed wave
-			real c = sin(b + sin(b) * 0.5);
-			real wave = c * 0.1 + 0.5;
-			tile.height = interpolate(tile.height, wave, sharpEdge(bf));
-		}
-
-		if (bf > 0.1)
-		{
-			tile.biome = TerrainBiomeEnum::Water;
-			tile.type = shallow > 0.5 ? TerrainTypeEnum::ShallowWater : TerrainTypeEnum::DeepWater;
-		}
-	}
-
 	void generateIce(Tile &tile)
 	{
 		static const Holder<NoiseFunction> scaleNoise = []() {
@@ -662,32 +652,39 @@ namespace
 	}
 }
 
-void terrainTile(Tile &tile)
+void terrainTile(Tile &tile, bool water)
 {
 	CAGE_ASSERT(isUnit(tile.normal));
-	tile.elevation = terrainElevation(tile.position);
+	tile.elevation = terrainSdfElevation(tile.position);
 	generateElevation(tile);
-	generateSlope(tile);
 	generatePrecipitation(tile);
 	generateTemperature(tile);
 	generatePoles(tile);
-	generateBiome(tile);
-	generateType(tile);
-	generateBedrock(tile);
-	generateMica(tile);
-	generateDirt(tile);
-	generateSand(tile);
-	// corals
-	// seaweed
-	generateWater(tile);
-	generateIce(tile);
-	// boulders
-	// tree stumps
-	generateMoss(tile);
-	generateGrass(tile);
-	// leaves
-	// flowers
-	generateSnow(tile);
+	if (water)
+	{
+		generateWater(tile);
+		generateIce(tile);
+	}
+	else
+	{
+		generateSlope(tile);
+		generateBiome(tile);
+		generateType(tile);
+		generateBedrock(tile);
+		generateMica(tile);
+		generateDirt(tile);
+		generateSand(tile);
+		// corals
+		// seaweed
+		generateIce(tile);
+		// boulders
+		// tree stumps
+		generateMoss(tile);
+		generateGrass(tile);
+		// leaves
+		// flowers
+		generateSnow(tile);
+	}
 	tile.albedo = saturate(tile.albedo);
 	tile.roughness = saturate(tile.roughness);
 	tile.metallic = saturate(tile.metallic);
@@ -696,9 +693,10 @@ void terrainTile(Tile &tile)
 
 void terrainPreseed()
 {
-	terrainShape(vec3());
+	terrainSdfNavigation(vec3());
 	Tile tile;
 	tile.position = vec3(0, 1, 0);
 	tile.normal = vec3(0, 1, 0);
-	terrainTile(tile);
+	terrainTile(tile, false);
+	terrainTile(tile, true);
 }

@@ -1,17 +1,23 @@
 #include <cage-core/geometry.h>
 #include <cage-core/config.h>
+#include <cage-core/polyhedron.h>
+#include <cage-core/marchingCubes.h>
 #include <unnatural-navmesh/navmesh.h>
 
+#include "terrain.h"
 #include "mesh.h"
 
 #include <initializer_list>
 
 namespace
 {
+	constexpr real boxSize = 2500;
 #ifdef CAGE_DEBUG
+	constexpr uint32 boxResolution = 70;
 	constexpr uint32 iterations = 1;
 	constexpr float tileSize = 30;
 #else
+	constexpr uint32 boxResolution = 200;
 	constexpr uint32 iterations = 10;
 	constexpr float tileSize = 10;
 #endif // CAGE_DEBUG
@@ -54,6 +60,45 @@ namespace
 			r.b[axis] = pos;
 		return r;
 	}
+
+	template<real(*FNC)(const vec3 &)>
+	Holder<Polyhedron> meshGenerateGeneric()
+	{
+		MarchingCubesCreateConfig cfg;
+		cfg.box = aabb(vec3(boxSize * -0.5), vec3(boxSize * 0.5));
+		cfg.resolution = ivec3(boxResolution);
+		Holder<MarchingCubes> cubes = newMarchingCubes(cfg);
+		cubes->updateByPosition(Delegate<real(const vec3 &)>().bind<FNC>());
+		Holder<Polyhedron> poly = cubes->makePolyhedron();
+		polyhedronDiscardDisconnected(+poly);
+		polyhedronFlipNormals(+poly);
+		return poly;
+	}
+}
+
+Holder<Polyhedron> meshGenerateBaseLand()
+{
+	CAGE_LOG(SeverityEnum::Info, "generator", "generating base land mesh");
+	Holder<Polyhedron> poly = meshGenerateGeneric<&terrainSdfLand>();
+	if (poly->indicesCount() == 0)
+		CAGE_THROW_ERROR(Exception, "generated empty base land mesh");
+	return poly;
+}
+
+Holder<Polyhedron> meshGenerateBaseWater()
+{
+	CAGE_LOG(SeverityEnum::Info, "generator", "generating base water mesh");
+	Holder<Polyhedron> poly = meshGenerateGeneric<&terrainSdfWater>();
+	return poly;
+}
+
+Holder<Polyhedron> meshGenerateBaseNavigation()
+{
+	CAGE_LOG(SeverityEnum::Info, "generator", "generating base navigation mesh");
+	Holder<Polyhedron> poly = meshGenerateGeneric<&terrainSdfNavigation>();
+	if (poly->indicesCount() == 0)
+		CAGE_THROW_ERROR(Exception, "generated empty base navigation mesh");
+	return poly;
 }
 
 void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)

@@ -6,6 +6,7 @@
 #include <cage-core/image.h>
 #include <cage-core/polyhedron.h>
 #include <cage-core/process.h>
+#include <cage-core/debug.h>
 #include <cage-core/string.h>
 
 #include "terrain.h"
@@ -56,18 +57,25 @@ namespace
 		return pathToAbs(pathJoin("tmp", stringizer() + processId()));
 	}
 
+	const string planetName = generateName();
 	const string baseDirectory = findTmpDirectory();
 	const string assetsDirectory = pathJoin(baseDirectory, "data");
 	const string debugDirectory = pathJoin(baseDirectory, "intermediate");
-	Holder<Polyhedron> baseMesh;
-	Holder<Polyhedron> navMesh;
-	std::vector<string> assetPackages;
-	uint32 renderChunksCount;
 	ConfigString configShapeMode("unnatural-planets/shape/mode");
 	ConfigBool configDebugSaveIntermediate("unnatural-planets/debug/saveIntermediate");
 	ConfigBool configPreviewEnable("unnatural-planets/preview/enable");
+	std::vector<string> assetPackages;
+	struct Chunk
+	{
+		string mesh;
+		string material;
+		string albedo, special, heightmap;
+	};
+	std::vector<Chunk> chunks;
+	Holder<Mutex> chunksMutex = newMutex();
+	Holder<Mutex> renderMutex = newMutex(); // prevent rendering land and water simultaneously (avoid exhausting resources)
 
-	void exportConfiguration(const string &planetName)
+	void exportConfiguration()
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "exporting");
 
@@ -110,8 +118,8 @@ namespace
 		{ // object file
 			Holder<File> f = writeFile(pathJoin(assetsDirectory, "planet.object"));
 			f->writeLine("[]");
-			for (uint32 i = 0; i < renderChunksCount; i++)
-				f->writeLine(stringizer() + "chunk-" + i + ".obj");
+			for (const Chunk &c : chunks)
+				f->writeLine(c.mesh);
 			f->close();
 		}
 
@@ -127,25 +135,28 @@ namespace
 			f->writeLine("[]");
 			f->writeLine("scheme = texture");
 			f->writeLine("srgb = true");
-			for (uint32 i = 0; i < renderChunksCount; i++)
-				f->writeLine(stringizer() + "chunk-" + i + "-albedo.png");
+			for (const Chunk &c : chunks)
+				if (!c.albedo.empty())
+					f->writeLine(c.albedo);
 			f->writeLine("[]");
 			f->writeLine("scheme = texture");
-			for (uint32 i = 0; i < renderChunksCount; i++)
-				f->writeLine(stringizer() + "chunk-" + i + "-special.png");
+			for (const Chunk &c : chunks)
+				if (!c.special.empty())
+					f->writeLine(c.special);
 			f->writeLine("[]");
 			f->writeLine("scheme = texture");
 			f->writeLine("convert = heightToNormal");
-			for (uint32 i = 0; i < renderChunksCount; i++)
-				f->writeLine(stringizer() + "chunk-" + i + "-height.png");
-			for (uint32 i = 0; i < renderChunksCount; i++)
+			for (const Chunk &c : chunks)
+				if (!c.heightmap.empty())
+					f->writeLine(c.heightmap);
+			for (const Chunk &c : chunks)
 			{
 				f->writeLine("[]");
 				f->writeLine("scheme = mesh");
 				f->writeLine("tangents = true");
 				f->writeLine("instancesLimit = 1");
-				f->writeLine(stringizer() + "material = chunk-" + i + ".cpm");
-				f->writeLine(stringizer() + "chunk-" + i + ".obj");
+				f->writeLine(stringizer() + "material = " + c.material);
+				f->writeLine(c.mesh);
 			}
 			f->writeLine("[]");
 			f->writeLine("scheme = mesh");
@@ -167,39 +178,43 @@ namespace
 			f->write(R"Python(
 import os
 import bpy
-)Python");
-			f->writeLine(stringizer() + "renderChunksCount = " + renderChunksCount);
-			f->write(R"Python(
-for i in range(0, renderChunksCount):
-	bpy.ops.import_scene.obj(filepath = "chunk-" + str(i) + ".obj")
-	bpy.ops.image.open(filepath = os.getcwd() + "/chunk-" + str(i) + "-special.png")
-	bpy.ops.image.open(filepath = os.getcwd() + "/chunk-" + str(i) + "-height.png")
-	mat = bpy.data.materials["chunk-" + str(i)]
+
+def loadChunk(meshname, objname, specialname, heightname):
+	bpy.ops.import_scene.obj(filepath = meshname)
+	bpy.ops.image.open(filepath = os.getcwd() + "/" + specialname)
+	bpy.ops.image.open(filepath = os.getcwd() + "/"  + heightname)
+	mat = bpy.data.materials[objname]
 	nodes = mat.node_tree.nodes
 	links = mat.node_tree.links
 	shader = nodes[0]
 	shader.inputs["Specular"].default_value = 0.1
 	specialMap = nodes.new('ShaderNodeTexImage')
-	specialMap.image = bpy.data.images["chunk-" + str(i) + "-special.png"]
+	specialMap.image = bpy.data.images[specialname]
 	specialMap.image.colorspace_settings.name = "Non-Color"
 	links.new(specialMap.outputs['Color'], shader.inputs['Roughness'])
 	links.new(specialMap.outputs['Alpha'], shader.inputs['Metallic'])
 	heightMap = nodes.new('ShaderNodeTexImage')
-	heightMap.image = bpy.data.images["chunk-" + str(i) + "-height.png"]
+	heightMap.image = bpy.data.images[heightname]
 	heightMap.image.colorspace_settings.name = "Non-Color"
 	bump = nodes.new('ShaderNodeBump')
 	bump.inputs["Strength"].default_value = 2
 	bump.inputs["Distance"].default_value = 5
 	links.new(heightMap.outputs['Color'], bump.inputs['Height'])
 	links.new(bump.outputs['Normal'], shader.inputs['Normal'])
-	bpy.data.objects["chunk-" + str(i)].material_slots[0].material = mat
+	bpy.data.objects[objname].material_slots[0].material = mat
 
+)Python");
+			for (const Chunk &c : chunks)
+			{
+				f->writeLine(stringizer() + "loadChunk('" + c.mesh + "', '" + replace(c.mesh, ".obj", "") + "', '" + c.special + "', '" + c.heightmap + "')");
+			}
+			f->write(R"Python(
 for a in bpy.data.window_managers[0].windows[0].screen.areas:
 	if a.type == 'VIEW_3D':
 		for s in a.spaces:
 			if s.type == 'VIEW_3D':
-				s.clip_start = 0.1
-				s.clip_end = 10000
+				s.clip_start = 2
+				s.clip_end = 200000
 				s.shading.type = 'MATERIAL'
 
 bpy.ops.object.select_all(action='DESELECT')
@@ -213,12 +228,23 @@ bpy.ops.object.select_all(action='DESELECT')
 
 		void processEntry()
 		{
-			Holder<Polyhedron> mesh = baseMesh->copy();
-			meshSimplifyNavmesh(mesh);
-			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh tiles: " + mesh->verticesCount());
+			Holder<Polyhedron> base = meshGenerateBaseNavigation();
 			if (configDebugSaveIntermediate)
-				meshSaveDebug(pathJoin(debugDirectory, "navMeshBase.obj"), mesh);
-			navMesh = templates::move(mesh);
+				meshSaveDebug(pathJoin(debugDirectory, "navmeshBase.obj"), base);
+			{
+				Holder<Polyhedron> navmesh = base->copy();
+				meshSimplifyNavmesh(navmesh);
+				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh tiles: " + navmesh->verticesCount());
+				std::vector<Tile> tiles;
+				generateTileProperties(navmesh, tiles, pathJoin(baseDirectory, "tileStats.log"));
+				meshSaveNavigation(pathJoin(assetsDirectory, "navmesh.obj"), navmesh, tiles);
+				generateDoodads(navmesh, tiles, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
+			}
+			{
+				Holder<Polyhedron> collider = base->copy();
+				meshSimplifyCollider(collider);
+				meshSaveCollider(pathJoin(assetsDirectory, "collider.obj"), collider);
+			}
 		}
 
 		NavmeshProcessor()
@@ -227,138 +253,158 @@ bpy.ops.object.select_all(action='DESELECT')
 		}
 	};
 
-	struct ColliderProcessor
-	{
-		Holder<Thread> thr;
-
-		void processEntry()
-		{
-			Holder<Polyhedron> mesh = baseMesh->copy();
-			meshSimplifyCollider(mesh);
-			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "collider: vertices: " + mesh->verticesCount() + ", triangles: " + (mesh->indicesCount() / 3));
-			meshSaveCollider(pathJoin(assetsDirectory, "collider.obj"), mesh);
-		}
-
-		ColliderProcessor()
-		{
-			thr = newThread(Delegate<void()>().bind<ColliderProcessor, &ColliderProcessor::processEntry>(this), "collider");
-		}
-	};
-
-	struct RenderProcessor
+	struct LandProcessor
 	{
 		std::vector<Holder<Polyhedron>> split;
-		std::atomic<uint32> completedChunks = 0;
 
-		Holder<Thread> thr; // make sure the thread is finished before the other members are destroyed
+		Holder<Thread> thr; // make sure the thread is finished before other members are destroyed
 
-		void processOneChunk(uint32 index)
-		{
-			const auto &msh = split[index];
-			const uint32 resolution = meshUnwrap(msh);
-			meshSaveRender(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + ".obj"), msh);
-			Holder<Image> albedo, special, heightMap;
-			generateTextures(msh, resolution, resolution, albedo, special, heightMap);
-			albedo->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-albedo.png"));
-			special->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-special.png"));
-			heightMap->exportFile(pathJoin(assetsDirectory, stringizer() + "chunk-" + index + "-height.png"));
-			{
-				const uint32 completed = ++completedChunks;
-				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "render chunks: " + (100.0f * completed / split.size()) + " %");
-			}
-		}
-
-		void poolEntry(uint32 threadIndex, uint32 threadsCount)
+		void chunkEntry(uint32 threadIndex, uint32 threadsCount)
 		{
 			uint32 b, e;
 			threadPoolTasksSplit(threadIndex, threadsCount, numeric_cast<uint32>(split.size()), b, e);
-			for (uint32 i = b; i < e; i++)
-				processOneChunk(i);
-		}
-
-		void poolProcess()
-		{
-			Holder<ThreadPool> thrPool;
-			thrPool = newThreadPool("chunks_");
-			thrPool->function.bind<RenderProcessor, &RenderProcessor::poolEntry>(this);
-			thrPool->run();
+			for (uint32 index = b; index < e; index++)
+			{
+				Chunk c;
+				c.mesh = stringizer() + "land-" + index + ".obj";
+				c.material = stringizer() + "land-" + index + ".cpm";
+				c.albedo = stringizer() + "land-" + index + "-albedo.png";
+				c.special = stringizer() + "land-" + index + "-special.png";
+				c.heightmap = stringizer() + "land-" + index + "-height.png";
+				const auto &msh = split[index];
+				const uint32 resolution = meshUnwrap(msh);
+				meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh);
+				Holder<Image> albedo, special, heightMap;
+				generateTexturesLand(msh, resolution, resolution, albedo, special, heightMap);
+				albedo->exportFile(pathJoin(assetsDirectory, c.albedo));
+				special->exportFile(pathJoin(assetsDirectory, c.special));
+				heightMap->exportFile(pathJoin(assetsDirectory, c.heightmap));
+				{
+					ScopeLock lock(chunksMutex);
+					chunks.push_back(c);
+				}
+			}
 		}
 
 		void processEntry()
 		{
-			Holder<Polyhedron> mesh = baseMesh->copy();
-			meshSimplifyRender(mesh);
-			if (configDebugSaveIntermediate)
-				meshSaveDebug(pathJoin(debugDirectory, "renderMesh.obj"), mesh);
-			split = meshSplit(mesh);
-			renderChunksCount = numeric_cast<uint32>(split.size());
-			CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "render mesh split into " + renderChunksCount + " chunks");
-			poolProcess();
+			{
+				Holder<Polyhedron> mesh = meshGenerateBaseLand();
+				meshSimplifyRender(mesh);
+				if (configDebugSaveIntermediate)
+					meshSaveDebug(pathJoin(debugDirectory, "landMesh.obj"), mesh);
+				split = meshSplit(mesh);
+				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "land mesh split into " + split.size() + " chunks");
+			}
+			{
+				ScopeLock lock(renderMutex);
+				Holder<ThreadPool> thrPool;
+				thrPool = newThreadPool("land_");
+				thrPool->function.bind<LandProcessor, &LandProcessor::chunkEntry>(this);
+				thrPool->run();
+			}
 		}
 
-		RenderProcessor()
+		LandProcessor()
 		{
-			thr = newThread(Delegate<void()>().bind<RenderProcessor, &RenderProcessor::processEntry>(this), "render");
+			thr = newThread(Delegate<void()>().bind<LandProcessor, &LandProcessor::processEntry>(this), "land");
 		}
 	};
 
-	struct TilesProcessor
+	struct WaterProcessor
 	{
-		Holder<Thread> thr;
+		std::vector<Holder<Polyhedron>> split;
+
+		Holder<Thread> thr; // make sure the thread is finished before other members are destroyed
+
+		void chunkEntry(uint32 threadIndex, uint32 threadsCount)
+		{
+			uint32 b, e;
+			threadPoolTasksSplit(threadIndex, threadsCount, numeric_cast<uint32>(split.size()), b, e);
+			for (uint32 index = b; index < e; index++)
+			{
+				Chunk c;
+				c.mesh = stringizer() + "water-" + index + ".obj";
+				c.material = stringizer() + "water-" + index + ".cpm";
+				c.albedo = stringizer() + "water-" + index + "-albedo.png";
+				c.special = stringizer() + "water-" + index + "-special.png";
+				c.heightmap = stringizer() + "water-" + index + "-height.png";
+				const auto &msh = split[index];
+				const uint32 resolution = meshUnwrap(msh);
+				meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh);
+				Holder<Image> albedo, special, heightMap;
+				generateTexturesWater(msh, resolution, resolution, albedo, special, heightMap);
+				albedo->exportFile(pathJoin(assetsDirectory, c.albedo));
+				special->exportFile(pathJoin(assetsDirectory, c.special));
+				heightMap->exportFile(pathJoin(assetsDirectory, c.heightmap));
+				{
+					ScopeLock lock(chunksMutex);
+					chunks.push_back(c);
+				}
+			}
+		}
 
 		void processEntry()
 		{
-			std::vector<Tile> tiles;
-			generateTileProperties(navMesh, tiles, pathJoin(baseDirectory, "tileStats.log"));
-			meshSaveNavigation(pathJoin(assetsDirectory, "navmesh.obj"), navMesh, tiles);
-			generateDoodads(navMesh, tiles, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
+			{
+				Holder<Polyhedron> mesh = meshGenerateBaseWater();
+				meshSimplifyRender(mesh);
+				if (configDebugSaveIntermediate)
+					meshSaveDebug(pathJoin(debugDirectory, "waterMesh.obj"), mesh);
+				split = meshSplit(mesh);
+				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "water mesh split into " + split.size() + " chunks");
+			}
+			{
+				ScopeLock lock(renderMutex);
+				Holder<ThreadPool> thrPool;
+				thrPool = newThreadPool("water_");
+				thrPool->function.bind<WaterProcessor, &WaterProcessor::chunkEntry>(this);
+				thrPool->run();
+			}
 		}
 
-		TilesProcessor()
+		WaterProcessor()
 		{
-			thr = newThread(Delegate<void()>().bind<TilesProcessor, &TilesProcessor::processEntry>(this), "tiles");
+			thr = newThread(Delegate<void()>().bind<WaterProcessor, &WaterProcessor::processEntry>(this), "water");
 		}
 	};
 }
 
 void generateEntry()
 {
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "planet name: '" + planetName + "'");
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "tmp directory: " + baseDirectory);
 
 	terrainPreseed();
-	baseMesh = generateBaseMesh();
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "initial mesh: vertices: " + baseMesh->verticesCount() + ", triangles: " + (baseMesh->indicesCount() / 3));
-	if (configDebugSaveIntermediate)
-		meshSaveDebug(pathJoin(debugDirectory, "baseMesh.obj"), baseMesh);
 
 	{
 		NavmeshProcessor navigation;
-		ColliderProcessor collider;
-	}
-	{
-		RenderProcessor render;
-		TilesProcessor tiles;
+		LandProcessor land;
+		WaterProcessor water;
 	}
 
-	const string planetName = generateName();
+	exportConfiguration();
 
-	exportConfiguration(planetName);
-
-	CAGE_LOG(SeverityEnum::Info, "generator", "finished generating");
-
-	const string outPath = findOutputDirectory(planetName);
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "output directory: " + outPath);
-	pathMove(baseDirectory, outPath);
+	const string outDirectory = findOutputDirectory(planetName);
+	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "output directory: " + outDirectory);
+	pathMove(baseDirectory, outDirectory);
 
 	if (configPreviewEnable)
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "starting preview");
 		try
 		{
-			ProcessCreateConfig cfg("blender -y -P blender-import.py", pathJoin(outPath, "data"));
-			cfg.discardStdErr = cfg.discardStdIn = cfg.discardStdOut = true;
+			ProcessCreateConfig cfg("blender -y -P blender-import.py", pathJoin(outDirectory, "data"));
 			Holder<Process> p = newProcess(cfg);
-			p->wait();
+			{
+				detail::OverrideBreakpoint ob;
+				while (true)
+					CAGE_LOG(SeverityEnum::Note, "blender", p->readLine());
+			}
+		}
+		catch (const ProcessPipeEof &)
+		{
+			// nothing
 		}
 		catch (...)
 		{
