@@ -84,7 +84,6 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		/*
 		static const Holder<NoiseFunction> rampsNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
@@ -92,7 +91,6 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		*/
 		static const Holder<NoiseFunction> levelNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
@@ -104,9 +102,8 @@ namespace
 		real b = baseNoise->evaluate(pos) / 0.62 * 0.5 + 0.5;
 		real c = clifsNoise->evaluate(pos) / 0.8 * 0.5 + 0.5;
 		c = c * 2 + 3;
-		//real r = rampsNoise->evaluate(pos) / 0.75 * 0.5 + 0.5;
-		//r = sharpEdge(saturate(r), 0.1) * 3;
-		real r = 5;
+		real r = rampsNoise->evaluate(pos) / 0.75 * 0.5 + 0.5;
+		r = sharpEdge(saturate(r), 0.1) * 3;
 		real e = terrace(b * c, r) / c;
 		real l = levelNoise->evaluate(pos) / 0.8 * 0.5 + 0.5;
 		e +=  2 * l / c;
@@ -222,14 +219,25 @@ namespace
 			CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using shape mode: '" + name + "'");
 		}
 	}
+
+	constexpr real meshElevationRatio = 0.1;
 }
 
 real terrainSdfElevation(const vec3 &pos)
 {
+	CAGE_ASSERT(terrainShapeFnc != nullptr);
+	const real result = terrainShapeFnc(pos) * meshElevationRatio;
+	if (!valid(result))
+		CAGE_THROW_ERROR(Exception, "invalid elevation sdf value");
+	return result;
+}
+
+real terrainSdfElevationRaw(const vec3 &pos)
+{
 	CAGE_ASSERT(terrainElevationFnc != nullptr);
 	const real result = terrainElevationFnc(pos);
 	if (!valid(result))
-		CAGE_THROW_ERROR(Exception, "invalid elevation sdf value");
+		CAGE_THROW_ERROR(Exception, "invalid elevation raw sdf value");
 	return result;
 }
 
@@ -238,7 +246,7 @@ real terrainSdfLand(const vec3 &pos)
 	CAGE_ASSERT(terrainShapeFnc != nullptr);
 	CAGE_ASSERT(terrainElevationFnc != nullptr);
 	const real base = terrainShapeFnc(pos);
-	const real elev = terrainElevationFnc(pos) * 10;
+	const real elev = terrainElevationFnc(pos) / meshElevationRatio;
 	const real result = base - elev;
 	if (!valid(result))
 		CAGE_THROW_ERROR(Exception, "invalid land sdf value");
@@ -259,7 +267,7 @@ real terrainSdfNavigation(const vec3 &pos)
 	CAGE_ASSERT(terrainShapeFnc != nullptr);
 	CAGE_ASSERT(terrainElevationFnc != nullptr);
 	const real base = terrainShapeFnc(pos);
-	const real elev = terrainElevationFnc(pos) * 10;
+	const real elev = terrainElevationFnc(pos) / meshElevationRatio;
 	const real result = base - max(elev, 0);
 	if (!valid(result))
 		CAGE_THROW_ERROR(Exception, "invalid navigation sdf value");

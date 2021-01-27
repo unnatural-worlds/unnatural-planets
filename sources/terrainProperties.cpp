@@ -324,6 +324,18 @@ namespace
 		tile.height = cracks * scale;
 	}
 
+	void generateCliffs(Tile &tile)
+	{
+		real bf = saturate((degs(tile.slope).value - 25) * 0.1);
+		if (bf < 1e-7)
+			return;
+
+		vec3 &color = tile.albedo;
+		vec3 hsv = colorRgbToHsv(color);
+		hsv[1] *= bf;
+		color = colorHsvToRgb(hsv);
+	}
+
 	void generateMica(Tile &tile)
 	{
 		static const Holder<NoiseFunction> maskNoise = []() {
@@ -655,22 +667,28 @@ namespace
 void terrainTile(Tile &tile, bool water)
 {
 	CAGE_ASSERT(isUnit(tile.normal));
-	tile.elevation = terrainSdfElevation(tile.position);
-	generateElevation(tile);
-	generatePrecipitation(tile);
-	generateTemperature(tile);
-	generatePoles(tile);
 	if (water)
 	{
+		tile.elevation = terrainSdfElevationRaw(tile.position);
+		generateElevation(tile);
+		generatePrecipitation(tile);
+		generateTemperature(tile);
+		generatePoles(tile);
 		generateWater(tile);
 		generateIce(tile);
 	}
 	else
 	{
+		tile.elevation = terrainSdfElevation(tile.position);
+		generateElevation(tile);
+		generatePrecipitation(tile);
+		generateTemperature(tile);
+		generatePoles(tile);
 		generateSlope(tile);
 		generateBiome(tile);
 		generateType(tile);
 		generateBedrock(tile);
+		generateCliffs(tile);
 		generateMica(tile);
 		generateDirt(tile);
 		generateSand(tile);

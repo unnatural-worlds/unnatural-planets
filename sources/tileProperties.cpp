@@ -30,7 +30,7 @@ namespace
 
 		void insert(real value)
 		{
-			uint8 index = numeric_cast<uint8>(255 * (value - a) / (b - a) + 0.5);
+			uint8 index = numeric_cast<uint8>(clamp(255 * (value - a) / (b - a) + 0.5, 0, 255));
 			counts[index]++;
 			total++;
 			maxc = max(maxc, counts[index]);

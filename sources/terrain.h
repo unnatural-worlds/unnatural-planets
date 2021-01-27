@@ -56,6 +56,7 @@ struct Tile
 };
 
 real terrainSdfElevation(const vec3 &pos);
+real terrainSdfElevationRaw(const vec3 &pos);
 real terrainSdfLand(const vec3 &pos);
 real terrainSdfWater(const vec3 &pos);
 real terrainSdfNavigation(const vec3 &pos);
