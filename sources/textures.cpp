@@ -25,7 +25,10 @@ namespace
 			tile.position = mesh->positionAt(indices, weights);
 			tile.normal = mesh->normalAt(indices, weights);
 			terrainTile(tile, water);
-			albedo->set(x, y, tile.albedo);
+			if (water)
+				albedo->set(x, y, vec4(tile.albedo, tile.opacity));
+			else
+				albedo->set(x, y, tile.albedo);
 			special->set(x, y, vec2(tile.roughness, tile.metallic));
 			heightMap->set(x, y, tile.height);
 		}
@@ -33,8 +36,16 @@ namespace
 		void generate()
 		{
 			albedo = newImage();
-			albedo->initialize(width, height, 3, ImageFormatEnum::Float);
-			imageFill(+albedo, vec3::Nan());
+			if (water)
+			{
+				albedo->initialize(width, height, 4, ImageFormatEnum::Float);
+				imageFill(+albedo, vec4::Nan());
+			}
+			else
+			{
+				albedo->initialize(width, height, 3, ImageFormatEnum::Float);
+				imageFill(+albedo, vec3::Nan());
+			}
 			special = newImage();
 			special->initialize(width, height, 2, ImageFormatEnum::Float);
 			imageFill(+special, vec2::Nan());

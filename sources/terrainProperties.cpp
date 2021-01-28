@@ -145,6 +145,7 @@ namespace
 		tile.albedo = color;
 		tile.roughness = 0.3;
 		tile.metallic = 0;
+		tile.opacity = 0.9 - shallow * 0.7;
 
 		{ // waves
 			real x = xNoise->evaluate(tile.position);
@@ -196,7 +197,9 @@ namespace
 
 	void generateBiome(Tile &tile)
 	{
-		if (tile.temperature > 20)
+		if (tile.elevation < 0)
+			tile.biome = TerrainBiomeEnum::Water;
+		else if (tile.temperature > 20)
 		{
 			if (tile.precipitation < 40)
 				tile.biome = TerrainBiomeEnum::Desert;
@@ -233,9 +236,11 @@ namespace
 
 	void generateType(Tile &tile)
 	{
-		if (tile.elevation < 0)
+		if (tile.elevation < -0.5)
+			tile.type = TerrainTypeEnum::DeepWater;
+		else if (tile.elevation < 0)
 			tile.type = TerrainTypeEnum::ShallowWater;
-		else if (tile.slope > degs(15))
+		else if (tile.slope > degs(20))
 			tile.type = TerrainTypeEnum::SteepSlope;
 		else switch (tile.biome)
 		{
@@ -326,7 +331,7 @@ namespace
 
 	void generateCliffs(Tile &tile)
 	{
-		real bf = saturate((degs(tile.slope).value - 25) * 0.1);
+		real bf = saturate((degs(tile.slope).value - 20) * 0.05);
 		if (bf < 1e-7)
 			return;
 
@@ -494,9 +499,6 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		if (tile.biome != TerrainBiomeEnum::Water)
-			return;
-
 		real bf = sharpEdge(saturate(tile.temperature * -0.3));
 		if (bf < 1e-7)
 			return;
@@ -513,6 +515,7 @@ namespace
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
 		tile.metallic = interpolate(tile.metallic, metallic, bf);
 		tile.height = interpolate(tile.height, height, bf);
+		tile.opacity = interpolate(tile.opacity, 1, bf);
 
 		if (bf > 0.1)
 		{
@@ -694,7 +697,6 @@ void terrainTile(Tile &tile, bool water)
 		generateSand(tile);
 		// corals
 		// seaweed
-		generateIce(tile);
 		// boulders
 		// tree stumps
 		generateMoss(tile);

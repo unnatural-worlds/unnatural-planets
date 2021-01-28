@@ -13,7 +13,7 @@ void meshSaveDebug(const string &path, const Holder<Polyhedron> &mesh)
 	mesh->exportObjFile(cfg, path);
 }
 
-void meshSaveRender(const string &path, const Holder<Polyhedron> &mesh)
+void meshSaveRender(const string &path, const Holder<Polyhedron> &mesh, bool transparency)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving render mesh: " + path);
 
@@ -33,6 +33,8 @@ void meshSaveRender(const string &path, const Holder<Polyhedron> &mesh)
 		f->writeLine(stringizer() + "newmtl " + cfg.materialName);
 		f->writeLine(stringizer() + "map_Kd " + cfg.objectName + "-albedo.png");
 		//f->writeLine(stringizer() + "map_bump " + cfg.objectName + "-height.png");
+		if (transparency)
+			f->writeLine(stringizer() + "map_d " + cfg.objectName + "-albedo.png");
 	}
 
 	{ // write cpm material file
@@ -41,6 +43,11 @@ void meshSaveRender(const string &path, const Holder<Polyhedron> &mesh)
 		f->writeLine(stringizer() + "albedo = " + cfg.objectName + "-albedo.png");
 		f->writeLine(stringizer() + "special = " + cfg.objectName + "-special.png");
 		f->writeLine(stringizer() + "normal = " + cfg.objectName + "-height.png");
+		if (transparency)
+		{
+			f->writeLine("[flags]");
+			f->writeLine("translucent");
+		}
 	}
 }
 

@@ -51,6 +51,7 @@ struct Tile
 	rads slope;
 	real temperature; // °C average annual
 	real precipitation; // cm total annual
+	real opacity = 1; // only applies to water
 	TerrainBiomeEnum biome;
 	TerrainTypeEnum type;
 };

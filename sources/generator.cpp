@@ -70,6 +70,7 @@ namespace
 		string mesh;
 		string material;
 		string albedo, special, heightmap;
+		bool transparency = false;
 	};
 	std::vector<Chunk> chunks;
 	Holder<Mutex> chunksMutex = newMutex();
@@ -179,26 +180,33 @@ namespace
 import os
 import bpy
 
-def loadChunk(meshname, objname, specialname, heightname):
+def loadChunk(meshname, objname, albedoname, specialname, heightname, transparency):
 	bpy.ops.import_scene.obj(filepath = meshname)
-	bpy.ops.image.open(filepath = os.getcwd() + "/" + specialname)
-	bpy.ops.image.open(filepath = os.getcwd() + "/"  + heightname)
+	bpy.ops.image.open(filepath = os.getcwd() + '/' + albedoname)
+	bpy.ops.image.open(filepath = os.getcwd() + '/' + specialname)
+	bpy.ops.image.open(filepath = os.getcwd() + '/' + heightname)
 	mat = bpy.data.materials[objname]
 	nodes = mat.node_tree.nodes
 	links = mat.node_tree.links
 	shader = nodes[0]
-	shader.inputs["Specular"].default_value = 0.1
+	shader.inputs['Specular'].default_value = 0.1
+	albedoMap = nodes.new('ShaderNodeTexImage')
+	albedoMap.image = bpy.data.images[albedoname]
+	links.new(albedoMap.outputs['Color'], shader.inputs['Base Color'])
+	if transparency:
+		links.new(albedoMap.outputs['Alpha'], shader.inputs['Alpha'])
+		mat.blend_method = 'BLEND'
 	specialMap = nodes.new('ShaderNodeTexImage')
 	specialMap.image = bpy.data.images[specialname]
-	specialMap.image.colorspace_settings.name = "Non-Color"
+	specialMap.image.colorspace_settings.name = 'Non-Color'
 	links.new(specialMap.outputs['Color'], shader.inputs['Roughness'])
 	links.new(specialMap.outputs['Alpha'], shader.inputs['Metallic'])
 	heightMap = nodes.new('ShaderNodeTexImage')
 	heightMap.image = bpy.data.images[heightname]
-	heightMap.image.colorspace_settings.name = "Non-Color"
+	heightMap.image.colorspace_settings.name = 'Non-Color'
 	bump = nodes.new('ShaderNodeBump')
-	bump.inputs["Strength"].default_value = 2
-	bump.inputs["Distance"].default_value = 5
+	bump.inputs['Strength'].default_value = 2
+	bump.inputs['Distance'].default_value = 5
 	links.new(heightMap.outputs['Color'], bump.inputs['Height'])
 	links.new(bump.outputs['Normal'], shader.inputs['Normal'])
 	bpy.data.objects[objname].material_slots[0].material = mat
@@ -206,7 +214,8 @@ def loadChunk(meshname, objname, specialname, heightname):
 )Python");
 			for (const Chunk &c : chunks)
 			{
-				f->writeLine(stringizer() + "loadChunk('" + c.mesh + "', '" + replace(c.mesh, ".obj", "") + "', '" + c.special + "', '" + c.heightmap + "')");
+				f->writeLine(stringizer() + "loadChunk('" + c.mesh + "', '" + replace(c.mesh, ".obj", "") + "', '"
+					+ c.albedo + "', '" + c.special + "', '" + c.heightmap + "', " + (c.transparency ? "True" : "False") + ")");
 			}
 			f->write(R"Python(
 for a in bpy.data.window_managers[0].windows[0].screen.areas:
@@ -273,7 +282,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				c.heightmap = stringizer() + "land-" + index + "-height.png";
 				const auto &msh = split[index];
 				const uint32 resolution = meshUnwrap(msh);
-				meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh);
+				meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh, c.transparency);
 				Holder<Image> albedo, special, heightMap;
 				generateTexturesLand(msh, resolution, resolution, albedo, special, heightMap);
 				albedo->exportFile(pathJoin(assetsDirectory, c.albedo));
@@ -329,9 +338,10 @@ bpy.ops.object.select_all(action='DESELECT')
 				c.albedo = stringizer() + "water-" + index + "-albedo.png";
 				c.special = stringizer() + "water-" + index + "-special.png";
 				c.heightmap = stringizer() + "water-" + index + "-height.png";
+				c.transparency = true;
 				const auto &msh = split[index];
 				const uint32 resolution = meshUnwrap(msh);
-				meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh);
+				meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh, c.transparency);
 				Holder<Image> albedo, special, heightMap;
 				generateTexturesWater(msh, resolution, resolution, albedo, special, heightMap);
 				albedo->exportFile(pathJoin(assetsDirectory, c.albedo));

@@ -19,7 +19,7 @@ void meshSimplifyRender(Holder<Polyhedron> &mesh);
 uint32 meshUnwrap(const Holder<Polyhedron> &mesh);
 
 void meshSaveDebug(const string &path, const Holder<Polyhedron> &mesh);
-void meshSaveRender(const string &path, const Holder<Polyhedron> &mesh);
+void meshSaveRender(const string &path, const Holder<Polyhedron> &mesh, bool transparency);
 void meshSaveNavigation(const string &path, const Holder<Polyhedron> &mesh, const std::vector<Tile> &tiles);
 void meshSaveCollider(const string &path, const Holder<Polyhedron> &mesh);
 
