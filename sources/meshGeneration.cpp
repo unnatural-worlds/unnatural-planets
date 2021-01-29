@@ -17,7 +17,7 @@ namespace
 	constexpr uint32 iterations = 1;
 	constexpr float tileSize = 30;
 #else
-	constexpr uint32 boxResolution = 200;
+	constexpr uint32 boxResolution = 300;
 	constexpr uint32 iterations = 10;
 	constexpr float tileSize = 10;
 #endif // CAGE_DEBUG
@@ -89,6 +89,42 @@ Holder<Polyhedron> meshGenerateBaseWater()
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating base water mesh");
 	Holder<Polyhedron> poly = meshGenerateGeneric<&terrainSdfWater>();
+
+	{
+		polyhedronConvertToIndexed(+poly);
+
+		// check which vertices are needed
+		std::vector<bool> valid;
+		valid.reserve(poly->verticesCount());
+		for (const vec3 &p : poly->positions())
+			valid.push_back(terrainSdfElevationRaw(p) < 0.1);
+
+		// expand valid vertices to whole triangles and their neighbors
+		for (uint32 j = 0; j < 2; j++)
+		{
+			std::vector<bool> valid2 = valid;
+			const uint32 cnt = poly->indicesCount();
+			const auto inds = poly->indices();
+			for (uint32 i = 0; i < cnt; i += 3)
+			{
+				const uint32 is[3] = { inds[i + 0], inds[i + 1], inds[i + 2] };
+				if (valid[is[0]] || valid[is[1]] || valid[is[2]])
+					valid[is[0]] = valid[is[1]] = valid[is[2]] = true;
+			}
+			std::swap(valid, valid2);
+		}
+
+		// invalidate unnecessary vertices
+		{
+			auto v = valid.begin();
+			for (vec3 &p : poly->positions())
+				if (!*v++)
+					p = vec3::Nan();
+		}
+
+		polyhedronDiscardInvalid(+poly);
+	}
+
 	return poly;
 }
 
@@ -147,9 +183,9 @@ void meshSimplifyRender(Holder<Polyhedron> &mesh)
 
 	PolyhedronSimplificationConfig cfg;
 	cfg.iterations = iterations;
-	cfg.minEdgeLength = 0.5 * tileSize;
-	cfg.maxEdgeLength = 10 * tileSize;
-	cfg.approximateError = 0.03 * tileSize;
+	cfg.minEdgeLength = 0.3 * tileSize;
+	cfg.maxEdgeLength = 5 * tileSize;
+	cfg.approximateError = 0.02 * tileSize;
 	Holder<Polyhedron> m = mesh->copy();
 	polyhedronSimplify(+m, cfg);
 

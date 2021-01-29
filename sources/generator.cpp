@@ -358,6 +358,11 @@ bpy.ops.object.select_all(action='DESELECT')
 		{
 			{
 				Holder<Polyhedron> mesh = meshGenerateBaseWater();
+				if (mesh->indicesCount() == 0)
+				{
+					CAGE_LOG(SeverityEnum::Info, "generator", "generated no water");
+					return;
+				}
 				meshSimplifyRender(mesh);
 				if (configDebugSaveIntermediate)
 					meshSaveDebug(pathJoin(debugDirectory, "waterMesh.obj"), mesh);

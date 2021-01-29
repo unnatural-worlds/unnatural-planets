@@ -46,6 +46,7 @@ void meshSaveRender(const string &path, const Holder<Polyhedron> &mesh, bool tra
 		if (transparency)
 		{
 			f->writeLine("[flags]");
+			//f->writeLine("noShadowCast");
 			f->writeLine("translucent");
 		}
 	}

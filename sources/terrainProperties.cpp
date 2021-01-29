@@ -136,7 +136,7 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real shallow = -0.5 / (tile.elevation - 0.5);
+		real shallow = rescale(tile.elevation, -1, 0.03, 0, 1);
 		shallow = saturate(shallow);
 		shallow = smoothstep(shallow);
 		real hueShift = hueNoise->evaluate(tile.position) * 0.06;
@@ -145,7 +145,6 @@ namespace
 		tile.albedo = color;
 		tile.roughness = 0.3;
 		tile.metallic = 0;
-		tile.opacity = 0.9 - shallow * 0.7;
 
 		{ // waves
 			real x = xNoise->evaluate(tile.position);
@@ -157,12 +156,67 @@ namespace
 			rads a = rads(dist * 0.002);
 			rads b = rads(sin(a + sin(a) * 0.5)); // skewed wave
 			real c = sin(b + sin(b) * 0.5);
-			real wave = c * 0.1 + 0.5;
+			real wave = c * (1 - shallow * 0.9) * 0.1 + 0.5;
 			tile.height = wave;
+		}
+
+		{
+			real d1 = 1 - sqr(saturate(rescale(tile.elevation, -0.1, 0.03, 0, 1))); // softer clip through terrain
+			real d2 = rescale(saturate(rescale(tile.elevation, -2, 0, 1, 0)), 0, 1, 0.7, 0.95); // shallower water is more translucent
+			tile.opacity = d1 * d2;
 		}
 
 		tile.biome = TerrainBiomeEnum::Water;
 		tile.type = shallow > 0.5 ? TerrainTypeEnum::ShallowWater : TerrainTypeEnum::DeepWater;
+	}
+
+	void generateIce(Tile &tile)
+	{
+		static const Holder<NoiseFunction> scaleNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
+			cfg.frequency = 0.03;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> cracksNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
+			cfg.operation = NoiseOperationEnum::Subtract;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 3;
+			cfg.frequency = 0.1;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		real bf = sharpEdge(saturate(tile.temperature * -0.3));
+		if (bf < 1e-7)
+			return;
+
+		real scale = scaleNoise->evaluate(tile.position) * 0.02 + 0.5;
+		real crack = cracksNoise->evaluate(tile.position * scale) * 0.5 + 0.5;
+		crack = pow(crack, 0.3);
+		vec3 color = vec3(61, 81, 82) / 255 + crack * 0.3;
+		real roughness = (1 - crack) * 0.6 + 0.15;
+		real metallic = 0;
+		real height = crack * 0.2 + 0.4;
+
+		tile.albedo = interpolate(tile.albedo, color, bf);
+		tile.roughness = interpolate(tile.roughness, roughness, bf);
+		tile.metallic = interpolate(tile.metallic, metallic, bf);
+		tile.height = interpolate(tile.height, height, bf);
+		tile.opacity = interpolate(tile.opacity, tile.opacity + 0.1, bf);
+
+		if (bf > 0.1)
+		{
+			tile.biome = TerrainBiomeEnum::Bare;
+			if (tile.type != TerrainTypeEnum::SteepSlope)
+				tile.type = TerrainTypeEnum::Slow;
+		}
 	}
 
 	void generateSlope(Tile &tile)
@@ -476,55 +530,6 @@ namespace
 		tile.height = interpolate(tile.height, height, bf);
 	}
 
-	void generateIce(Tile &tile)
-	{
-		static const Holder<NoiseFunction> scaleNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.03;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> cracksNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cellular;
-			cfg.distance = NoiseDistanceEnum::Hybrid;
-			cfg.operation = NoiseOperationEnum::Subtract;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 3;
-			cfg.frequency = 0.1;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-
-		real bf = sharpEdge(saturate(tile.temperature * -0.3));
-		if (bf < 1e-7)
-			return;
-
-		real scale = scaleNoise->evaluate(tile.position) * 0.02 + 0.5;
-		real crack = cracksNoise->evaluate(tile.position * scale) * 0.5 + 0.5;
-		crack = pow(crack, 0.3);
-		vec3 color = vec3(61, 81, 82) / 255 + crack * 0.3;
-		real roughness = (1 - crack) * 0.6 + 0.15;
-		real metallic = 0;
-		real height = crack * 0.2 + 0.4;
-
-		tile.albedo = interpolate(tile.albedo, color, bf);
-		tile.roughness = interpolate(tile.roughness, roughness, bf);
-		tile.metallic = interpolate(tile.metallic, metallic, bf);
-		tile.height = interpolate(tile.height, height, bf);
-		tile.opacity = interpolate(tile.opacity, 1, bf);
-
-		if (bf > 0.1)
-		{
-			tile.biome = TerrainBiomeEnum::Bare;
-			if (tile.type != TerrainTypeEnum::SteepSlope)
-				tile.type = TerrainTypeEnum::Slow;
-		}
-	}
-
 	void generateMoss(Tile &tile)
 	{
 		static const uint32 seed = noiseSeed();
@@ -673,8 +678,6 @@ void terrainTile(Tile &tile, bool water)
 	if (water)
 	{
 		tile.elevation = terrainSdfElevationRaw(tile.position);
-		generateElevation(tile);
-		generatePrecipitation(tile);
 		generateTemperature(tile);
 		generatePoles(tile);
 		generateWater(tile);
@@ -709,6 +712,7 @@ void terrainTile(Tile &tile, bool water)
 	tile.roughness = saturate(tile.roughness);
 	tile.metallic = saturate(tile.metallic);
 	tile.height = saturate(tile.height);
+	tile.opacity = saturate(tile.opacity);
 }
 
 void terrainPreseed()
