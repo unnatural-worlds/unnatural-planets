@@ -6,6 +6,7 @@
 
 namespace
 {
+	template<bool Water>
 	struct Generator
 	{
 		const Holder<Polyhedron> &mesh;
@@ -14,9 +15,8 @@ namespace
 		Holder<Image> &heightMap;
 		const uint32 width;
 		const uint32 height;
-		const bool water;
 
-		Generator(const Holder<Polyhedron> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap, bool water) : mesh(mesh), width(width), height(height), albedo(albedo), special(special), heightMap(heightMap), water(water)
+		Generator(const Holder<Polyhedron> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap) : mesh(mesh), width(width), height(height), albedo(albedo), special(special), heightMap(heightMap)
 		{}
 
 		void pixel(uint32 x, uint32 y, const ivec3 &indices, const vec3 &weights)
@@ -24,11 +24,16 @@ namespace
 			Tile tile;
 			tile.position = mesh->positionAt(indices, weights);
 			tile.normal = mesh->normalAt(indices, weights);
-			terrainTile(tile, water);
-			if (water)
+			if (Water)
+			{
+				terrainTileWater(tile);
 				albedo->set(x, y, vec4(tile.albedo, tile.opacity));
+			}
 			else
+			{
+				terrainTileLand(tile);
 				albedo->set(x, y, tile.albedo);
+			}
 			special->set(x, y, vec2(tile.roughness, tile.metallic));
 			heightMap->set(x, y, tile.height);
 		}
@@ -36,7 +41,7 @@ namespace
 		void generate()
 		{
 			albedo = newImage();
-			if (water)
+			if (Water)
 			{
 				albedo->initialize(width, height, 4, ImageFormatEnum::Float);
 				imageFill(+albedo, vec4::Nan());
@@ -80,12 +85,12 @@ namespace
 
 void generateTexturesLand(const Holder<Polyhedron> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
 {
-	Generator gen(renderMesh, width, height, albedo, special, heightMap, false);
+	Generator<false> gen(renderMesh, width, height, albedo, special, heightMap);
 	gen.generate();
 }
 
 void generateTexturesWater(const Holder<Polyhedron> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
 {
-	Generator gen(renderMesh, width, height, albedo, special, heightMap, true);
+	Generator<true> gen(renderMesh, width, height, albedo, special, heightMap);
 	gen.generate();
 }

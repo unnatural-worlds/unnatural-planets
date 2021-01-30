@@ -670,22 +670,9 @@ namespace
 				tile.type = TerrainTypeEnum::Slow;
 		}
 	}
-}
 
-void terrainTile(Tile &tile, bool water)
-{
-	CAGE_ASSERT(isUnit(tile.normal));
-	if (water)
+	void generateLand(Tile &tile)
 	{
-		tile.elevation = terrainSdfElevationRaw(tile.position);
-		generateTemperature(tile);
-		generatePoles(tile);
-		generateWater(tile);
-		generateIce(tile);
-	}
-	else
-	{
-		tile.elevation = terrainSdfElevation(tile.position);
 		generateElevation(tile);
 		generatePrecipitation(tile);
 		generateTemperature(tile);
@@ -708,11 +695,50 @@ void terrainTile(Tile &tile, bool water)
 		// flowers
 		generateSnow(tile);
 	}
+
+	void generateFinalization(Tile &tile)
+	{
+		tile.albedo = saturate(tile.albedo);
+		tile.roughness = saturate(tile.roughness);
+		tile.metallic = saturate(tile.metallic);
+		tile.height = saturate(tile.height);
+		tile.opacity = saturate(tile.opacity);
+	}
+}
+
+void terrainTileLand(Tile &tile)
+{
+	CAGE_ASSERT(isUnit(tile.normal));
+	tile.elevation = terrainSdfElevation(tile.position);
+	generateLand(tile);
+	generateFinalization(tile);
+}
+
+void terrainTileWater(Tile &tile)
+{
+	CAGE_ASSERT(isUnit(tile.normal));
+	tile.elevation = terrainSdfElevationRaw(tile.position);
+	generateTemperature(tile);
+	generatePoles(tile);
+	generateWater(tile);
+	generateIce(tile);
 	tile.albedo = saturate(tile.albedo);
 	tile.roughness = saturate(tile.roughness);
 	tile.metallic = saturate(tile.metallic);
 	tile.height = saturate(tile.height);
 	tile.opacity = saturate(tile.opacity);
+}
+
+void terrainTileNavigation(Tile &tile)
+{
+	CAGE_ASSERT(isUnit(tile.normal));
+	{
+		real l = terrainSdfElevation(tile.position);
+		real w = terrainSdfElevationRaw(tile.position);
+		tile.elevation = interpolate(l, w, saturate(rescale(l, 0, 0.1, 1, 0)));
+	}
+	generateLand(tile);
+	generateFinalization(tile);
 }
 
 void terrainPreseed()
@@ -721,6 +747,5 @@ void terrainPreseed()
 	Tile tile;
 	tile.position = vec3(0, 1, 0);
 	tile.normal = vec3(0, 1, 0);
-	terrainTile(tile, false);
-	terrainTile(tile, true);
+	terrainTileNavigation(tile);
 }

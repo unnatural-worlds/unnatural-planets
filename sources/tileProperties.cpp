@@ -88,7 +88,7 @@ void generateTileProperties(const Holder<Polyhedron> &navMesh, std::vector<Tile>
 		Tile tile;
 		tile.position = navMesh->position(i);
 		tile.normal = navMesh->normal(i);
-		terrainTile(tile, false);
+		terrainTileNavigation(tile);
 		tiles.push_back(tile);
 
 		elevations.insert(tile.elevation);
