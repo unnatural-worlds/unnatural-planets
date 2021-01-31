@@ -12,10 +12,19 @@ namespace
 {
 	ConfigBool configPolesEnable("unnatural-planets/poles/enable");
 
-	real steepnessMask(degs slope, degs threshold = degs(20), degs smoothing = degs(5))
+	// returns zero when the slope is at or above the threshold plus the smoothing,
+	// returns one when the slope is at or below the threshold minus the smoothing
+	real steepnessMask(degs slope, degs threshold, degs smoothing = degs(10))
 	{
 		degs r = (threshold + smoothing - slope) / (2 * smoothing);
 		return sharpEdge(saturate(r.value));
+	}
+
+	// returns zero when the value is at or below the lowest,
+	// returns one when the value is at or above the highest
+	real rangeMask(real value, real lowest, real highest)
+	{
+		return saturate((value - lowest) / (highest - lowest));
 	}
 
 	void generateElevation(Tile &tile)
@@ -67,10 +76,11 @@ namespace
 	{
 		static const Holder<NoiseFunction> tempNoise = []() {
 			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cubic;
+			cfg.type = NoiseTypeEnum::Simplex;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.0015;
+			cfg.octaves = 5;
+			cfg.gain = 0.4;
+			cfg.frequency = 0.002;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -136,8 +146,7 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real shallow = rescale(tile.elevation, -1, 0.03, 0, 1);
-		shallow = saturate(shallow);
+		real shallow = rangeMask(tile.elevation, -1, 0.03);
 		shallow = smoothstep(shallow);
 		real hueShift = hueNoise->evaluate(tile.position) * 0.06;
 		vec3 color = colorHueShift(interpolate(vec3(54, 54, 97), vec3(26, 102, 125), shallow) / 255, hueShift);
@@ -161,8 +170,8 @@ namespace
 		}
 
 		{
-			real d1 = 1 - sqr(saturate(rescale(tile.elevation, -0.1, 0.03, 0, 1))); // softer clip through terrain
-			real d2 = rescale(saturate(rescale(tile.elevation, -2, 0, 1, 0)), 0, 1, 0.7, 0.95); // shallower water is more translucent
+			real d1 = 1 - sqr(rangeMask(tile.elevation, -0.1, 0.03)); // softer clip through terrain
+			real d2 = rescale(rangeMask(tile.elevation, 0, -2), 0, 1, 0.7, 0.95); // shallower water is more translucent
 			tile.opacity = d1 * d2;
 		}
 
@@ -193,7 +202,7 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real bf = sharpEdge(saturate(tile.temperature * -0.3));
+		real bf = sharpEdge(rangeMask(tile.temperature, 0, -3));
 		if (bf < 1e-7)
 			return;
 
@@ -468,18 +477,24 @@ namespace
 		}();
 
 		real height = heightNoise->evaluate(tile.position) * 0.2 + 0.5;
-		real bf = sharpEdge(saturate(height - tile.height + 0.4)) * steepnessMask(tile.slope);
+		real bf = sharpEdge(saturate(height - tile.height + 0.4)) * steepnessMask(tile.slope, degs(20));
 		if (bf < 1e-7)
 			return;
 
 		vec3 color = vec3(84, 47, 14) / 255;
+		{
+			real saturation = rangeMask(tile.precipitation, 0, 50);
+			vec3 hsv = colorRgbToHsv(color);
+			hsv[1] *= saturation;
+			color = colorHsvToRgb(hsv);
+		}
 		real roughness = randomChance() * 0.1 + 0.7;
 		real metallic = 0;
 
 		{ // cracks
 			real cracks = sharpEdge(saturate(cracksNoise->evaluate(tile.position) * 2 - 1.2), 0.15);
 			cracks *= sqr(smoothstep(saturate(cracksMaskNoise->evaluate(tile.position) * 0.5 + 0.5))) * 0.9 + 0.1;
-			cracks *= saturate((50 - tile.precipitation) * 0.01);
+			cracks *= rangeMask(tile.precipitation, 70, 20) * 0.9 + 0.1;
 			height = interpolate(height, height * 0.5, cracks);
 			color = interpolate(color, vec3(0.1), cracks);
 			roughness = interpolate(roughness, 0.9, cracks);
@@ -495,11 +510,11 @@ namespace
 	{
 		static const Holder<NoiseFunction> heightNoise = []() {
 			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 2;
-			cfg.gain = 0.3;
-			cfg.frequency = 0.04;
+			cfg.type = NoiseTypeEnum::Simplex;
+			cfg.fractalType = NoiseFractalTypeEnum::Ridged;
+			cfg.octaves = 3;
+			cfg.gain = 0.7;
+			cfg.frequency = 0.01;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -513,11 +528,13 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real bf = saturate((tile.temperature - 17.5) * 0.2) * saturate((35 - tile.precipitation) * 0.1) * steepnessMask(tile.slope);
+		real bf = rangeMask(tile.temperature, 24, 28) * steepnessMask(tile.slope, degs(19));
 		if (bf < 1e-7)
 			return;
 
-		real height = heightNoise->evaluate(tile.position) * 0.2 + 0.5;
+		real height = heightNoise->evaluate(tile.position) * 0.2;
+		height *= rangeMask(tile.precipitation, 100, 50) * 0.6 + 0.4;
+		height += 0.5;
 		real hueShift = hueNoise->evaluate(tile.position) * 0.1;
 		vec3 color = colorHueShift(vec3(172, 159, 139) / 255, hueShift);
 		color = colorDeviation(color, 0.08);
@@ -559,7 +576,7 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		real bf = saturate((tile.temperature - 10) * 0.1) * saturate((tile.precipitation - 200) * 0.02) * steepnessMask(tile.slope);
+		real bf = rangeMask(abs(tile.temperature - 22), 6, 3) * rangeMask(tile.precipitation, 200, 250) * steepnessMask(tile.slope, degs(22));
 		if (bf < 1e-7)
 			return;
 
@@ -568,7 +585,7 @@ namespace
 		bf *= cracks * 0.5 + 0.5;
 
 		real pores = saturate(pow(randomChance(), 0.4));
-		real height = tile.height + min(cracks, pores) * 0.05;
+		real height = interpolate(tile.height, 0.5, 0.5) + min(cracks, pores) * 0.05;
 		real hueShift = hueshiftNoise->evaluate(tile.position) * 0.07;
 		vec3 color = colorHueShift(vec3(99, 147, 65) / 255, hueShift);
 		color = interpolate(vec3(76, 61, 50) / 255, color, pores);
@@ -611,8 +628,7 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		real ratio = tile.temperature - (tile.precipitation + 100) * 30 / 400;
-		real bf = sharpEdge(saturate(1 - abs(tile.temperature - 15) * 0.07), 0.2) * sharpEdge(saturate(1 - abs(ratio) * 0.1), 0.2) * steepnessMask(tile.slope);
+		real bf = rangeMask(abs(tile.temperature - 13), 10, 7) * rangeMask(abs(tile.precipitation - 140), 90, 60) * steepnessMask(tile.slope, degs(30));
 		if (bf < 1e-7)
 			return;
 
@@ -620,8 +636,11 @@ namespace
 		for (uint32 i = 0; i < sizeof(bladesNoise) / sizeof(bladesNoise[0]); i++)
 			grass += sharpEdge(bladesNoise[i]->evaluate(tile.position) + 0.7);
 		bf *= saturate(grass);
+		if (bf < 1e-7)
+			return;
 
 		real height = tile.height + grass * 0.05;
+		real ratio = tile.temperature - (tile.precipitation + 100) * 30 / 400;
 		real hueShift = hueNoise->evaluate(tile.position) * 0.09 - max(ratio, 0) * 0.02;
 		vec3 color = colorHueShift(vec3(79, 114, 55) / 255, hueShift);
 		real roughness = randomChance() * 0.2 + 0.6 + min(ratio, 0) * 0.03;
@@ -648,7 +667,7 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		real bf = saturate(tile.temperature * -0.5) * saturate((tile.precipitation - 50) * 0.1) * steepnessMask(tile.slope);
+		real bf = rangeMask(tile.temperature, 0, -2) * rangeMask(tile.precipitation, 50, 60) * steepnessMask(tile.slope, degs(18));
 		if (bf < 1e-7)
 			return;
 		real factor = (thresholdNoise->evaluate(tile.position) * 0.5 + 0.5) * 0.5 + 0.7;
