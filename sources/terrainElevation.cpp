@@ -17,22 +17,26 @@ namespace
 
 	real elevationNone(const vec3 &)
 	{
-		return 1;
+		return 100;
 	}
 
-	real elevationSimplex(const vec3 &pos)
+	real elevationSimple(const vec3 &pos)
 	{
 		static const Holder<NoiseFunction> elevNoise = []() {
 			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::SimplexReduced;
-			cfg.frequency = 0.001;
+			cfg.type = NoiseTypeEnum::Simplex;
+			cfg.fractalType = NoiseFractalTypeEnum::Ridged;
+			cfg.octaves = 6;
+			cfg.gain = 0.4;
+			cfg.frequency = 0.0005;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
 
-		real a = elevNoise->evaluate(pos);
-		a += 0.5; // more land than water
-		return a * 10;
+		real a = elevNoise->evaluate(pos); // min: -0.8, mean: 0.28, max: 1
+		a = -a + 0.3; // min: -0.7, mean: 0.02, max: 1.1
+		a = pow(a * 1.3 - 0.35, 3) + 0.1;
+		return 100 - a * 1000;
 	}
 
 	real elevationLegacy(const vec3 &pos)
@@ -62,7 +66,7 @@ namespace
 			a = -pow(-a, 0.85);
 		else
 			a = pow(a, 1.7);
-		return a * 25;
+		return a * 2500;
 	}
 
 	real elevationTerraces(const vec3 &pos)
@@ -107,19 +111,20 @@ namespace
 		real e = terrace(b * c, r) / c;
 		real l = levelNoise->evaluate(pos) / 0.8 * 0.5 + 0.5;
 		e +=  2 * l / c;
-		return (e - 0.5) * 30;
+		return (e - 0.5) * 3000;
 	}
 
 	real elevationEarth(const vec3 &pos)
 	{
-		return 1; // todo
+		// todo
+		return 100;
 	}
 
 	void chooseElevationFunction()
 	{
 		constexpr TerrainFunctor elevationModeFunctions[] = {
 			&elevationNone,
-			&elevationSimplex,
+			&elevationSimple,
 			&elevationLegacy,
 			&elevationTerraces,
 			&elevationEarth,
@@ -129,7 +134,7 @@ namespace
 
 		constexpr const char *const elevationModeNames[] = {
 			"none",
-			"simplex",
+			"simple",
 			"legacy",
 			"terraces",
 			"earth",
@@ -220,7 +225,7 @@ namespace
 		}
 	}
 
-	constexpr real meshElevationRatio = 0.1;
+	constexpr real meshElevationRatio = 10;
 }
 
 real terrainSdfElevation(const vec3 &pos)

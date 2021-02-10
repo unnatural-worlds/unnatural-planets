@@ -77,8 +77,8 @@ void generateTileProperties(const Holder<Polyhedron> &navMesh, std::vector<Tile>
 	const uint32 cnt = navMesh->verticesCount();
 	tiles.reserve(cnt);
 
-	PropertyCounters elevations(-50, 150);
-	PropertyCounters temperatures(-200, 200);
+	PropertyCounters elevations(-5000, 5000);
+	PropertyCounters temperatures(-150, 150);
 	PropertyCounters precipitations(0, 2000);
 	PropertyCounters biomesCounts(0, 255);
 	PropertyCounters typesCounts(0, 255);

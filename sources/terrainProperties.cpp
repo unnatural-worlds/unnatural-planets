@@ -48,7 +48,7 @@ namespace
 		real p = elevNoise->evaluate(tile.position);
 		real m = maskNoise->evaluate(tile.position);
 		m = 1 - smootherstep(abs(m));
-		tile.elevation += p * m * 0.3;
+		tile.elevation += p * m * 30;
 	}
 
 	void generatePrecipitation(Tile &tile)
@@ -58,7 +58,7 @@ namespace
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 4;
-			cfg.frequency = 0.0015;
+			cfg.frequency = 0.0025;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -67,8 +67,8 @@ namespace
 		p = smootherstep(p);
 		p = smootherstep(p);
 		p = smootherstep(p);
-		p = pow(p, 1.6);
-		p += max(1 - abs(tile.elevation), 0) * 0.15; // more water close to oceans
+		p = pow(p, 1.5);
+		p += max(120 - abs(tile.elevation), 0) * 0.002; // more water close to oceans
 		tile.precipitation = p * 400;
 	}
 
@@ -80,16 +80,15 @@ namespace
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 5;
 			cfg.gain = 0.4;
-			cfg.frequency = 0.002;
+			cfg.frequency = 0.001;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
 		real t = tempNoise->evaluate(tile.position) * 0.5 + 0.5;
 		t = saturate(t);
-		t = smootherstep(t);
-		t = smootherstep(t);
+		t = smoothstep(t);
 		t = t * 2 - 1;
-		tile.temperature = 30 + t * 5 - max(tile.elevation, 0) * 2.8;
+		tile.temperature = 20 + t * 25 - max(tile.elevation, 0) * 0.02;
 	}
 
 	void generatePoles(Tile &tile)
@@ -146,7 +145,7 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real shallow = rangeMask(tile.elevation, -1, 0.03);
+		real shallow = rangeMask(tile.elevation, -100, 3);
 		shallow = smoothstep(shallow);
 		real hueShift = hueNoise->evaluate(tile.position) * 0.06;
 		vec3 color = colorHueShift(interpolate(vec3(54, 54, 97), vec3(26, 102, 125), shallow) / 255, hueShift);
@@ -170,8 +169,8 @@ namespace
 		}
 
 		{
-			real d1 = 1 - sqr(rangeMask(tile.elevation, -0.1, 0.03)); // softer clip through terrain
-			real d2 = rescale(rangeMask(tile.elevation, 0, -2), 0, 1, 0.7, 0.95); // shallower water is more translucent
+			real d1 = 1 - sqr(rangeMask(tile.elevation, -10, 3)); // softer clip through terrain
+			real d2 = rescale(rangeMask(tile.elevation, 0, -200), 0, 1, 0.7, 0.95); // shallower water is more translucent
 			tile.opacity = d1 * d2;
 		}
 
@@ -248,14 +247,15 @@ namespace
 			terrainSdfElevation(tile.position - c),
 			terrainSdfElevation(tile.position - d),
 		};
-		real difs[4] = {
-			abs(elevs[2] - elevs[0]),
-			abs(elevs[3] - elevs[1]),
-			abs(elevs[6] - elevs[4]),
-			abs(elevs[7] - elevs[5]),
-		};
-		real md = max(max(difs[0], difs[1]), max(difs[2], difs[3]));
-		tile.slope = atan(10 * md / radius);
+		real e1 = elevs[0];
+		real e2 = elevs[0];
+		for (real e : elevs)
+		{
+			e1 = min(e1, e);
+			e2 = max(e2, e);
+		}
+		real md = (e2 - e1) * 0.1;
+		tile.slope = atan(md / radius);
 	}
 
 	void generateBiome(Tile &tile)
@@ -299,7 +299,7 @@ namespace
 
 	void generateType(Tile &tile)
 	{
-		if (tile.elevation < -0.5)
+		if (tile.elevation < -50)
 			tile.type = TerrainTypeEnum::DeepWater;
 		else if (tile.elevation < 0)
 			tile.type = TerrainTypeEnum::ShallowWater;
@@ -754,7 +754,7 @@ void terrainTileNavigation(Tile &tile)
 	{
 		real l = terrainSdfElevation(tile.position);
 		real w = terrainSdfElevationRaw(tile.position);
-		tile.elevation = interpolate(l, w, saturate(rescale(l, 0, 0.1, 1, 0)));
+		tile.elevation = interpolate(l, w, rangeMask(l, 10, 0));
 	}
 	generateLand(tile);
 	generateFinalization(tile);
