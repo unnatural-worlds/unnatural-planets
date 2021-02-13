@@ -302,7 +302,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				meshSimplifyRender(mesh);
 				if (configDebugSaveIntermediate)
 					meshSaveDebug(pathJoin(debugDirectory, "landMesh.obj"), mesh);
-				split = meshSplit(mesh);
+				split = meshSplitLand(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "land mesh split into " + split.size() + " chunks");
 			}
 			{
@@ -366,7 +366,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				meshSimplifyRender(mesh);
 				if (configDebugSaveIntermediate)
 					meshSaveDebug(pathJoin(debugDirectory, "waterMesh.obj"), mesh);
-				split = meshSplit(mesh);
+				split = meshSplitWater(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "water mesh split into " + split.size() + " chunks");
 			}
 			{

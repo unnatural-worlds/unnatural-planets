@@ -36,7 +36,7 @@ namespace
 			name + PICK(Stems);
 		if (randomChance() < 0.6)
 			name + PICK(Suffixes);
-		if (string(name).length() < 2)
+		if (string(name).length() < 3)
 			return generateNameImpl();
 		if (randomChance() < 0.1)
 			name = stringizer() + reverse(string(name));
