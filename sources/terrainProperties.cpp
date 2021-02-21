@@ -58,7 +58,7 @@ namespace
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 4;
-			cfg.frequency = 0.0025;
+			cfg.frequency = 0.0015;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -69,6 +69,7 @@ namespace
 		p = smootherstep(p);
 		p = pow(p, 1.5);
 		p += max(120 - abs(tile.elevation), 0) * 0.002; // more water close to oceans
+		p = max(p - 0.04, 0);
 		tile.precipitation = p * 400;
 	}
 
@@ -80,19 +81,10 @@ namespace
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 5;
 			cfg.gain = 0.4;
-			cfg.frequency = 0.001;
+			cfg.frequency = 0.00065;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		real t = tempNoise->evaluate(tile.position) * 0.5 + 0.5;
-		t = saturate(t);
-		t = smoothstep(t);
-		t = t * 2 - 1;
-		tile.temperature = 20 + t * 25 - max(tile.elevation, 0) * 0.02;
-	}
-
-	void generatePoles(Tile &tile)
-	{
 		static const Holder<NoiseFunction> polarNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
@@ -103,13 +95,21 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		if (!configPolesEnable)
-			return;
+		real t = tempNoise->evaluate(tile.position) * 0.5 + 0.5;
+		t = saturate(t);
+		t = smoothstep(t);
+		//t = smoothstep(t);
+		t = t * 2 - 1;
 
-		real polar = abs(atan(tile.position[1] / length(vec2(tile.position[0], tile.position[2]))).value) / real::Pi() * 2;
-		polar = pow(polar, 1.7);
-		polar += polarNoise->evaluate(tile.position) * 0.1;
-		tile.temperature += 15 - polar * 80;
+		if (configPolesEnable)
+		{
+			real polar = abs(atan(tile.position[1] / length(vec2(tile.position[0], tile.position[2]))).value) / real::Pi() * 2;
+			polar = pow(polar, 1.7);
+			polar += polarNoise->evaluate(tile.position) * 0.1;
+			t += 0.6 - polar * 3.2;
+		}
+
+		tile.temperature = 15 + t * 30 - max(tile.elevation, 0) * 0.02;
 	}
 
 	void generateWater(Tile &tile)
@@ -695,7 +695,6 @@ namespace
 		generateElevation(tile);
 		generatePrecipitation(tile);
 		generateTemperature(tile);
-		generatePoles(tile);
 		generateSlope(tile);
 		generateBiome(tile);
 		generateType(tile);
@@ -738,7 +737,6 @@ void terrainTileWater(Tile &tile)
 	CAGE_ASSERT(isUnit(tile.normal));
 	tile.elevation = terrainSdfElevationRaw(tile.position);
 	generateTemperature(tile);
-	generatePoles(tile);
 	generateWater(tile);
 	generateIce(tile);
 	tile.albedo = saturate(tile.albedo);

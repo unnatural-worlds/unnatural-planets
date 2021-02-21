@@ -224,7 +224,7 @@ real sdfMobiusStrip(const vec3 &pos)
 	return sdfMobiusStrip(pos, 700, 300, 20) - 100;
 }
 
-real sdfMolecule(const vec3 &pos)
+real sdfFibers(const vec3 &pos)
 {
 	const auto &sdGyroid = [](vec3 p, real scale, real thickness, real bias)
 	{

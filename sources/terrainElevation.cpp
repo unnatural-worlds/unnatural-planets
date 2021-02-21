@@ -116,8 +116,22 @@ namespace
 
 	real elevationEarth(const vec3 &pos)
 	{
-		// todo
-		return 100;
+		static const Holder<NoiseFunction> elevLand = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
+			cfg.frequency = 0.0013;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		real land = elevLand->evaluate(pos) * 0.5 + 0.5;
+		land = saturate(land);
+		land = 1 - pow(land, 1.33);
+		land = land * 2 - 1;
+		land = land / (abs(land) + 0.17) - 0.1;
+		return land * 200;
 	}
 
 	void chooseElevationFunction()
@@ -169,7 +183,7 @@ namespace
 			&sdfOctahedron,
 			&sdfKnot,
 			&sdfMobiusStrip,
-			&sdfMolecule,
+			&sdfFibers,
 			&sdfH2O,
 			&sdfH3O,
 			&sdfH4O,
@@ -193,7 +207,7 @@ namespace
 			"octahedron",
 			"knot",
 			"mobiusstrip",
-			"molecule",
+			"fibers",
 			"h2o",
 			"h3o",
 			"h4o",

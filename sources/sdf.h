@@ -28,7 +28,7 @@ real sdfKnot(const vec3 &pos, real scale, real k);
 real sdfKnot(const vec3 &pos);
 real sdfMobiusStrip(const vec3 &pos, real radius, real majorAxis, real minorAxis);
 real sdfMobiusStrip(const vec3 &pos);
-real sdfMolecule(const vec3 &pos);
+real sdfFibers(const vec3 &pos);
 real sdfH2O(const vec3 &pos);
 real sdfH3O(const vec3 &pos);
 real sdfH4O(const vec3 &pos);
