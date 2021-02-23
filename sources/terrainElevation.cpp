@@ -8,7 +8,6 @@
 namespace
 {
 	ConfigString configShapeMode("unnatural-planets/shape/mode");
-	ConfigBool configElevationEnable("unnatural-planets/elevation/enable");
 	ConfigString configElevationMode("unnatural-planets/elevation/mode");
 
 	typedef real (*TerrainFunctor)(const vec3 &);
@@ -114,7 +113,16 @@ namespace
 		return (e - 0.5) * 3000;
 	}
 
-	real elevationEarth(const vec3 &pos)
+	real commonElevationMountains(const vec3 &pos, real land)
+	{
+		// todo
+		return land;
+	}
+
+	// lakes & islands
+	// https://www.wolframalpha.com/input/?i=plot+%28%28%281+-+x%5E0.85%29+*+2+-+1%29+%2F+%28abs%28%28%281+-+x%5E0.85%29+*+2+-+1%29%29+%2B+0.17%29+%2B+0.15%29+*+150+%2C+%28%28%281+-+x%5E1.24%29+*+2+-+1%29+%2F+%28abs%28%28%281+-+x%5E1.24%29+*+2+-+1%29%29+%2B+0.17%29+%2B+0.15%29+*+150+%2C+x+%3D+0+..+1
+
+	real elevationLakes(const vec3 &pos)
 	{
 		static const Holder<NoiseFunction> elevLand = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -128,10 +136,32 @@ namespace
 
 		real land = elevLand->evaluate(pos) * 0.5 + 0.5;
 		land = saturate(land);
-		land = 1 - pow(land, 1.33);
+		land = 1 - pow(land, 1.24);
 		land = land * 2 - 1;
-		land = land / (abs(land) + 0.17) - 0.1;
-		return land * 200;
+		land = land / (abs(land) + 0.17) + 0.15;
+		land *= 150;
+		return commonElevationMountains(pos, land);
+	}
+
+	real elevationIslands(const vec3& pos)
+	{
+		static const Holder<NoiseFunction> elevLand = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
+			cfg.frequency = 0.0013;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		real land = elevLand->evaluate(pos) * 0.5 + 0.5;
+		land = saturate(land);
+		land = 1 - pow(land, 0.83);
+		land = land * 2 - 1;
+		land = land / (abs(land) + 0.17) + 0.15;
+		land *= 150;
+		return commonElevationMountains(pos, land);
 	}
 
 	void chooseElevationFunction()
@@ -141,7 +171,8 @@ namespace
 			&elevationSimple,
 			&elevationLegacy,
 			&elevationTerraces,
-			&elevationEarth,
+			&elevationLakes,
+			&elevationIslands,
 		};
 
 		constexpr uint32 elevationModesCount = sizeof(elevationModeFunctions) / sizeof(elevationModeFunctions[0]);
@@ -151,7 +182,8 @@ namespace
 			"simple",
 			"legacy",
 			"terraces",
-			"earth",
+			"lakes",
+			"islands",
 		};
 
 		static_assert(elevationModesCount == sizeof(elevationModeNames) / sizeof(elevationModeNames[0]), "number of functions and names must match");

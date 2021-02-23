@@ -3,23 +3,9 @@
 #include <cage-core/geometry.h>
 
 #include "sdf.h"
+#include "math.h"
 
 // https://iquilezles.org/www/articles/distfunctions/distfunctions.htm
-
-namespace
-{
-	real smoothMin(real a, real b, real k)
-	{
-		// https://www.shadertoy.com/view/3ssGWj
-		const real h = saturate((b - a) / k * 0.5 + 0.5);
-		return interpolate(b, a, h) - k * h * (1 - h);
-	}
-
-	real smoothMax(real a, real b, real k)
-	{
-		return -smoothMin(-a, -b, k);
-	}
-}
 
 real sdfPlane(const vec3 &pos, const plane &pln)
 {

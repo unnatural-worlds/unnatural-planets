@@ -23,6 +23,18 @@ real terrace(real x, real steepness)
 	return r;
 }
 
+real smoothMin(real a, real b, real k)
+{
+	// https://www.shadertoy.com/view/3ssGWj
+	const real h = saturate((b - a) / k * 0.5 + 0.5);
+	return interpolate(b, a, h) - k * h * (1 - h);
+}
+
+real smoothMax(real a, real b, real k)
+{
+	return -smoothMin(-a, -b, k);
+}
+
 vec3 colorDeviation(const vec3 &color, real deviation)
 {
 	vec3 hsl = colorRgbToHsluv(color) + (randomChance3() - 0.5) * deviation;
