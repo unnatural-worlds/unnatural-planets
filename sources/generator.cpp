@@ -176,7 +176,7 @@ namespace
 
 		{ // generate blender import script
 			Holder<File> f = writeFile(pathJoin(assetsDirectory, "blender-import.py"));
-			f->write(R"Python(
+			f->write(R"Python(#!blender -y -P
 import os
 import bpy
 

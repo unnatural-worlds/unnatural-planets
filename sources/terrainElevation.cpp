@@ -68,55 +68,58 @@ namespace
 		return a * 2500;
 	}
 
-	real elevationTerraces(const vec3 &pos)
+	real commonElevationMountains(const vec3 &pos, real land)
 	{
-		static const Holder<NoiseFunction> baseNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 2;
-			cfg.gain = 0.3;
-			cfg.frequency = 0.0008;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> clifsNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.0004;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> rampsNoise = []() {
+		static const Holder<NoiseFunction> maskNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.0015;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> levelNoise = []() {
+		static const Holder<NoiseFunction> ridgeNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Simplex;
+			cfg.fractalType = NoiseFractalTypeEnum::Ridged;
+			cfg.octaves = 4;
+			cfg.lacunarity = 1.5;
+			cfg.gain = -0.4;
+			cfg.frequency = 0.001;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> terraceNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.0013;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 3;
+			cfg.gain = 0.3;
+			cfg.frequency = 0.002;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
 
-		real b = baseNoise->evaluate(pos) / 0.62 * 0.5 + 0.5;
-		real c = clifsNoise->evaluate(pos) / 0.8 * 0.5 + 0.5;
-		c = c * 2 + 3;
-		real r = rampsNoise->evaluate(pos) / 0.75 * 0.5 + 0.5;
-		r = sharpEdge(saturate(r), 0.1) * 3;
-		real e = terrace(b * c, r) / c;
-		real l = levelNoise->evaluate(pos) / 0.8 * 0.5 + 0.5;
-		e +=  2 * l / c;
-		return (e - 0.5) * 3000;
-	}
+		real cover = 1 - saturate(land * -0.1); // no mountains in the water
+		if (cover < 1e-7)
+			return land;
 
-	real commonElevationMountains(const vec3 &pos, real land)
-	{
-		// todo
-		return land;
+		real mask = maskNoise->evaluate(pos);
+		real rm = smoothstep(saturate(mask * +7 - 0.3));
+		real tm = smoothstep(saturate(mask * -7 - 1.5));
+
+		real ridge = ridgeNoise->evaluate(pos);
+		ridge = max(ridge - 0.1, 0);
+		ridge = pow(ridge, 1.6);
+		ridge *= rm * cover;
+		ridge *= 1000;
+
+		real terraces = terraceNoise->evaluate(pos);
+		terraces = max(terraces + 0.1, 0) * 2.5;
+		terraces = terrace(terraces, 4);
+		terraces *= tm * cover;
+		terraces *= 250;
+
+		return land + smoothMax(0, max(ridge, terraces), 50);
 	}
 
 	// lakes & islands
@@ -170,7 +173,6 @@ namespace
 			&elevationNone,
 			&elevationSimple,
 			&elevationLegacy,
-			&elevationTerraces,
 			&elevationLakes,
 			&elevationIslands,
 		};
@@ -181,7 +183,6 @@ namespace
 			"none",
 			"simple",
 			"legacy",
-			"terraces",
 			"lakes",
 			"islands",
 		};

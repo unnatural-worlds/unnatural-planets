@@ -69,7 +69,7 @@ namespace
 		p = smootherstep(p);
 		p = pow(p, 1.5);
 		p += max(120 - abs(tile.elevation), 0) * 0.002; // more water close to oceans
-		p = max(p - 0.04, 0);
+		p = max(p - 0.02, 0);
 		tile.precipitation = p * 400;
 	}
 
