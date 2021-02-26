@@ -244,8 +244,10 @@ real sdfH4O(const vec3 &pos)
 
 real sdfTriangularPrism(const vec3 &pos, real height, real radius)
 {
-	const vec3 q = abs(pos);
-	return max(q[2] - height * 0.5, max(q[0] * 0.866025 + pos[1] * 0.5, -pos[1]) - radius * 0.5);
+	const triangle t = triangle(vec3(0, radius, 0), vec3(0, radius, 0) * quat(degs(), degs(), degs(120)), vec3(0, radius, 0) * quat(degs(), degs(), degs(-120)));
+	vec3 p = pos;
+	p[2] = max(abs(p[2]) - height * 0.5, 0);
+	return distance(p, t);
 }
 
 real sdfTriangularPrism(const vec3 &pos)
