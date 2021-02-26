@@ -239,7 +239,7 @@ bpy.ops.object.select_all(action='DESELECT')
 		{
 			Holder<Polyhedron> base = meshGenerateBaseNavigation();
 			if (configDebugSaveIntermediate)
-				meshSaveDebug(pathJoin(debugDirectory, "navmeshBase.obj"), base);
+				meshSaveDebug(pathJoin(debugDirectory, "navMeshBase.obj"), base);
 			{
 				Holder<Polyhedron> navmesh = base->copy();
 				meshSimplifyNavmesh(navmesh);
@@ -299,10 +299,12 @@ bpy.ops.object.select_all(action='DESELECT')
 		{
 			{
 				Holder<Polyhedron> mesh = meshGenerateBaseLand();
+				if (configDebugSaveIntermediate)
+					meshSaveDebug(pathJoin(debugDirectory, "landMeshBase.obj"), mesh);
 				meshSimplifyRender(mesh);
 				if (configDebugSaveIntermediate)
-					meshSaveDebug(pathJoin(debugDirectory, "landMesh.obj"), mesh);
-				split = meshSplitLand(mesh);
+					meshSaveDebug(pathJoin(debugDirectory, "landMeshSimplified.obj"), mesh);
+				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "land mesh split into " + split.size() + " chunks");
 			}
 			{
@@ -363,10 +365,12 @@ bpy.ops.object.select_all(action='DESELECT')
 					CAGE_LOG(SeverityEnum::Info, "generator", "generated no water");
 					return;
 				}
+				if (configDebugSaveIntermediate)
+					meshSaveDebug(pathJoin(debugDirectory, "waterMeshBase.obj"), mesh);
 				meshSimplifyRender(mesh);
 				if (configDebugSaveIntermediate)
-					meshSaveDebug(pathJoin(debugDirectory, "waterMesh.obj"), mesh);
-				split = meshSplitWater(mesh);
+					meshSaveDebug(pathJoin(debugDirectory, "waterMeshSimplified.obj"), mesh);
+				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "water mesh split into " + split.size() + " chunks");
 			}
 			{

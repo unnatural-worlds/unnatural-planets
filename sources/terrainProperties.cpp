@@ -98,7 +98,6 @@ namespace
 		real t = tempNoise->evaluate(tile.position) * 0.5 + 0.5;
 		t = saturate(t);
 		t = smoothstep(t);
-		//t = smoothstep(t);
 		t = t * 2 - 1;
 
 		if (configPolesEnable)
@@ -145,7 +144,7 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real shallow = rangeMask(tile.elevation, -100, 3);
+		real shallow = rangeMask(tile.elevation, -20, 3);
 		shallow = smoothstep(shallow);
 		real hueShift = hueNoise->evaluate(tile.position) * 0.06;
 		vec3 color = colorHueShift(interpolate(vec3(54, 54, 97), vec3(26, 102, 125), shallow) / 255, hueShift);
@@ -299,7 +298,7 @@ namespace
 
 	void generateType(Tile &tile)
 	{
-		if (tile.elevation < -50)
+		if (tile.elevation < -20)
 			tile.type = TerrainTypeEnum::DeepWater;
 		else if (tile.elevation < 0)
 			tile.type = TerrainTypeEnum::ShallowWater;
@@ -314,6 +313,7 @@ namespace
 		case TerrainBiomeEnum::TropicalSeasonalForest:
 			tile.type = TerrainTypeEnum::Fast;
 			break;
+		case TerrainBiomeEnum::Bare:
 		case TerrainBiomeEnum::Tundra:
 		case TerrainBiomeEnum::Taiga:
 		case TerrainBiomeEnum::Desert:
@@ -321,10 +321,8 @@ namespace
 		case TerrainBiomeEnum::TropicalRainForest:
 			tile.type = TerrainTypeEnum::Slow;
 			break;
-		case TerrainBiomeEnum::Bare:
 		default:
-			tile.type = TerrainTypeEnum::Road;
-			break;
+			CAGE_THROW_CRITICAL(Exception, "invalid biome enum");
 		}
 	}
 
@@ -739,11 +737,7 @@ void terrainTileWater(Tile &tile)
 	generateTemperature(tile);
 	generateWater(tile);
 	generateIce(tile);
-	tile.albedo = saturate(tile.albedo);
-	tile.roughness = saturate(tile.roughness);
-	tile.metallic = saturate(tile.metallic);
-	tile.height = saturate(tile.height);
-	tile.opacity = saturate(tile.opacity);
+	generateFinalization(tile);
 }
 
 void terrainTileNavigation(Tile &tile)
@@ -752,7 +746,7 @@ void terrainTileNavigation(Tile &tile)
 	{
 		real l = terrainSdfElevation(tile.position);
 		real w = terrainSdfElevationRaw(tile.position);
-		tile.elevation = interpolate(l, w, rangeMask(l, 10, 0));
+		tile.elevation = interpolate(w, l, rangeMask(l, 5, 10));
 	}
 	generateLand(tile);
 	generateFinalization(tile);
@@ -760,9 +754,18 @@ void terrainTileNavigation(Tile &tile)
 
 void terrainPreseed()
 {
-	terrainSdfNavigation(vec3());
-	Tile tile;
-	tile.position = vec3(0, 1, 0);
-	tile.normal = vec3(0, 1, 0);
-	terrainTileNavigation(tile);
+	{
+		terrainSdfLand(vec3());
+		Tile tile;
+		tile.position = vec3(0, 1, 0);
+		tile.normal = vec3(0, 1, 0);
+		terrainTileLand(tile);
+	}
+	{
+		terrainSdfWater(vec3());
+		Tile tile;
+		tile.position = vec3(0, 1, 0);
+		tile.normal = vec3(0, 1, 0);
+		terrainTileWater(tile);
+	}
 }

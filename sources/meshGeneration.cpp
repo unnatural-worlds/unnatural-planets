@@ -171,7 +171,7 @@ void meshSimplifyCollider(Holder<Polyhedron> &mesh)
 	Holder<Polyhedron> m = mesh->copy();
 	polyhedronSimplify(+m, cfg);
 
-	if (m->indicesCount() < mesh->indicesCount())
+	if (m->indicesCount() <= mesh->indicesCount())
 		mesh = templates::move(m);
 	else
 		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified collider mesh has more triangles than the original");
@@ -183,19 +183,19 @@ void meshSimplifyRender(Holder<Polyhedron> &mesh)
 
 	PolyhedronSimplificationConfig cfg;
 	cfg.iterations = iterations;
-	cfg.minEdgeLength = 0.3 * tileSize;
+	cfg.minEdgeLength = 0.2 * tileSize;
 	cfg.maxEdgeLength = 5 * tileSize;
-	cfg.approximateError = 0.02 * tileSize;
+	cfg.approximateError = 0.01 * tileSize;
 	Holder<Polyhedron> m = mesh->copy();
 	polyhedronSimplify(+m, cfg);
 
-	if (m->indicesCount() < mesh->indicesCount())
+	if (m->indicesCount() <= mesh->indicesCount())
 		mesh = templates::move(m);
 	else
 		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified render mesh has more triangles than the original");
 }
 
-std::vector<Holder<Polyhedron>> meshSplitLand(const Holder<Polyhedron> &mesh)
+std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 {
 	const real myArea = meshSurfaceArea(+mesh);
 	std::vector<Holder<Polyhedron>> result;
@@ -222,8 +222,8 @@ std::vector<Holder<Polyhedron>> meshSplitLand(const Holder<Polyhedron> &mesh)
 		Holder<Polyhedron> m2 = mesh->copy();
 		polyhedronClip(+m1, clippingBox(myBox, a, split));
 		polyhedronClip(+m2, clippingBox(myBox, a, split, true));
-		result = meshSplitLand(m1);
-		std::vector<Holder<Polyhedron>> r2 = meshSplitLand(m2);
+		result = meshSplit(m1);
+		std::vector<Holder<Polyhedron>> r2 = meshSplit(m2);
 		for (auto &it : r2)
 			result.push_back(templates::move(it));
 	}
@@ -233,15 +233,6 @@ std::vector<Holder<Polyhedron>> meshSplitLand(const Holder<Polyhedron> &mesh)
 		result.push_back(mesh->copy());
 	}
 	return result;
-}
-
-std::vector<Holder<Polyhedron>> meshSplitWater(const Holder<Polyhedron> &mesh)
-{
-	std::vector<Holder<Polyhedron>> res;
-	auto tmp = polyhedronSeparateDisconnected(+mesh);
-	for (auto &it : tmp)
-		res.push_back(templates::move(it));
-	return res;
 }
 
 uint32 meshUnwrap(const Holder<Polyhedron> &mesh)

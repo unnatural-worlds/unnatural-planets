@@ -92,47 +92,24 @@ real sdfCube(const vec3 &pos)
 
 real sdfTetrahedron(const vec3 &pos, real radius)
 {
-	const vec3 corners[4] = { vec3(1,1,1) * radius, vec3(1,-1,-1) * radius, vec3(-1,1,-1) * radius, vec3(-1,-1,1) * radius };
-	const triangle tris[4] = {
-		triangle(corners[0], corners[1], corners[2]),
-		triangle(corners[0], corners[3], corners[1]),
+	constexpr const vec3 corners[4] = { vec3(1,1,1), vec3(1,-1,-1), vec3(-1,1,-1), vec3(-1,-1,1) };
+	constexpr const triangle tris[4] = {
+		triangle(corners[1], corners[3], corners[2]),
 		triangle(corners[0], corners[2], corners[3]),
-		triangle(corners[1], corners[3], corners[2])
+		triangle(corners[0], corners[3], corners[1]),
+		triangle(corners[0], corners[1], corners[2]),
 	};
-	const auto &sideOfAPlane = [](const triangle &tri, const vec3 &pt) -> bool
+
+	const vec3 p = pos / radius;
+	real mad = -real::Infinity();
+	for (uint32 i = 0; i < 4; i++)
 	{
-		plane pl(tri);
-		return dot(pl.normal, pt) < -pl.d;
-	};
-	const bool insides[4] = {
-		sideOfAPlane(tris[0], pos),
-		sideOfAPlane(tris[1], pos),
-		sideOfAPlane(tris[2], pos),
-		sideOfAPlane(tris[3], pos)
-	};
-	const real lens[4] = {
-		distance(tris[0], pos),
-		distance(tris[1], pos),
-		distance(tris[2], pos),
-		distance(tris[3], pos)
-	};
-	if (insides[0] && insides[1] && insides[2] && insides[3])
-	{
-		real r = min(min(lens[0], lens[1]), min(lens[2], lens[3]));
-		CAGE_ASSERT(r.valid() && r.finite());
-		return -r;
+		const triangle &t = tris[i];
+		vec3 k = closestPoint(plane(t), p);
+		real d = distance(t, p) * sign(dot(t.normal(), p - k));
+		mad = max(mad, d);
 	}
-	else
-	{
-		real r = real::Infinity();
-		for (int i = 0; i < 4; i++)
-		{
-			if (!insides[i])
-				r = min(r, lens[i]);
-		}
-		CAGE_ASSERT(r.valid() && r.finite());
-		return r;
-	}
+	return mad * radius;
 }
 
 real sdfTetrahedron(const vec3 &pos)
