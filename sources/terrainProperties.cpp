@@ -600,6 +600,81 @@ namespace
 		tile.height = interpolate(tile.height, height, bf);
 	}
 
+	void generateBoulders(Tile &tile)
+	{
+		static const Holder<NoiseFunction> thresholdNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.01;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<Voronoi> centerVoronoi = []() {
+			VoronoiCreateConfig cfg;
+			cfg.cellSize = 150;
+			cfg.pointsPerCell = 2;
+			cfg.seed = noiseSeed();
+			return newVoronoi(cfg);
+		}();
+		static const Holder<NoiseFunction> sizeNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.3;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> hueNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.4;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> valueNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.8;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> scratchesNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 2;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		if (thresholdNoise->evaluate(tile.position) < 0.15)
+			return;
+
+		const auto centers = centerVoronoi->evaluate(tile.position, tile.normal);
+		vec3 center = centers.points[0];
+
+		real dist = distance(center, tile.position);
+		real size = sizeNoise->evaluate(tile.position) * 0.5 + 0.5;
+		size = smootherstep(smootherstep(saturate(size))) * 2 + 0.5;
+
+		real bf = rangeMask(size - dist, 0, 0.1);
+		if (bf < 1e-7)
+			return;
+
+		real hueShift = hueNoise->evaluate(tile.position) * 0.07;
+		real valueShift = valueNoise->evaluate(tile.position) * 0.15;
+		vec3 color = colorRgbToHsv(vec3(0.6));
+		color[0] = (color[0] + hueShift + 1) % 1;
+		color[2] = saturate(color[2] + valueShift);
+		color = colorHsvToRgb(color);
+		real roughness = scratchesNoise->evaluate(tile.position) * 0.1 + 0.6;
+		real metallic = 0;
+		real height = 1 - sqr(dist / size) * 0.5;
+
+		tile.albedo = interpolate(tile.albedo, color, bf);
+		tile.roughness = interpolate(tile.roughness, roughness, bf);
+		tile.metallic = interpolate(tile.metallic, metallic, bf);
+		tile.height = interpolate(tile.height, height, bf);
+	}
+
 	void generateTreeStumps(Tile &tile)
 	{
 		static const Holder<NoiseFunction> thresholdNoise = []() {
@@ -622,6 +697,13 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
+		static const Holder<NoiseFunction> hueNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.2;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
 
 		if (tile.type == TerrainTypeEnum::SteepSlope)
 			return;
@@ -638,7 +720,7 @@ namespace
 			return; // no trees here
 		}
 
-		if (thresholdNoise->evaluate(tile.position) < 0.05)
+		if (thresholdNoise->evaluate(tile.position) < 0.1)
 			return;
 
 		const auto centers = centerVoronoi->evaluate(tile.position, tile.normal);
@@ -652,7 +734,9 @@ namespace
 		if (bf < 1e-7)
 			return;
 
-		vec3 color = interpolate(vec3(0.6), vec3(180, 146, 88) / 255, rangeMask(size - dist, 0.2, 0.7));
+		real hueShift = hueNoise->evaluate(tile.position) * 0.08;
+		vec3 baseColor = colorHueShift(vec3(180, 146, 88) / 255, hueShift);
+		vec3 color = interpolate(vec3(0.5), baseColor, rangeMask(size - dist, 0.2, 0.7));
 		real roughness = 0.8;
 		real metallic = 0;
 		real height = interpolate(height, 1, rangeMask(size - dist, 0, 0.3));
@@ -766,10 +850,10 @@ namespace
 		generateDirt(tile);
 		generateSand(tile);
 		generateGrass(tile);
-		// boulders
+		generateBoulders(tile);
+		generateTreeStumps(tile);
 		// corals
 		// seaweed
-		generateTreeStumps(tile);
 		generateMoss(tile);
 		// leaves
 		// flowers
