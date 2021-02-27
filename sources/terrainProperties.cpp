@@ -4,6 +4,7 @@
 #include <cage-core/geometry.h>
 #include <cage-core/config.h>
 
+#include "voronoi.h"
 #include "terrain.h"
 #include "generator.h"
 #include "math.h"
@@ -545,57 +546,6 @@ namespace
 		tile.height = interpolate(tile.height, height, bf);
 	}
 
-	void generateMoss(Tile &tile)
-	{
-		static const uint32 seed = noiseSeed();
-		static const Holder<NoiseFunction> cracksNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cellular;
-			cfg.distance = NoiseDistanceEnum::Hybrid;
-			cfg.operation = NoiseOperationEnum::Subtract;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 2;
-			cfg.gain = 0.3;
-			cfg.frequency = 0.3;
-			cfg.seed = seed;
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> hueshiftNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cellular;
-			cfg.distance = NoiseDistanceEnum::Hybrid;
-			cfg.operation = NoiseOperationEnum::Cell;
-			cfg.fractalType = NoiseFractalTypeEnum::None;
-			cfg.frequency = 0.3;
-			cfg.seed = seed;
-			return newNoiseFunction(cfg);
-		}();
-
-		if (tile.biome == TerrainBiomeEnum::Water)
-			return;
-
-		real bf = rangeMask(abs(tile.temperature - 22), 6, 3) * rangeMask(tile.precipitation, 200, 250) * steepnessMask(tile.slope, degs(22));
-		if (bf < 1e-7)
-			return;
-
-		real cracks = cracksNoise->evaluate(tile.position) * 0.5 + 0.5;
-		cracks = saturate(pow(cracks, 0.4));
-		bf *= cracks * 0.5 + 0.5;
-
-		real pores = saturate(pow(randomChance(), 0.4));
-		real height = interpolate(tile.height, 0.5, 0.5) + min(cracks, pores) * 0.05;
-		real hueShift = hueshiftNoise->evaluate(tile.position) * 0.07;
-		vec3 color = colorHueShift(vec3(99, 147, 65) / 255, hueShift);
-		color = interpolate(vec3(76, 61, 50) / 255, color, pores);
-		real roughness = interpolate(0.9, randomChance() * 0.2 + 0.3, min(cracks, pores));
-		real metallic = 0;
-
-		tile.albedo = interpolate(tile.albedo, color, bf);
-		tile.roughness = interpolate(tile.roughness, roughness, bf);
-		tile.metallic = interpolate(tile.metallic, metallic, bf);
-		tile.height = interpolate(tile.height, height, bf);
-	}
-
 	void generateGrass(Tile &tile)
 	{
 		constexpr const auto bladesNoiseGen = []() {
@@ -642,6 +592,120 @@ namespace
 		real hueShift = hueNoise->evaluate(tile.position) * 0.09 - max(ratio, 0) * 0.02;
 		vec3 color = colorHueShift(vec3(79, 114, 55) / 255, hueShift);
 		real roughness = randomChance() * 0.2 + 0.6 + min(ratio, 0) * 0.03;
+		real metallic = 0;
+
+		tile.albedo = interpolate(tile.albedo, color, bf);
+		tile.roughness = interpolate(tile.roughness, roughness, bf);
+		tile.metallic = interpolate(tile.metallic, metallic, bf);
+		tile.height = interpolate(tile.height, height, bf);
+	}
+
+	void generateTreeStumps(Tile &tile)
+	{
+		static const Holder<NoiseFunction> thresholdNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.02;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<Voronoi> centerVoronoi = []() {
+			VoronoiCreateConfig cfg;
+			cfg.cellSize = 40;
+			cfg.seed = noiseSeed();
+			return newVoronoi(cfg);
+		}();
+		static const Holder<NoiseFunction> sizeNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 1.5;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		if (tile.type == TerrainTypeEnum::SteepSlope)
+			return;
+
+		switch (tile.biome)
+		{
+		case TerrainBiomeEnum::Taiga:
+		case TerrainBiomeEnum::TemperateRainForest:
+		case TerrainBiomeEnum::TemperateSeasonalForest:
+		case TerrainBiomeEnum::TropicalRainForest:
+		case TerrainBiomeEnum::TropicalSeasonalForest:
+			break;
+		default:
+			return; // no trees here
+		}
+
+		if (thresholdNoise->evaluate(tile.position) < 0.05)
+			return;
+
+		const auto centers = centerVoronoi->evaluate(tile.position, tile.normal);
+		vec3 center = centers.points[0];
+
+		real dist = distance(center, tile.position);
+		real size = sizeNoise->evaluate(tile.position) * 0.5 + 0.5;
+		size = smootherstep(saturate(size)) * 0.5 + 1;
+
+		real bf = rangeMask(size - dist, 0, 0.1);
+		if (bf < 1e-7)
+			return;
+
+		vec3 color = interpolate(vec3(0.6), vec3(180, 146, 88) / 255, rangeMask(size - dist, 0.2, 0.7));
+		real roughness = 0.8;
+		real metallic = 0;
+		real height = interpolate(height, 1, rangeMask(size - dist, 0, 0.3));
+
+		tile.albedo = interpolate(tile.albedo, color, bf);
+		tile.roughness = interpolate(tile.roughness, roughness, bf);
+		tile.metallic = interpolate(tile.metallic, metallic, bf);
+		tile.height = interpolate(tile.height, height, bf);
+	}
+
+	void generateMoss(Tile &tile)
+	{
+		static const uint32 seed = noiseSeed();
+		static const Holder<NoiseFunction> cracksNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
+			cfg.operation = NoiseOperationEnum::Subtract;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 2;
+			cfg.gain = 0.3;
+			cfg.frequency = 0.3;
+			cfg.seed = seed;
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> hueshiftNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
+			cfg.operation = NoiseOperationEnum::Cell;
+			cfg.fractalType = NoiseFractalTypeEnum::None;
+			cfg.frequency = 0.3;
+			cfg.seed = seed;
+			return newNoiseFunction(cfg);
+		}();
+
+		if (tile.biome == TerrainBiomeEnum::Water)
+			return;
+
+		real bf = rangeMask(abs(tile.temperature - 22), 6, 3) * rangeMask(tile.precipitation, 200, 250) * steepnessMask(tile.slope, degs(22));
+		if (bf < 1e-7)
+			return;
+
+		real cracks = cracksNoise->evaluate(tile.position) * 0.5 + 0.5;
+		cracks = saturate(pow(cracks, 0.4));
+		bf *= cracks * 0.5 + 0.5;
+
+		real pores = saturate(pow(randomChance(), 0.4));
+		real height = interpolate(tile.height, 0.5, 0.5) + min(cracks, pores) * 0.05;
+		real hueShift = hueshiftNoise->evaluate(tile.position) * 0.07;
+		vec3 color = colorHueShift(vec3(99, 147, 65) / 255, hueShift);
+		color = interpolate(vec3(76, 61, 50) / 255, color, pores);
+		real roughness = interpolate(0.9, randomChance() * 0.2 + 0.3, min(cracks, pores));
 		real metallic = 0;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
@@ -701,12 +765,12 @@ namespace
 		generateMica(tile);
 		generateDirt(tile);
 		generateSand(tile);
+		generateGrass(tile);
+		// boulders
 		// corals
 		// seaweed
-		// boulders
-		// tree stumps
+		generateTreeStumps(tile);
 		generateMoss(tile);
-		generateGrass(tile);
 		// leaves
 		// flowers
 		generateSnow(tile);
