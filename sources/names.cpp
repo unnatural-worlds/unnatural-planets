@@ -28,13 +28,13 @@ namespace
 	string generateNameImpl()
 	{
 		stringizer name;
-		if (randomChance() < 0.6)
+		if (randomChance() < 0.5)
 			name + PICK(Prefixes);
-		if (randomChance() < 0.6)
+		if (randomChance() < 0.8)
 			name + PICK(Stems);
 		if (randomChance() < 0.1)
 			name + PICK(Stems);
-		if (randomChance() < 0.6)
+		if (randomChance() < 0.5)
 			name + PICK(Suffixes);
 		if (string(name).length() < 3)
 			return generateNameImpl();
