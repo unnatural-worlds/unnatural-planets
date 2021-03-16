@@ -171,7 +171,7 @@ void generateDoodads(const Holder<Polyhedron> &navMesh, const std::vector<Tile> 
 	Holder<File> f = writeFile(doodadsPath);
 	for (const auto &it : enumerate(navMesh->positions()))
 	{
-		const uint32 i = numeric_cast<uint32>(it.cnt);
+		const uint32 i = numeric_cast<uint32>(it.index);
 		const Doodad *doodad = chooseDoodad(doodads, tiles[i]);
 		if (!doodad)
 			continue;
