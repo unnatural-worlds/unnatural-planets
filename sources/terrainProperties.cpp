@@ -728,7 +728,7 @@ namespace
 
 		real dist = distance(center, tile.position);
 		real size = sizeNoise->evaluate(tile.position) * 0.5 + 0.5;
-		size = smootherstep(saturate(size)) * 0.5 + 1;
+		size = smootherstep(saturate(size)) * 0.4 + 0.7;
 
 		real bf = rangeMask(size - dist, 0, 0.1);
 		if (bf < 1e-7)
