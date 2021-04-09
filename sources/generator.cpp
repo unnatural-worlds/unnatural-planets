@@ -153,14 +153,14 @@ namespace
 			for (const Chunk &c : chunks)
 			{
 				f->writeLine("[]");
-				f->writeLine("scheme = mesh");
+				f->writeLine("scheme = model");
 				f->writeLine("tangents = true");
 				f->writeLine("instancesLimit = 1");
 				f->writeLine(stringizer() + "material = " + c.material);
 				f->writeLine(c.mesh);
 			}
 			f->writeLine("[]");
-			f->writeLine("scheme = mesh");
+			f->writeLine("scheme = model");
 			f->writeLine("navmesh.obj");
 			f->writeLine("[]");
 			f->writeLine("scheme = collider");
