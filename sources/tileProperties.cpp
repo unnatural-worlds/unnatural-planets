@@ -1,6 +1,6 @@
 #include <cage-core/logger.h>
 #include <cage-core/string.h>
-#include <cage-core/polyhedron.h>
+#include <cage-core/mesh.h>
 
 #include "terrain.h"
 #include "generator.h"
@@ -63,7 +63,7 @@ namespace
 	}
 }
 
-void generateTileProperties(const Holder<Polyhedron> &navMesh, std::vector<Tile> &tiles, const string &statsLogPath)
+void generateTileProperties(const Holder<Mesh> &navMesh, std::vector<Tile> &tiles, const string &statsLogPath)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating tile properties");
 

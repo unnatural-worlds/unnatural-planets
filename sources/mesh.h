@@ -9,18 +9,18 @@ using namespace cage;
 
 struct Tile;
 
-Holder<Polyhedron> meshGenerateBaseLand();
-Holder<Polyhedron> meshGenerateBaseWater();
-Holder<Polyhedron> meshGenerateBaseNavigation();
-std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh);
-void meshSimplifyNavmesh(Holder<Polyhedron> &mesh);
-void meshSimplifyCollider(Holder<Polyhedron> &mesh);
-void meshSimplifyRender(Holder<Polyhedron> &mesh);
-uint32 meshUnwrap(const Holder<Polyhedron> &mesh);
+Holder<Mesh> meshGenerateBaseLand();
+Holder<Mesh> meshGenerateBaseWater();
+Holder<Mesh> meshGenerateBaseNavigation();
+std::vector<Holder<Mesh>> meshSplit(const Holder<Mesh> &mesh);
+void meshSimplifyNavmesh(Holder<Mesh> &mesh);
+void meshSimplifyCollider(Holder<Mesh> &mesh);
+void meshSimplifyRender(Holder<Mesh> &mesh);
+uint32 meshUnwrap(const Holder<Mesh> &mesh);
 
-void meshSaveDebug(const string &path, const Holder<Polyhedron> &mesh);
-void meshSaveRender(const string &path, const Holder<Polyhedron> &mesh, bool transparency);
-void meshSaveNavigation(const string &path, const Holder<Polyhedron> &mesh, const std::vector<Tile> &tiles);
-void meshSaveCollider(const string &path, const Holder<Polyhedron> &mesh);
+void meshSaveDebug(const string &path, const Holder<Mesh> &mesh);
+void meshSaveRender(const string &path, const Holder<Mesh> &mesh, bool transparency);
+void meshSaveNavigation(const string &path, const Holder<Mesh> &mesh, const std::vector<Tile> &tiles);
+void meshSaveCollider(const string &path, const Holder<Mesh> &mesh);
 
 #endif

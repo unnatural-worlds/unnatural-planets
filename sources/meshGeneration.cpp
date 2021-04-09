@@ -1,6 +1,6 @@
 #include <cage-core/geometry.h>
 #include <cage-core/config.h>
-#include <cage-core/polyhedron.h>
+#include <cage-core/mesh.h>
 #include <cage-core/marchingCubes.h>
 #include <unnatural-navmesh/navmesh.h>
 
@@ -24,7 +24,7 @@ namespace
 
 	ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize");
 
-	real meshSurfaceArea(const Polyhedron *mesh)
+	real meshSurfaceArea(const Mesh *mesh)
 	{
 		const auto inds = mesh->indices();
 		const auto poss = mesh->positions();
@@ -62,36 +62,36 @@ namespace
 	}
 
 	template<real(*FNC)(const vec3 &)>
-	Holder<Polyhedron> meshGenerateGeneric()
+	Holder<Mesh> meshGenerateGeneric()
 	{
 		MarchingCubesCreateConfig cfg;
 		cfg.box = aabb(vec3(boxSize * -0.5), vec3(boxSize * 0.5));
 		cfg.resolution = ivec3(boxResolution);
 		Holder<MarchingCubes> cubes = newMarchingCubes(cfg);
 		cubes->updateByPosition(Delegate<real(const vec3 &)>().bind<FNC>());
-		Holder<Polyhedron> poly = cubes->makePolyhedron();
-		polyhedronDiscardDisconnected(+poly);
-		polyhedronFlipNormals(+poly);
+		Holder<Mesh> poly = cubes->makeMesh();
+		meshDiscardDisconnected(+poly);
+		meshFlipNormals(+poly);
 		return poly;
 	}
 }
 
-Holder<Polyhedron> meshGenerateBaseLand()
+Holder<Mesh> meshGenerateBaseLand()
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating base land mesh");
-	Holder<Polyhedron> poly = meshGenerateGeneric<&terrainSdfLand>();
+	Holder<Mesh> poly = meshGenerateGeneric<&terrainSdfLand>();
 	if (poly->indicesCount() == 0)
 		CAGE_THROW_ERROR(Exception, "generated empty base land mesh");
 	return poly;
 }
 
-Holder<Polyhedron> meshGenerateBaseWater()
+Holder<Mesh> meshGenerateBaseWater()
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating base water mesh");
-	Holder<Polyhedron> poly = meshGenerateGeneric<&terrainSdfWater>();
+	Holder<Mesh> poly = meshGenerateGeneric<&terrainSdfWater>();
 
 	{
-		polyhedronConvertToIndexed(+poly);
+		meshConvertToIndexed(+poly);
 
 		// check which vertices are needed
 		std::vector<bool> valid;
@@ -122,22 +122,22 @@ Holder<Polyhedron> meshGenerateBaseWater()
 					p = vec3::Nan();
 		}
 
-		polyhedronDiscardInvalid(+poly);
+		meshDiscardInvalid(+poly);
 	}
 
 	return poly;
 }
 
-Holder<Polyhedron> meshGenerateBaseNavigation()
+Holder<Mesh> meshGenerateBaseNavigation()
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating base navigation mesh");
-	Holder<Polyhedron> poly = meshGenerateGeneric<&terrainSdfNavigation>();
+	Holder<Mesh> poly = meshGenerateGeneric<&terrainSdfNavigation>();
 	if (poly->indicesCount() == 0)
 		CAGE_THROW_ERROR(Exception, "generated empty base navigation mesh");
 	return poly;
 }
 
-void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)
+void meshSimplifyNavmesh(Holder<Mesh> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "regularizing navigation mesh");
 
@@ -152,24 +152,24 @@ void meshSimplifyNavmesh(Holder<Polyhedron> &mesh)
 	}
 	else
 	{
-		PolyhedronRegularizationConfig cfg;
+		MeshRegularizationConfig cfg;
 		cfg.iterations = iterations;
 		cfg.targetEdgeLength = tileSize;
-		polyhedronRegularize(+mesh, cfg);
+		meshRegularize(+mesh, cfg);
 	}
 }
 
-void meshSimplifyCollider(Holder<Polyhedron> &mesh)
+void meshSimplifyCollider(Holder<Mesh> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "simplifying collider mesh");
 
-	PolyhedronSimplificationConfig cfg;
+	MeshSimplificationConfig cfg;
 	cfg.iterations = iterations;
 	cfg.minEdgeLength = 0.5 * tileSize;
 	cfg.maxEdgeLength = 10 * tileSize;
 	cfg.approximateError = 0.03 * tileSize;
-	Holder<Polyhedron> m = mesh->copy();
-	polyhedronSimplify(+m, cfg);
+	Holder<Mesh> m = mesh->copy();
+	meshSimplify(+m, cfg);
 
 	if (m->indicesCount() <= mesh->indicesCount())
 		mesh = templates::move(m);
@@ -177,17 +177,17 @@ void meshSimplifyCollider(Holder<Polyhedron> &mesh)
 		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified collider mesh has more triangles than the original");
 }
 
-void meshSimplifyRender(Holder<Polyhedron> &mesh)
+void meshSimplifyRender(Holder<Mesh> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "simplifying render mesh");
 
-	PolyhedronSimplificationConfig cfg;
+	MeshSimplificationConfig cfg;
 	cfg.iterations = iterations;
 	cfg.minEdgeLength = 0.2 * tileSize;
 	cfg.maxEdgeLength = 5 * tileSize;
 	cfg.approximateError = 0.01 * tileSize;
-	Holder<Polyhedron> m = mesh->copy();
-	polyhedronSimplify(+m, cfg);
+	Holder<Mesh> m = mesh->copy();
+	meshSimplify(+m, cfg);
 
 	if (m->indicesCount() <= mesh->indicesCount())
 		mesh = templates::move(m);
@@ -195,10 +195,10 @@ void meshSimplifyRender(Holder<Polyhedron> &mesh)
 		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified render mesh has more triangles than the original");
 }
 
-std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
+std::vector<Holder<Mesh>> meshSplit(const Holder<Mesh> &mesh)
 {
 	const real myArea = meshSurfaceArea(+mesh);
-	std::vector<Holder<Polyhedron>> result;
+	std::vector<Holder<Mesh>> result;
 	if (myArea > 250000)
 	{
 		const aabb myBox = mesh->boundingBox();
@@ -207,8 +207,8 @@ std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 		real bestSplitScore = real::Infinity();
 		for (real position : { 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.7 })
 		{
-			Holder<Polyhedron> p = mesh->copy();
-			polyhedronClip(+p, clippingBox(myBox, a, interpolate(myBox.a[a], myBox.b[a], position)));
+			Holder<Mesh> p = mesh->copy();
+			meshClip(+p, clippingBox(myBox, a, interpolate(myBox.a[a], myBox.b[a], position)));
 			const real area = meshSurfaceArea(p.get());
 			const real score = abs(0.5 - area / myArea);
 			if (score < bestSplitScore)
@@ -218,12 +218,12 @@ std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 			}
 		}
 		const real split = interpolate(myBox.a[a], myBox.b[a], bestSplitPosition);
-		Holder<Polyhedron> m1 = mesh->copy();
-		Holder<Polyhedron> m2 = mesh->copy();
-		polyhedronClip(+m1, clippingBox(myBox, a, split));
-		polyhedronClip(+m2, clippingBox(myBox, a, split, true));
+		Holder<Mesh> m1 = mesh->copy();
+		Holder<Mesh> m2 = mesh->copy();
+		meshClip(+m1, clippingBox(myBox, a, split));
+		meshClip(+m2, clippingBox(myBox, a, split, true));
 		result = meshSplit(m1);
-		std::vector<Holder<Polyhedron>> r2 = meshSplit(m2);
+		std::vector<Holder<Mesh>> r2 = meshSplit(m2);
 		for (auto &it : r2)
 			result.push_back(templates::move(it));
 	}
@@ -235,9 +235,9 @@ std::vector<Holder<Polyhedron>> meshSplit(const Holder<Polyhedron> &mesh)
 	return result;
 }
 
-uint32 meshUnwrap(const Holder<Polyhedron> &mesh)
+uint32 meshUnwrap(const Holder<Mesh> &mesh)
 {
-	PolyhedronUnwrapConfig cfg;
+	MeshUnwrapConfig cfg;
 	cfg.maxChartIterations = 10;
 	cfg.maxChartBoundaryLength = 500;
 	cfg.chartRoundness = 0.3;
@@ -247,5 +247,5 @@ uint32 meshUnwrap(const Holder<Polyhedron> &mesh)
 	cfg.texelsPerUnit = 2.5;
 #endif // CAGE_DEBUG
 	cfg.padding = 6;
-	return polyhedronUnwrap(+mesh, cfg);
+	return meshUnwrap(+mesh, cfg);
 }

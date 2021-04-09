@@ -4,7 +4,7 @@
 #include <cage-core/config.h>
 #include <cage-core/random.h>
 #include <cage-core/image.h>
-#include <cage-core/polyhedron.h>
+#include <cage-core/mesh.h>
 #include <cage-core/process.h>
 #include <cage-core/debug.h>
 #include <cage-core/string.h>
@@ -237,11 +237,11 @@ bpy.ops.object.select_all(action='DESELECT')
 
 		void processEntry()
 		{
-			Holder<Polyhedron> base = meshGenerateBaseNavigation();
+			Holder<Mesh> base = meshGenerateBaseNavigation();
 			if (configDebugSaveIntermediate)
 				meshSaveDebug(pathJoin(debugDirectory, "navMeshBase.obj"), base);
 			{
-				Holder<Polyhedron> navmesh = base->copy();
+				Holder<Mesh> navmesh = base->copy();
 				meshSimplifyNavmesh(navmesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh tiles: " + navmesh->verticesCount());
 				std::vector<Tile> tiles;
@@ -250,7 +250,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				generateDoodads(navmesh, tiles, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
 			}
 			{
-				Holder<Polyhedron> collider = base->copy();
+				Holder<Mesh> collider = base->copy();
 				meshSimplifyCollider(collider);
 				meshSaveCollider(pathJoin(assetsDirectory, "collider.obj"), collider);
 			}
@@ -264,7 +264,7 @@ bpy.ops.object.select_all(action='DESELECT')
 
 	struct LandProcessor
 	{
-		std::vector<Holder<Polyhedron>> split;
+		std::vector<Holder<Mesh>> split;
 
 		Holder<Thread> thr; // make sure the thread is finished before other members are destroyed
 
@@ -298,7 +298,7 @@ bpy.ops.object.select_all(action='DESELECT')
 		void processEntry()
 		{
 			{
-				Holder<Polyhedron> mesh = meshGenerateBaseLand();
+				Holder<Mesh> mesh = meshGenerateBaseLand();
 				if (configDebugSaveIntermediate)
 					meshSaveDebug(pathJoin(debugDirectory, "landMeshBase.obj"), mesh);
 				meshSimplifyRender(mesh);
@@ -324,7 +324,7 @@ bpy.ops.object.select_all(action='DESELECT')
 
 	struct WaterProcessor
 	{
-		std::vector<Holder<Polyhedron>> split;
+		std::vector<Holder<Mesh>> split;
 
 		Holder<Thread> thr; // make sure the thread is finished before other members are destroyed
 
@@ -359,7 +359,7 @@ bpy.ops.object.select_all(action='DESELECT')
 		void processEntry()
 		{
 			{
-				Holder<Polyhedron> mesh = meshGenerateBaseWater();
+				Holder<Mesh> mesh = meshGenerateBaseWater();
 				if (mesh->indicesCount() == 0)
 				{
 					CAGE_LOG(SeverityEnum::Info, "generator", "generated no water");

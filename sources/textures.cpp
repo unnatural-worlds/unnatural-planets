@@ -1,5 +1,5 @@
 #include <cage-core/image.h>
-#include <cage-core/polyhedron.h>
+#include <cage-core/mesh.h>
 
 #include "terrain.h"
 #include "generator.h"
@@ -9,14 +9,14 @@ namespace
 	template<bool Water>
 	struct Generator
 	{
-		const Holder<Polyhedron> &mesh;
+		const Holder<Mesh> &mesh;
 		Holder<Image> &albedo;
 		Holder<Image> &special;
 		Holder<Image> &heightMap;
 		const uint32 width;
 		const uint32 height;
 
-		Generator(const Holder<Polyhedron> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap) : mesh(mesh), width(width), height(height), albedo(albedo), special(special), heightMap(heightMap)
+		Generator(const Holder<Mesh> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap) : mesh(mesh), width(width), height(height), albedo(albedo), special(special), heightMap(heightMap)
 		{}
 
 		void pixel(uint32 x, uint32 y, const ivec3 &indices, const vec3 &weights)
@@ -59,11 +59,11 @@ namespace
 			imageFill(+heightMap, real::Nan());
 
 			{
-				PolyhedronTextureGenerationConfig cfg;
+				MeshTextureGenerationConfig cfg;
 				cfg.width = width;
 				cfg.height = height;
 				cfg.generator.bind<Generator, &Generator::pixel>(this);
-				polyhedronGenerateTexture(+mesh, cfg);
+				meshGenerateTexture(+mesh, cfg);
 			}
 
 			{
@@ -83,13 +83,13 @@ namespace
 	};
 }
 
-void generateTexturesLand(const Holder<Polyhedron> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
+void generateTexturesLand(const Holder<Mesh> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
 {
 	Generator<false> gen(renderMesh, width, height, albedo, special, heightMap);
 	gen.generate();
 }
 
-void generateTexturesWater(const Holder<Polyhedron> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
+void generateTexturesWater(const Holder<Mesh> &renderMesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap)
 {
 	Generator<true> gen(renderMesh, width, height, albedo, special, heightMap);
 	gen.generate();

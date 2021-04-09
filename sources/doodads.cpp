@@ -3,7 +3,7 @@
 #include <cage-core/enumerate.h>
 #include <cage-core/logger.h>
 #include <cage-core/string.h>
-#include <cage-core/polyhedron.h>
+#include <cage-core/mesh.h>
 
 #include "terrain.h"
 #include "generator.h"
@@ -158,7 +158,7 @@ namespace
 	}
 }
 
-void generateDoodads(const Holder<Polyhedron> &navMesh, const std::vector<Tile> &tiles, std::vector<string> &assetPackages, const string &doodadsPath, const string &statsLogPath)
+void generateDoodads(const Holder<Mesh> &navMesh, const std::vector<Tile> &tiles, std::vector<string> &assetPackages, const string &doodadsPath, const string &statsLogPath)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating doodads");
 
