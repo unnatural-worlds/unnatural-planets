@@ -5,7 +5,7 @@
 
 using namespace cage;
 
-real sdfPlane(const vec3 &pos, const plane &pln);
+real sdfPlane(const vec3 &pos, const Plane &pln);
 real sdfHexagon(const vec3 &pos);
 real sdfSquare(const vec3 &pos);
 real sdfSphere(const vec3 &pos, real radius);

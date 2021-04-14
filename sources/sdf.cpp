@@ -7,7 +7,7 @@
 
 // https://iquilezles.org/www/articles/distfunctions/distfunctions.htm
 
-real sdfPlane(const vec3 &pos, const plane &pln)
+real sdfPlane(const vec3 &pos, const Plane &pln)
 {
 	CAGE_ASSERT(pln.valid());
 	vec3 c = pln.normal * pln.d;
@@ -16,12 +16,12 @@ real sdfPlane(const vec3 &pos, const plane &pln)
 
 real sdfHexagon(const vec3 &pos)
 {
-	return sdfPlane(pos, plane(vec3(), normalize(vec3(1))));
+	return sdfPlane(pos, Plane(vec3(), normalize(vec3(1))));
 }
 
 real sdfSquare(const vec3 &pos)
 {
-	return sdfPlane(pos, plane(vec3(), vec3(0, 1, 0)));
+	return sdfPlane(pos, Plane(vec3(), vec3(0, 1, 0)));
 }
 
 real sdfSphere(const vec3 &pos, real radius)
@@ -93,19 +93,19 @@ real sdfCube(const vec3 &pos)
 real sdfTetrahedron(const vec3 &pos, real radius)
 {
 	constexpr const vec3 corners[4] = { vec3(1,1,1), vec3(1,-1,-1), vec3(-1,1,-1), vec3(-1,-1,1) };
-	constexpr const triangle tris[4] = {
-		triangle(corners[1], corners[3], corners[2]),
-		triangle(corners[0], corners[2], corners[3]),
-		triangle(corners[0], corners[3], corners[1]),
-		triangle(corners[0], corners[1], corners[2]),
+	constexpr const Triangle tris[4] = {
+		Triangle(corners[1], corners[3], corners[2]),
+		Triangle(corners[0], corners[2], corners[3]),
+		Triangle(corners[0], corners[3], corners[1]),
+		Triangle(corners[0], corners[1], corners[2]),
 	};
 
 	const vec3 p = pos / radius;
 	real mad = -real::Infinity();
 	for (uint32 i = 0; i < 4; i++)
 	{
-		const triangle &t = tris[i];
-		vec3 k = closestPoint(plane(t), p);
+		const Triangle &t = tris[i];
+		vec3 k = closestPoint(Plane(t), p);
 		real d = distance(t, p) * sign(dot(t.normal(), p - k));
 		mad = max(mad, d);
 	}
@@ -244,7 +244,7 @@ real sdfH4O(const vec3 &pos)
 
 real sdfTriangularPrism(const vec3 &pos, real height, real radius)
 {
-	const triangle t = triangle(vec3(0, radius, 0), vec3(0, radius, 0) * quat(degs(), degs(), degs(120)), vec3(0, radius, 0) * quat(degs(), degs(), degs(-120)));
+	const Triangle t = Triangle(vec3(0, radius, 0), vec3(0, radius, 0) * quat(degs(), degs(), degs(120)), vec3(0, radius, 0) * quat(degs(), degs(), degs(-120)));
 	vec3 p = pos;
 	p[2] = max(abs(p[2]) - height * 0.5, 0);
 	return distance(p, t);

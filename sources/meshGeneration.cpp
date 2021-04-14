@@ -32,13 +32,13 @@ namespace
 		real result = 0;
 		for (uint32 ti = 0; ti < cnt; ti++)
 		{
-			const triangle t = triangle(poss[inds[ti * 3 + 0]], poss[inds[ti * 3 + 1]], poss[inds[ti * 3 + 2]]);
+			const Triangle t = Triangle(poss[inds[ti * 3 + 0]], poss[inds[ti * 3 + 1]], poss[inds[ti * 3 + 2]]);
 			result += t.area();
 		}
 		return result;
 	}
 
-	uint32 boxLongestAxis(const aabb &box)
+	uint32 boxLongestAxis(const Aabb &box)
 	{
 		const vec3 mySizes = box.size();
 		const vec3 a = abs(dominantAxis(mySizes));
@@ -49,11 +49,11 @@ namespace
 		return 2;
 	}
 
-	aabb clippingBox(const aabb &box, uint32 axis, real pos, bool second = false)
+	Aabb clippingBox(const Aabb &box, uint32 axis, real pos, bool second = false)
 	{
 		const vec3 c = box.center();
 		const vec3 hs = box.size() * 0.6; // slightly larger box to avoid clipping due to floating point imprecisions
-		aabb r = aabb(c - hs, c + hs);
+		Aabb r = Aabb(c - hs, c + hs);
 		if (second)
 			r.a[axis] = pos;
 		else
@@ -65,7 +65,7 @@ namespace
 	Holder<Mesh> meshGenerateGeneric()
 	{
 		MarchingCubesCreateConfig cfg;
-		cfg.box = aabb(vec3(boxSize * -0.5), vec3(boxSize * 0.5));
+		cfg.box = Aabb(vec3(boxSize * -0.5), vec3(boxSize * 0.5));
 		cfg.resolution = ivec3(boxResolution);
 		Holder<MarchingCubes> cubes = newMarchingCubes(cfg);
 		cubes->updateByPosition(Delegate<real(const vec3 &)>().bind<FNC>());
@@ -201,7 +201,7 @@ std::vector<Holder<Mesh>> meshSplit(const Holder<Mesh> &mesh)
 	std::vector<Holder<Mesh>> result;
 	if (myArea > 250000)
 	{
-		const aabb myBox = mesh->boundingBox();
+		const Aabb myBox = mesh->boundingBox();
 		const uint32 a = boxLongestAxis(myBox);
 		real bestSplitPosition = 0.5;
 		real bestSplitScore = real::Infinity();

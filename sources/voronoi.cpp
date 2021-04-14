@@ -61,7 +61,7 @@ public:
 		const PointerRange<vec3> points = { pointsMem, pointsMem + totalPoints };
 
 		{ // project all points into the plane
-			const plane pln = plane(position, normal);
+			const Plane pln = Plane(position, normal);
 			for (vec3 &p : points)
 				p = closestPoint(pln, p);
 		}
@@ -88,5 +88,5 @@ VoronoiResult Voronoi::evaluate(const vec3 &position, const vec3 &normal)
 
 Holder<Voronoi> newVoronoi(const VoronoiCreateConfig &cfg)
 {
-	return detail::systemArena().createImpl<Voronoi, VoronoiImpl>(cfg);
+	return systemArena().createImpl<Voronoi, VoronoiImpl>(cfg);
 }
