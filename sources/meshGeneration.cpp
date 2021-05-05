@@ -143,16 +143,16 @@ void meshSimplifyNavmesh(Holder<Mesh> &mesh)
 
 	if (configNavmeshOptimize)
 	{
-		unnatural::NavmeshOptimizationConfig cfg;
+		unnatural::NavmeshOptimizeConfig cfg;
 #ifdef CAGE_DEBUG
 		cfg.iterations = 1;
 #endif
 		cfg.tileSize = tileSize;
-		mesh = unnatural::navmeshOptimize(templates::move(mesh), cfg);
+		mesh = unnatural::navmeshOptimize(std::move(mesh), cfg);
 	}
 	else
 	{
-		MeshRegularizationConfig cfg;
+		MeshRegularizeConfig cfg;
 		cfg.iterations = iterations;
 		cfg.targetEdgeLength = tileSize;
 		meshRegularize(+mesh, cfg);
@@ -163,7 +163,7 @@ void meshSimplifyCollider(Holder<Mesh> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "simplifying collider mesh");
 
-	MeshSimplificationConfig cfg;
+	MeshSimplifyConfig cfg;
 	cfg.iterations = iterations;
 	cfg.minEdgeLength = 0.5 * tileSize;
 	cfg.maxEdgeLength = 10 * tileSize;
@@ -172,7 +172,7 @@ void meshSimplifyCollider(Holder<Mesh> &mesh)
 	meshSimplify(+m, cfg);
 
 	if (m->indicesCount() <= mesh->indicesCount())
-		mesh = templates::move(m);
+		mesh = std::move(m);
 	else
 		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified collider mesh has more triangles than the original");
 }
@@ -181,7 +181,7 @@ void meshSimplifyRender(Holder<Mesh> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "simplifying render mesh");
 
-	MeshSimplificationConfig cfg;
+	MeshSimplifyConfig cfg;
 	cfg.iterations = iterations;
 	cfg.minEdgeLength = 0.2 * tileSize;
 	cfg.maxEdgeLength = 5 * tileSize;
@@ -190,7 +190,7 @@ void meshSimplifyRender(Holder<Mesh> &mesh)
 	meshSimplify(+m, cfg);
 
 	if (m->indicesCount() <= mesh->indicesCount())
-		mesh = templates::move(m);
+		mesh = std::move(m);
 	else
 		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified render mesh has more triangles than the original");
 }
@@ -225,7 +225,7 @@ std::vector<Holder<Mesh>> meshSplit(const Holder<Mesh> &mesh)
 		result = meshSplit(m1);
 		std::vector<Holder<Mesh>> r2 = meshSplit(m2);
 		for (auto &it : r2)
-			result.push_back(templates::move(it));
+			result.push_back(std::move(it));
 	}
 	else
 	{

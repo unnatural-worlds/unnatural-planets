@@ -8,7 +8,7 @@ void meshSaveDebug(const string &path, const Holder<Mesh> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving debug mesh: " + path);
 
-	MeshObjExportConfig cfg;
+	MeshExportObjConfig cfg;
 	cfg.objectName = pathExtractFilenameNoExtension(path);
 	mesh->exportObjFile(cfg, path);
 }
@@ -19,7 +19,7 @@ void meshSaveRender(const string &path, const Holder<Mesh> &mesh, bool transpare
 
 	CAGE_ASSERT(mesh->normals().size() == mesh->verticesCount());
 	CAGE_ASSERT(mesh->uvs().size() == mesh->verticesCount());
-	MeshObjExportConfig cfg;
+	MeshExportObjConfig cfg;
 	cfg.objectName = pathExtractFilenameNoExtension(path);
 	cfg.materialLibraryName = cfg.objectName + ".mtl";
 	cfg.materialName = cfg.objectName;
@@ -68,7 +68,7 @@ void meshSaveNavigation(const string &path, const Holder<Mesh> &mesh, const std:
 	}
 	m->uvs(uvs);
 
-	MeshObjExportConfig cfg;
+	MeshExportObjConfig cfg;
 	cfg.objectName = "navigation";
 	m->exportObjFile(cfg, path);
 }
@@ -80,7 +80,7 @@ void meshSaveCollider(const string &path, const Holder<Mesh> &mesh)
 	Holder<Mesh> m = mesh->copy();
 	m->normals({});
 	m->uvs({});
-	MeshObjExportConfig cfg;
+	MeshExportObjConfig cfg;
 	cfg.objectName = "collider";
 	m->exportObjFile(cfg, path);
 }

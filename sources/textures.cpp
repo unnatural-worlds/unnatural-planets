@@ -59,7 +59,7 @@ namespace
 			imageFill(+heightMap, real::Nan());
 
 			{
-				MeshTextureGenerationConfig cfg;
+				MeshGenerateTextureConfig cfg;
 				cfg.width = width;
 				cfg.height = height;
 				cfg.generator.bind<Generator, &Generator::pixel>(this);
