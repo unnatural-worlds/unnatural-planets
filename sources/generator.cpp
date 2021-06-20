@@ -54,7 +54,7 @@ namespace
 
 	string findTmpDirectory()
 	{
-		return pathToAbs(pathJoin("tmp", stringizer() + processId()));
+		return pathToAbs(pathJoin("tmp", stringizer() + currentProcessId()));
 	}
 
 	const string planetName = generateName();

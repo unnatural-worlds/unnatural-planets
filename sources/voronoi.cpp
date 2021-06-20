@@ -88,5 +88,5 @@ VoronoiResult Voronoi::evaluate(const vec3 &position, const vec3 &normal)
 
 Holder<Voronoi> newVoronoi(const VoronoiCreateConfig &cfg)
 {
-	return systemArena().createImpl<Voronoi, VoronoiImpl>(cfg);
+	return systemMemory().createImpl<Voronoi, VoronoiImpl>(cfg);
 }
