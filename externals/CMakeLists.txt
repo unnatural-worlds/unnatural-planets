@@ -1,3 +1,2 @@
-
 add_subdirectory(cage EXCLUDE_FROM_ALL)
 add_subdirectory(libnavmesh)

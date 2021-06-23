@@ -24,43 +24,6 @@ namespace
 
 	ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize");
 
-	real meshSurfaceArea(const Mesh *mesh)
-	{
-		const auto inds = mesh->indices();
-		const auto poss = mesh->positions();
-		const uint32 cnt = numeric_cast<uint32>(inds.size() / 3);
-		real result = 0;
-		for (uint32 ti = 0; ti < cnt; ti++)
-		{
-			const Triangle t = Triangle(poss[inds[ti * 3 + 0]], poss[inds[ti * 3 + 1]], poss[inds[ti * 3 + 2]]);
-			result += t.area();
-		}
-		return result;
-	}
-
-	uint32 boxLongestAxis(const Aabb &box)
-	{
-		const vec3 mySizes = box.size();
-		const vec3 a = abs(dominantAxis(mySizes));
-		if (a[0] == 1)
-			return 0;
-		if (a[1] == 1)
-			return 1;
-		return 2;
-	}
-
-	Aabb clippingBox(const Aabb &box, uint32 axis, real pos, bool second = false)
-	{
-		const vec3 c = box.center();
-		const vec3 hs = box.size() * 0.6; // slightly larger box to avoid clipping due to floating point imprecisions
-		Aabb r = Aabb(c - hs, c + hs);
-		if (second)
-			r.a[axis] = pos;
-		else
-			r.b[axis] = pos;
-		return r;
-	}
-
 	template<real(*FNC)(const vec3 &)>
 	Holder<Mesh> meshGenerateGeneric()
 	{
@@ -197,42 +160,14 @@ void meshSimplifyRender(Holder<Mesh> &mesh)
 
 std::vector<Holder<Mesh>> meshSplit(const Holder<Mesh> &mesh)
 {
-	const real myArea = meshSurfaceArea(+mesh);
-	std::vector<Holder<Mesh>> result;
-	if (myArea > 250000)
-	{
-		const Aabb myBox = mesh->boundingBox();
-		const uint32 a = boxLongestAxis(myBox);
-		real bestSplitPosition = 0.5;
-		real bestSplitScore = real::Infinity();
-		for (real position : { 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.7 })
-		{
-			Holder<Mesh> p = mesh->copy();
-			meshClip(+p, clippingBox(myBox, a, interpolate(myBox.a[a], myBox.b[a], position)));
-			const real area = meshSurfaceArea(p.get());
-			const real score = abs(0.5 - area / myArea);
-			if (score < bestSplitScore)
-			{
-				bestSplitScore = score;
-				bestSplitPosition = position;
-			}
-		}
-		const real split = interpolate(myBox.a[a], myBox.b[a], bestSplitPosition);
-		Holder<Mesh> m1 = mesh->copy();
-		Holder<Mesh> m2 = mesh->copy();
-		meshClip(+m1, clippingBox(myBox, a, split));
-		meshClip(+m2, clippingBox(myBox, a, split, true));
-		result = meshSplit(m1);
-		std::vector<Holder<Mesh>> r2 = meshSplit(m2);
-		for (auto &it : r2)
-			result.push_back(std::move(it));
-	}
-	else
-	{
-		// no more splitting is required
-		result.push_back(mesh->copy());
-	}
-	return result;
+	MeshChunkingConfig cfg;
+	cfg.maxSurfaceArea = 250000;
+	auto res = meshChunking(+mesh, cfg);
+	std::vector<Holder<Mesh>> out;
+	out.reserve(res.size());
+	for (auto &it : res)
+		out.push_back(std::move(it));
+	return out;
 }
 
 uint32 meshUnwrap(const Holder<Mesh> &mesh)
