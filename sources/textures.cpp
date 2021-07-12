@@ -19,7 +19,7 @@ namespace
 		Generator(const Holder<Mesh> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap) : mesh(mesh), width(width), height(height), albedo(albedo), special(special), heightMap(heightMap)
 		{}
 
-		void pixel(uint32 x, uint32 y, const ivec3 &indices, const vec3 &weights)
+		void pixel(const ivec2 &xy, const ivec3 &indices, const vec3 &weights)
 		{
 			Tile tile;
 			tile.position = mesh->positionAt(indices, weights);
@@ -27,15 +27,15 @@ namespace
 			if (Water)
 			{
 				terrainTileWater(tile);
-				albedo->set(x, y, vec4(tile.albedo, tile.opacity));
+				albedo->set(xy, vec4(tile.albedo, tile.opacity));
 			}
 			else
 			{
 				terrainTileLand(tile);
-				albedo->set(x, y, tile.albedo);
+				albedo->set(xy, tile.albedo);
 			}
-			special->set(x, y, vec2(tile.roughness, tile.metallic));
-			heightMap->set(x, y, tile.height);
+			special->set(xy, vec2(tile.roughness, tile.metallic));
+			heightMap->set(xy, tile.height);
 		}
 
 		void generate()

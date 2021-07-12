@@ -1,5 +1,5 @@
-#include <cage-core/threadPool.h>
 #include <cage-core/concurrent.h>
+#include <cage-core/tasks.h>
 #include <cage-core/files.h>
 #include <cage-core/config.h>
 #include <cage-core/random.h>
@@ -74,7 +74,6 @@ namespace
 	};
 	std::vector<Chunk> chunks;
 	Holder<Mutex> chunksMutex = newMutex();
-	Holder<Mutex> renderMutex = newMutex(); // prevent rendering land and water simultaneously (avoid exhausting resources)
 
 	void exportConfiguration()
 	{
@@ -233,9 +232,9 @@ bpy.ops.object.select_all(action='DESELECT')
 
 	struct NavmeshProcessor
 	{
-		Holder<Thread> thr;
+		Holder<detail::AsyncTask> taskRef;
 
-		void processEntry()
+		void processEntry(uint32)
 		{
 			Holder<Mesh> base = meshGenerateBaseNavigation();
 			if (configDebugSaveIntermediate)
@@ -258,7 +257,12 @@ bpy.ops.object.select_all(action='DESELECT')
 
 		NavmeshProcessor()
 		{
-			thr = newThread(Delegate<void()>().bind<NavmeshProcessor, &NavmeshProcessor::processEntry>(this), "navmesh");
+			taskRef = tasksRunAsync(Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::processEntry>(this), 1, 15);
+		}
+
+		void wait()
+		{
+			taskRef->wait();
 		}
 	};
 
@@ -266,36 +270,31 @@ bpy.ops.object.select_all(action='DESELECT')
 	{
 		std::vector<Holder<Mesh>> split;
 
-		Holder<Thread> thr; // make sure the thread is finished before other members are destroyed
+		Holder<detail::AsyncTask> taskRef;
 
-		void chunkEntry(uint32 threadIndex, uint32 threadsCount)
+		void chunkEntry(uint32 index)
 		{
-			uint32 b, e;
-			threadPoolTasksSplit(threadIndex, threadsCount, numeric_cast<uint32>(split.size()), b, e);
-			for (uint32 index = b; index < e; index++)
+			Chunk c;
+			c.mesh = stringizer() + "land-" + index + ".obj";
+			c.material = stringizer() + "land-" + index + ".cpm";
+			c.albedo = stringizer() + "land-" + index + "-albedo.png";
+			c.special = stringizer() + "land-" + index + "-special.png";
+			c.heightmap = stringizer() + "land-" + index + "-height.png";
+			const auto &msh = split[index];
+			const uint32 resolution = meshUnwrap(msh);
+			meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh, c.transparency);
+			Holder<Image> albedo, special, heightMap;
+			generateTexturesLand(msh, resolution, resolution, albedo, special, heightMap);
+			albedo->exportFile(pathJoin(assetsDirectory, c.albedo));
+			special->exportFile(pathJoin(assetsDirectory, c.special));
+			heightMap->exportFile(pathJoin(assetsDirectory, c.heightmap));
 			{
-				Chunk c;
-				c.mesh = stringizer() + "land-" + index + ".obj";
-				c.material = stringizer() + "land-" + index + ".cpm";
-				c.albedo = stringizer() + "land-" + index + "-albedo.png";
-				c.special = stringizer() + "land-" + index + "-special.png";
-				c.heightmap = stringizer() + "land-" + index + "-height.png";
-				const auto &msh = split[index];
-				const uint32 resolution = meshUnwrap(msh);
-				meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh, c.transparency);
-				Holder<Image> albedo, special, heightMap;
-				generateTexturesLand(msh, resolution, resolution, albedo, special, heightMap);
-				albedo->exportFile(pathJoin(assetsDirectory, c.albedo));
-				special->exportFile(pathJoin(assetsDirectory, c.special));
-				heightMap->exportFile(pathJoin(assetsDirectory, c.heightmap));
-				{
-					ScopeLock lock(chunksMutex);
-					chunks.push_back(c);
-				}
+				ScopeLock lock(chunksMutex);
+				chunks.push_back(c);
 			}
 		}
 
-		void processEntry()
+		void processEntry(uint32)
 		{
 			{
 				Holder<Mesh> mesh = meshGenerateBaseLand();
@@ -307,18 +306,17 @@ bpy.ops.object.select_all(action='DESELECT')
 				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "land mesh split into " + split.size() + " chunks");
 			}
-			{
-				ScopeLock lock(renderMutex);
-				Holder<ThreadPool> thrPool;
-				thrPool = newThreadPool("land_");
-				thrPool->function.bind<LandProcessor, &LandProcessor::chunkEntry>(this);
-				thrPool->run();
-			}
+			tasksRun(Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 		}
 
 		LandProcessor()
 		{
-			thr = newThread(Delegate<void()>().bind<LandProcessor, &LandProcessor::processEntry>(this), "land");
+			taskRef = tasksRunAsync(Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::processEntry>(this), 1, 20);
+		}
+
+		void wait()
+		{
+			taskRef->wait();
 		}
 	};
 
@@ -326,37 +324,32 @@ bpy.ops.object.select_all(action='DESELECT')
 	{
 		std::vector<Holder<Mesh>> split;
 
-		Holder<Thread> thr; // make sure the thread is finished before other members are destroyed
+		Holder<detail::AsyncTask> taskRef;
 
-		void chunkEntry(uint32 threadIndex, uint32 threadsCount)
+		void chunkEntry(uint32 index)
 		{
-			uint32 b, e;
-			threadPoolTasksSplit(threadIndex, threadsCount, numeric_cast<uint32>(split.size()), b, e);
-			for (uint32 index = b; index < e; index++)
+			Chunk c;
+			c.mesh = stringizer() + "water-" + index + ".obj";
+			c.material = stringizer() + "water-" + index + ".cpm";
+			c.albedo = stringizer() + "water-" + index + "-albedo.png";
+			c.special = stringizer() + "water-" + index + "-special.png";
+			c.heightmap = stringizer() + "water-" + index + "-height.png";
+			c.transparency = true;
+			const auto &msh = split[index];
+			const uint32 resolution = meshUnwrap(msh);
+			meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh, c.transparency);
+			Holder<Image> albedo, special, heightMap;
+			generateTexturesWater(msh, resolution, resolution, albedo, special, heightMap);
+			albedo->exportFile(pathJoin(assetsDirectory, c.albedo));
+			special->exportFile(pathJoin(assetsDirectory, c.special));
+			heightMap->exportFile(pathJoin(assetsDirectory, c.heightmap));
 			{
-				Chunk c;
-				c.mesh = stringizer() + "water-" + index + ".obj";
-				c.material = stringizer() + "water-" + index + ".cpm";
-				c.albedo = stringizer() + "water-" + index + "-albedo.png";
-				c.special = stringizer() + "water-" + index + "-special.png";
-				c.heightmap = stringizer() + "water-" + index + "-height.png";
-				c.transparency = true;
-				const auto &msh = split[index];
-				const uint32 resolution = meshUnwrap(msh);
-				meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh, c.transparency);
-				Holder<Image> albedo, special, heightMap;
-				generateTexturesWater(msh, resolution, resolution, albedo, special, heightMap);
-				albedo->exportFile(pathJoin(assetsDirectory, c.albedo));
-				special->exportFile(pathJoin(assetsDirectory, c.special));
-				heightMap->exportFile(pathJoin(assetsDirectory, c.heightmap));
-				{
-					ScopeLock lock(chunksMutex);
-					chunks.push_back(c);
-				}
+				ScopeLock lock(chunksMutex);
+				chunks.push_back(c);
 			}
 		}
 
-		void processEntry()
+		void processEntry(uint32)
 		{
 			{
 				Holder<Mesh> mesh = meshGenerateBaseWater();
@@ -373,18 +366,17 @@ bpy.ops.object.select_all(action='DESELECT')
 				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "water mesh split into " + split.size() + " chunks");
 			}
-			{
-				ScopeLock lock(renderMutex);
-				Holder<ThreadPool> thrPool;
-				thrPool = newThreadPool("water_");
-				thrPool->function.bind<WaterProcessor, &WaterProcessor::chunkEntry>(this);
-				thrPool->run();
-			}
+			tasksRun(Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 		}
 
 		WaterProcessor()
 		{
-			thr = newThread(Delegate<void()>().bind<WaterProcessor, &WaterProcessor::processEntry>(this), "water");
+			taskRef = tasksRunAsync(Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::processEntry>(this), 1, 10);
+		}
+
+		void wait()
+		{
+			taskRef->wait();
 		}
 	};
 }
@@ -400,6 +392,9 @@ void generateEntry()
 		NavmeshProcessor navigation;
 		LandProcessor land;
 		WaterProcessor water;
+		navigation.wait();
+		land.wait();
+		water.wait();
 	}
 
 	exportConfiguration();
