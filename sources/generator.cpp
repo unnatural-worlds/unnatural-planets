@@ -232,7 +232,7 @@ bpy.ops.object.select_all(action='DESELECT')
 
 	struct NavmeshProcessor
 	{
-		Holder<detail::AsyncTask> taskRef;
+		Holder<AsyncTask> taskRef;
 
 		void processEntry(uint32)
 		{
@@ -257,7 +257,7 @@ bpy.ops.object.select_all(action='DESELECT')
 
 		NavmeshProcessor()
 		{
-			taskRef = tasksRunAsync(Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::processEntry>(this), 1, 15);
+			taskRef = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::processEntry>(this), 1, 15);
 		}
 
 		void wait()
@@ -270,7 +270,7 @@ bpy.ops.object.select_all(action='DESELECT')
 	{
 		std::vector<Holder<Mesh>> split;
 
-		Holder<detail::AsyncTask> taskRef;
+		Holder<AsyncTask> taskRef;
 
 		void chunkEntry(uint32 index)
 		{
@@ -306,12 +306,12 @@ bpy.ops.object.select_all(action='DESELECT')
 				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "land mesh split into " + split.size() + " chunks");
 			}
-			tasksRun(Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
+			tasksRunBlocking("land chunk", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 		}
 
 		LandProcessor()
 		{
-			taskRef = tasksRunAsync(Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::processEntry>(this), 1, 20);
+			taskRef = tasksRunAsync("land", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::processEntry>(this), 1, 20);
 		}
 
 		void wait()
@@ -324,7 +324,7 @@ bpy.ops.object.select_all(action='DESELECT')
 	{
 		std::vector<Holder<Mesh>> split;
 
-		Holder<detail::AsyncTask> taskRef;
+		Holder<AsyncTask> taskRef;
 
 		void chunkEntry(uint32 index)
 		{
@@ -366,12 +366,12 @@ bpy.ops.object.select_all(action='DESELECT')
 				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "water mesh split into " + split.size() + " chunks");
 			}
-			tasksRun(Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
+			tasksRunBlocking("water chunk", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 		}
 
 		WaterProcessor()
 		{
-			taskRef = tasksRunAsync(Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::processEntry>(this), 1, 10);
+			taskRef = tasksRunAsync("water", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::processEntry>(this), 1, 10);
 		}
 
 		void wait()
