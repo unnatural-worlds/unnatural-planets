@@ -154,7 +154,6 @@ namespace
 				f->writeLine("[]");
 				f->writeLine("scheme = model");
 				f->writeLine("tangents = true");
-				f->writeLine("instancesLimit = 1");
 				f->writeLine(stringizer() + "material = " + c.material);
 				f->writeLine(c.mesh);
 			}

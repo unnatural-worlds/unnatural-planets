@@ -72,7 +72,7 @@ Holder<Mesh> meshGenerateBaseWater()
 			{
 				const uint32 is[3] = { inds[i + 0], inds[i + 1], inds[i + 2] };
 				if (valid[is[0]] || valid[is[1]] || valid[is[2]])
-					valid[is[0]] = valid[is[1]] = valid[is[2]] = true;
+					valid2[is[0]] = valid2[is[1]] = valid2[is[2]] = true;
 			}
 			std::swap(valid, valid2);
 		}
