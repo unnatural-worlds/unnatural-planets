@@ -580,18 +580,22 @@ namespace
 		if (bf < 1e-7)
 			return;
 
-		real grass = 0;
+		real bladesMask = 0;
 		for (uint32 i = 0; i < sizeof(bladesNoise) / sizeof(bladesNoise[0]); i++)
-			grass += sharpEdge(bladesNoise[i]->evaluate(tile.position) + 0.7);
-		bf *= saturate(grass);
+		{
+			const real bn = bladesNoise[i]->evaluate(tile.position);
+			bladesMask += sharpEdge(bf * 0.5 + 0.5 + bn);
+		}
+
+		bf *= saturate(bladesMask);
 		if (bf < 1e-7)
 			return;
 
-		real height = tile.height + grass * 0.05;
+		real height = tile.height + bladesMask * 0.05;
 		real ratio = tile.temperature - (tile.precipitation + 100) * 30 / 400;
 		real hueShift = hueNoise->evaluate(tile.position) * 0.09 - max(ratio, 0) * 0.02;
 		vec3 color = colorHueShift(vec3(79, 114, 55) / 255, hueShift);
-		real roughness = randomChance() * 0.2 + 0.6 + min(ratio, 0) * 0.03;
+		real roughness = 0.7 + min(ratio, 0) * 0.02 + randomChance() * 0.2;
 		real metallic = 0;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
