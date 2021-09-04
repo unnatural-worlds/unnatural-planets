@@ -15,59 +15,59 @@ class VoronoiImpl : public Voronoi
 {
 public:
 	const VoronoiCreateConfig cfg;
-	const ivec3 seedHashes;
-	const real frequency;
+	const Vec3i seedHashes;
+	const Real frequency;
 
 	VoronoiImpl(const VoronoiCreateConfig &cfg) : cfg(cfg), seedHashes(hash(cfg.seed), hash(hash(cfg.seed)), hash(hash(hash(cfg.seed)))), frequency(1 / cfg.cellSize)
 	{}
 
-	ivec3 mix(const ivec3 &s)
+	Vec3i mix(const Vec3i &s)
 	{
-		const ivec3 a = ivec3(s[1], s[2], s[0]);
-		const ivec3 b = ivec3(hash(s[0]), hash(s[1]), hash(s[2]));
+		const Vec3i a = Vec3i(s[1], s[2], s[0]);
+		const Vec3i b = Vec3i(hash(s[0]), hash(s[1]), hash(s[2]));
 		return seedHashes + s + a + b;
 	}
 
-	vec3 genPoint(const ivec3 &s)
+	Vec3 genPoint(const Vec3i &s)
 	{
-		return vec3(s % 65536) / 65535;
+		return Vec3(s % 65536) / 65535;
 	}
 
-	void genCell(vec3 *&out, const ivec3 &cell)
+	void genCell(Vec3 *&out, const Vec3i &cell)
 	{
-		ivec3 s = mix(cell);
+		Vec3i s = mix(cell);
 		for (uint32 i = 0; i < cfg.pointsPerCell; i++)
 		{
 			s = mix(s);
-			*out++ = (genPoint(s) + vec3(cell)) * cfg.cellSize;
+			*out++ = (genPoint(s) + Vec3(cell)) * cfg.cellSize;
 		}
 	}
 
-	VoronoiResult evaluate(const vec3 &position, const vec3 &normal)
+	VoronoiResult evaluate(const Vec3 &position, const Vec3 &normal)
 	{
 		const uint32 totalPoints = cfg.pointsPerCell * 27;
-		vec3 *const pointsMem = (vec3 *)ALLOCA(totalPoints * sizeof(vec3));
+		Vec3 *const pointsMem = (Vec3 *)ALLOCA(totalPoints * sizeof(Vec3));
 		
 		{ // generate all points (including neighboring cells)
-			vec3 *gen = pointsMem;
-			const ivec3 cell = ivec3(position * frequency);
+			Vec3 *gen = pointsMem;
+			const Vec3i cell = Vec3i(position * frequency);
 			for (sint32 z = -1; z < 2; z++)
 				for (sint32 y = -1; y < 2; y++)
 					for (sint32 x = -1; x < 2; x++)
-						genCell(gen, cell + ivec3(x, y, z));
+						genCell(gen, cell + Vec3i(x, y, z));
 			CAGE_ASSERT(gen == pointsMem + totalPoints);
 		}
 
-		const PointerRange<vec3> points = { pointsMem, pointsMem + totalPoints };
+		const PointerRange<Vec3> points = { pointsMem, pointsMem + totalPoints };
 
 		{ // project all points into the plane
 			const Plane pln = Plane(position, normal);
-			for (vec3 &p : points)
+			for (Vec3 &p : points)
 				p = closestPoint(pln, p);
 		}
 
 		{ // sort all points by distance
-			std::sort(points.begin(), points.end(), [&](const vec3 &a, const vec3 &b) {
+			std::sort(points.begin(), points.end(), [&](const Vec3 &a, const Vec3 &b) {
 				return distanceSquared(a, position) < distanceSquared(b, position);
 				});
 		}
@@ -80,7 +80,7 @@ public:
 	}
 };
 
-VoronoiResult Voronoi::evaluate(const vec3 &position, const vec3 &normal)
+VoronoiResult Voronoi::evaluate(const Vec3 &position, const Vec3 &normal)
 {
 	VoronoiImpl *impl = (VoronoiImpl *)this;
 	return impl->evaluate(position, normal);

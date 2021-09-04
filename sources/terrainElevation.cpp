@@ -10,16 +10,16 @@ namespace
 	ConfigString configShapeMode("unnatural-planets/shape/mode");
 	ConfigString configElevationMode("unnatural-planets/elevation/mode");
 
-	typedef real (*TerrainFunctor)(const vec3 &);
+	typedef Real (*TerrainFunctor)(const Vec3 &);
 	TerrainFunctor terrainElevationFnc = 0;
 	TerrainFunctor terrainShapeFnc = 0;
 
-	real elevationNone(const vec3 &)
+	Real elevationNone(const Vec3 &)
 	{
 		return 100;
 	}
 
-	real elevationSimple(const vec3 &pos)
+	Real elevationSimple(const Vec3 &pos)
 	{
 		static const Holder<NoiseFunction> elevNoise = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -32,13 +32,13 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real a = elevNoise->evaluate(pos); // min: -0.8, mean: 0.28, max: 1
+		Real a = elevNoise->evaluate(pos); 
 		a = -a + 0.3; // min: -0.7, mean: 0.02, max: 1.1
 		a = pow(a * 1.3 - 0.35, 3) + 0.1;
 		return 100 - a * 1000;
 	}
 
-	real elevationLegacy(const vec3 &pos)
+	Real elevationLegacy(const Vec3 &pos)
 	{
 		static const Holder<NoiseFunction> scaleNoise = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -58,8 +58,8 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real scale = scaleNoise->evaluate(pos) * 0.0005 + 0.0015;
-		real a = elevNoise->evaluate(pos * scale);
+		Real scale = scaleNoise->evaluate(pos) * 0.0005 + 0.0015;
+		Real a = elevNoise->evaluate(pos * scale);
 		a += 0.11; // slightly prefer terrain over ocean
 		if (a < 0)
 			a = -pow(-a, 0.85);
@@ -68,7 +68,7 @@ namespace
 		return a * 2500;
 	}
 
-	real commonElevationMountains(const vec3 &pos, real land)
+	Real commonElevationMountains(const Vec3 &pos, Real land)
 	{
 		static const Holder<NoiseFunction> maskNoise = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -99,21 +99,21 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real cover = 1 - saturate(land * -0.1); // no mountains in the water
+		Real cover = 1 - saturate(land * -0.1); 
 		if (cover < 1e-7)
 			return land;
 
-		real mask = maskNoise->evaluate(pos);
-		real rm = smoothstep(saturate(mask * +7 - 0.3));
-		real tm = smoothstep(saturate(mask * -7 - 1.5));
+		Real mask = maskNoise->evaluate(pos);
+		Real rm = smoothstep(saturate(mask * +7 - 0.3));
+		Real tm = smoothstep(saturate(mask * -7 - 1.5));
 
-		real ridge = ridgeNoise->evaluate(pos);
+		Real ridge = ridgeNoise->evaluate(pos);
 		ridge = max(ridge - 0.1, 0);
 		ridge = pow(ridge, 1.6);
 		ridge *= rm * cover;
 		ridge *= 1000;
 
-		real terraces = terraceNoise->evaluate(pos);
+		Real terraces = terraceNoise->evaluate(pos);
 		terraces = max(terraces + 0.1, 0) * 2.5;
 		terraces = terrace(terraces, 4);
 		terraces *= tm * cover;
@@ -125,7 +125,7 @@ namespace
 	// lakes & islands
 	// https://www.wolframalpha.com/input/?i=plot+%28%28%281+-+x%5E0.85%29+*+2+-+1%29+%2F+%28abs%28%28%281+-+x%5E0.85%29+*+2+-+1%29%29+%2B+0.17%29+%2B+0.15%29+*+150+%2C+%28%28%281+-+x%5E1.24%29+*+2+-+1%29+%2F+%28abs%28%28%281+-+x%5E1.24%29+*+2+-+1%29%29+%2B+0.17%29+%2B+0.15%29+*+150+%2C+x+%3D+0+..+1
 
-	real elevationLakes(const vec3 &pos)
+	Real elevationLakes(const Vec3 &pos)
 	{
 		static const Holder<NoiseFunction> elevLand = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -137,7 +137,7 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real land = elevLand->evaluate(pos) * 0.5 + 0.5;
+		Real land = elevLand->evaluate(pos) * 0.5 + 0.5;
 		land = saturate(land);
 		land = 1 - pow(land, 1.24);
 		land = land * 2 - 1;
@@ -146,7 +146,7 @@ namespace
 		return commonElevationMountains(pos, land);
 	}
 
-	real elevationIslands(const vec3& pos)
+	Real elevationIslands(const Vec3& pos)
 	{
 		static const Holder<NoiseFunction> elevLand = []() {
 			NoiseFunctionCreateConfig cfg;
@@ -158,7 +158,7 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real land = elevLand->evaluate(pos) * 0.5 + 0.5;
+		Real land = elevLand->evaluate(pos) * 0.5 + 0.5;
 		land = saturate(land);
 		land = 1 - pow(land, 0.83);
 		land = land * 2 - 1;
@@ -190,14 +190,14 @@ namespace
 		static_assert(elevationModesCount == sizeof(elevationModeNames) / sizeof(elevationModeNames[0]), "number of functions and names must match");
 
 		for (uint32 i = 0; i < elevationModesCount; i++)
-			if ((string)configElevationMode == elevationModeNames[i])
+			if ((String)configElevationMode == elevationModeNames[i])
 				terrainElevationFnc = elevationModeFunctions[i];
 		if (!terrainElevationFnc)
 		{
-			CAGE_LOG_THROW(stringizer() + "elevation mode: '" + (string)configElevationMode + "'");
+			CAGE_LOG_THROW(Stringizer() + "elevation mode: '" + (String)configElevationMode + "'");
 			CAGE_THROW_ERROR(Exception, "unknown elevation mode configuration");
 		}
-		CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using elevation mode: '" + (string)configElevationMode + "'");
+		CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "using elevation mode: '" + (String)configElevationMode + "'");
 	}
 
 	void chooseShapeFunction()
@@ -250,13 +250,13 @@ namespace
 
 		static_assert(shapeModesCount == sizeof(shapeModeNames) / sizeof(shapeModeNames[0]), "number of functions and names must match");
 
-		string name = configShapeMode;
+		String name = configShapeMode;
 		if (name == "random")
 		{
 			const uint32 i = randomRange(0u, shapeModesCount);
 			terrainShapeFnc = shapeModeFunctions[i];
 			configShapeMode = name = shapeModeNames[i];
-			CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "randomly chosen shape mode: '" + name + "'");
+			CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "randomly chosen shape mode: '" + name + "'");
 		}
 		else
 		{
@@ -265,62 +265,62 @@ namespace
 					terrainShapeFnc = shapeModeFunctions[i];
 			if (!terrainShapeFnc)
 			{
-				CAGE_LOG_THROW(stringizer() + "shape mode: '" + name + "'");
+				CAGE_LOG_THROW(Stringizer() + "shape mode: '" + name + "'");
 				CAGE_THROW_ERROR(Exception, "unknown shape mode configuration");
 			}
-			CAGE_LOG(SeverityEnum::Info, "configuration", stringizer() + "using shape mode: '" + name + "'");
+			CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "using shape mode: '" + name + "'");
 		}
 	}
 
-	constexpr real meshElevationRatio = 10;
+	constexpr Real meshElevationRatio = 10;
 }
 
-real terrainSdfElevation(const vec3 &pos)
+Real terrainSdfElevation(const Vec3 &pos)
 {
 	CAGE_ASSERT(terrainShapeFnc != nullptr);
-	const real result = terrainShapeFnc(pos) * meshElevationRatio;
+	const Real result = terrainShapeFnc(pos) * meshElevationRatio;
 	if (!valid(result))
 		CAGE_THROW_ERROR(Exception, "invalid elevation sdf value");
 	return result;
 }
 
-real terrainSdfElevationRaw(const vec3 &pos)
+Real terrainSdfElevationRaw(const Vec3 &pos)
 {
 	CAGE_ASSERT(terrainElevationFnc != nullptr);
-	const real result = terrainElevationFnc(pos);
+	const Real result = terrainElevationFnc(pos);
 	if (!valid(result))
 		CAGE_THROW_ERROR(Exception, "invalid elevation raw sdf value");
 	return result;
 }
 
-real terrainSdfLand(const vec3 &pos)
+Real terrainSdfLand(const Vec3 &pos)
 {
 	CAGE_ASSERT(terrainShapeFnc != nullptr);
 	CAGE_ASSERT(terrainElevationFnc != nullptr);
-	const real base = terrainShapeFnc(pos);
-	const real elev = terrainElevationFnc(pos) / meshElevationRatio;
-	const real result = base - elev;
+	const Real base = terrainShapeFnc(pos);
+	const Real elev = terrainElevationFnc(pos) / meshElevationRatio;
+	const Real result = base - elev;
 	if (!valid(result))
 		CAGE_THROW_ERROR(Exception, "invalid land sdf value");
 	return result;
 }
 
-real terrainSdfWater(const vec3 &pos)
+Real terrainSdfWater(const Vec3 &pos)
 {
 	CAGE_ASSERT(terrainShapeFnc != nullptr);
-	const real result = terrainShapeFnc(pos);
+	const Real result = terrainShapeFnc(pos);
 	if (!valid(result))
 		CAGE_THROW_ERROR(Exception, "invalid water sdf value");
 	return result;
 }
 
-real terrainSdfNavigation(const vec3 &pos)
+Real terrainSdfNavigation(const Vec3 &pos)
 {
 	CAGE_ASSERT(terrainShapeFnc != nullptr);
 	CAGE_ASSERT(terrainElevationFnc != nullptr);
-	const real base = terrainShapeFnc(pos);
-	const real elev = terrainElevationFnc(pos) / meshElevationRatio;
-	const real result = base - max(elev, 0);
+	const Real base = terrainShapeFnc(pos);
+	const Real elev = terrainElevationFnc(pos) / meshElevationRatio;
+	const Real result = base - max(elev, 0);
 	if (!valid(result))
 		CAGE_THROW_ERROR(Exception, "invalid navigation sdf value");
 	return result;

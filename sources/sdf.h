@@ -5,24 +5,24 @@
 
 using namespace cage;
 
-real sdfHexagon(const vec3 &pos);
-real sdfSquare(const vec3 &pos);
-real sdfSphere(const vec3 &pos);
-real sdfCapsule(const vec3 &pos);
-real sdfTube(const vec3 &pos);
-real sdfDisk(const vec3 &pos);
-real sdfBox(const vec3 &pos);
-real sdfCube(const vec3 &pos);
-real sdfTetrahedron(const vec3 &pos);
-real sdfOctahedron(const vec3 &pos);
-real sdfTriangularPrism(const vec3 &pos);
-real sdfHexagonalPrism(const vec3 &pos);
-real sdfTorus(const vec3 &pos);
-real sdfKnot(const vec3 &pos);
-real sdfMobiusStrip(const vec3 &pos);
-real sdfFibers(const vec3 &pos);
-real sdfH2O(const vec3 &pos);
-real sdfH3O(const vec3 &pos);
-real sdfH4O(const vec3 &pos);
+Real sdfHexagon(const Vec3 &pos);
+Real sdfSquare(const Vec3 &pos);
+Real sdfSphere(const Vec3 &pos);
+Real sdfCapsule(const Vec3 &pos);
+Real sdfTube(const Vec3 &pos);
+Real sdfDisk(const Vec3 &pos);
+Real sdfBox(const Vec3 &pos);
+Real sdfCube(const Vec3 &pos);
+Real sdfTetrahedron(const Vec3 &pos);
+Real sdfOctahedron(const Vec3 &pos);
+Real sdfTriangularPrism(const Vec3 &pos);
+Real sdfHexagonalPrism(const Vec3 &pos);
+Real sdfTorus(const Vec3 &pos);
+Real sdfKnot(const Vec3 &pos);
+Real sdfMobiusStrip(const Vec3 &pos);
+Real sdfFibers(const Vec3 &pos);
+Real sdfH2O(const Vec3 &pos);
+Real sdfH3O(const Vec3 &pos);
+Real sdfH4O(const Vec3 &pos);
 
 #endif

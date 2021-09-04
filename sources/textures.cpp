@@ -19,7 +19,7 @@ namespace
 		Generator(const Holder<Mesh> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap) : mesh(mesh), width(width), height(height), albedo(albedo), special(special), heightMap(heightMap)
 		{}
 
-		void pixel(const ivec2 &xy, const ivec3 &indices, const vec3 &weights)
+		void pixel(const Vec2i &xy, const Vec3i &indices, const Vec3 &weights)
 		{
 			Tile tile;
 			tile.position = mesh->positionAt(indices, weights);
@@ -27,14 +27,14 @@ namespace
 			if (Water)
 			{
 				terrainTileWater(tile);
-				albedo->set(xy, vec4(tile.albedo, tile.opacity));
+				albedo->set(xy, Vec4(tile.albedo, tile.opacity));
 			}
 			else
 			{
 				terrainTileLand(tile);
 				albedo->set(xy, tile.albedo);
 			}
-			special->set(xy, vec2(tile.roughness, tile.metallic));
+			special->set(xy, Vec2(tile.roughness, tile.metallic));
 			heightMap->set(xy, tile.height);
 		}
 
@@ -44,19 +44,19 @@ namespace
 			if (Water)
 			{
 				albedo->initialize(width, height, 4, ImageFormatEnum::Float);
-				imageFill(+albedo, vec4::Nan());
+				imageFill(+albedo, Vec4::Nan());
 			}
 			else
 			{
 				albedo->initialize(width, height, 3, ImageFormatEnum::Float);
-				imageFill(+albedo, vec3::Nan());
+				imageFill(+albedo, Vec3::Nan());
 			}
 			special = newImage();
 			special->initialize(width, height, 2, ImageFormatEnum::Float);
-			imageFill(+special, vec2::Nan());
+			imageFill(+special, Vec2::Nan());
 			heightMap = newImage();
 			heightMap->initialize(width, height, 1, ImageFormatEnum::Float);
-			imageFill(+heightMap, real::Nan());
+			imageFill(+heightMap, Real::Nan());
 
 			{
 				MeshGenerateTextureConfig cfg;

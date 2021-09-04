@@ -25,9 +25,9 @@ namespace
 	};
 #define PICK(NAMES) NAMES[randomRange(std::size_t(0), sizeof(NAMES)/sizeof(NAMES[0]))]
 
-	string generateNameImpl()
+	String generateNameImpl()
 	{
-		stringizer name;
+		Stringizer name;
 		if (randomChance() < 0.5)
 			name + PICK(Prefixes);
 		if (randomChance() < 0.8)
@@ -36,19 +36,19 @@ namespace
 			name + PICK(Stems);
 		if (randomChance() < 0.5)
 			name + PICK(Suffixes);
-		if (string(name).length() < 3)
+		if (String(name).length() < 3)
 			return generateNameImpl();
 		if (randomChance() < 0.1)
-			name = stringizer() + reverse(string(name));
+			name = Stringizer() + reverse(String(name));
 		if (randomChance() < 0.4)
 			name + PICK(Appendixes);
 		return name;
 	}
 }
 
-string generateName()
+String generateName()
 {
-	string name = generateNameImpl();
-	name[0] = toUpper(string(name[0]))[0];
+	String name = generateNameImpl();
+	name[0] = toUpper(String(name[0]))[0];
 	return name;
 }

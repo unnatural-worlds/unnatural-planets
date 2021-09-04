@@ -14,21 +14,21 @@ namespace
 {
 	struct Doodad
 	{
-		string name;
+		String name;
 		uint32 instances = 0;
 
-		string package;
-		string proto;
+		String package;
+		String proto;
 
 		// requirements
-		vec2 temperature;
-		vec2 precipitation;
-		real probability;
+		Vec2 temperature;
+		Vec2 precipitation;
+		Real probability;
 		bool ocean = false;
 		bool slope = false;
 	};
 
-	Doodad loadDoodad(const string &root, const string &path)
+	Doodad loadDoodad(const String &root, const String &path)
 	{
 		Holder<Ini> ini = newIni();
 		ini->importFile(path);
@@ -36,8 +36,8 @@ namespace
 		d.name = pathToRel(path, root);
 		d.package = ini->getString("doodad", "package");
 		d.proto = ini->getString("doodad", "prototype");
-		d.temperature = vec2::parse(ini->getString("requirements", "temperature", "-50, 50"));
-		d.precipitation = vec2::parse(ini->getString("requirements", "precipitation", "0, 500"));
+		d.temperature = Vec2::parse(ini->getString("requirements", "temperature", "-50, 50"));
+		d.precipitation = Vec2::parse(ini->getString("requirements", "precipitation", "0, 500"));
 		d.probability = ini->getFloat("requirements", "probability", 0.15f);
 		d.ocean = ini->getBool("requirements", "ocean", false);
 		d.slope = ini->getBool("requirements", "slope", false);
@@ -49,7 +49,7 @@ namespace
 		return d;
 	}
 
-	std::vector<Doodad> loadDoodads(const string &root, const string &path)
+	std::vector<Doodad> loadDoodads(const String &root, const String &path)
 	{
 		Holder<DirectoryList> dl = newDirectoryList(path);
 		std::vector<Doodad> result;
@@ -69,11 +69,11 @@ namespace
 		return result;
 	}
 
-	real factorInRange(const vec2 &range, real value)
+	Real factorInRange(const Vec2 &range, Real value)
 	{
-		const real m = (range[0] + range[1]) * 0.5;
-		const real d = range[1] - m;
-		const real v = 1 - (abs(value - m) / d);
+		const Real m = (range[0] + range[1]) * 0.5;
+		const Real d = range[1] - m;
+		const Real v = 1 - (abs(value - m) / d);
 		return max(0, v);
 	}
 
@@ -82,7 +82,7 @@ namespace
 		struct Eligible
 		{
 			const Doodad *doodad = nullptr;
-			real prob;
+			Real prob;
 		};
 
 		std::vector<Eligible> eligible;
@@ -94,8 +94,8 @@ namespace
 				continue;
 			if (d.slope != (tile.type == TerrainTypeEnum::SteepSlope))
 				continue;
-			const real t = factorInRange(d.temperature, tile.temperature);
-			const real p = factorInRange(d.precipitation, tile.precipitation);
+			const Real t = factorInRange(d.temperature, tile.temperature);
+			const Real p = factorInRange(d.precipitation, tile.precipitation);
 			Eligible e;
 			e.prob = d.probability * t * p;
 			CAGE_ASSERT(e.prob >= 0 && e.prob < 1);
@@ -114,10 +114,10 @@ namespace
 			return a.prob > b.prob;
 			});
 
-		real probSum = 0;
+		Real probSum = 0;
 		for (const Eligible &e : eligible)
 			probSum += e.prob;
-		const real probMult = eligible[0].prob / probSum;
+		const Real probMult = eligible[0].prob / probSum;
 		for (Eligible &e : eligible)
 			e.prob *= probMult;
 
@@ -133,7 +133,7 @@ namespace
 		return info.createThreadId == info.currentThreadId;
 	}
 
-	void printStatistics(const std::vector<Doodad> &doodads, const uint32 verticesCount, const string &statsLogPath)
+	void printStatistics(const std::vector<Doodad> &doodads, const uint32 verticesCount, const String &statsLogPath)
 	{
 		Holder<LoggerOutputFile> loggerFile = newLoggerOutputFile(statsLogPath, false); // the file must be destroyed after the logger
 		Holder<Logger> logger = newLogger();
@@ -149,24 +149,24 @@ namespace
 		}
 		for (const Doodad &d : doodads)
 		{
-			const string c = stringizer() + d.instances;
-			const string r = stringizer() + 100 * real(d.instances) / total;
-			const string g = maxc > 0 ? fill(string(), 30 * d.instances / maxc, '#') : "";
-			CAGE_LOG_CONTINUE(SeverityEnum::Info, "doodadStats", stringizer() + fill(d.name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 12)) + " % " + g);
+			const String c = Stringizer() + d.instances;
+			const String r = Stringizer() + 100 * Real(d.instances) / total;
+			const String g = maxc > 0 ? fill(String(), 30 * d.instances / maxc, '#') : "";
+			CAGE_LOG_CONTINUE(SeverityEnum::Info, "doodadStats", Stringizer() + fill(d.name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 12)) + " % " + g);
 		}
-		CAGE_LOG(SeverityEnum::Info, "doodadStats", stringizer() + "placed " + total + " doodads in total (covers " + (100.0f * total / verticesCount) + " % tiles)");
+		CAGE_LOG(SeverityEnum::Info, "doodadStats", Stringizer() + "placed " + total + " doodads in total (covers " + (100.0f * total / verticesCount) + " % tiles)");
 	}
 }
 
-void generateDoodads(const Holder<Mesh> &navMesh, const std::vector<Tile> &tiles, std::vector<string> &assetPackages, const string &doodadsPath, const string &statsLogPath)
+void generateDoodads(const Holder<Mesh> &navMesh, const std::vector<Tile> &tiles, std::vector<String> &assetPackages, const String &doodadsPath, const String &statsLogPath)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating doodads");
 
 	CAGE_ASSERT(navMesh->verticesCount() == tiles.size());
 
-	const string root = pathSearchTowardsRoot("doodads", PathTypeFlags::Directory);
+	const String root = pathSearchTowardsRoot("doodads", PathTypeFlags::Directory);
 	const std::vector<Doodad> doodads = loadDoodads(root, root);
-	CAGE_LOG(SeverityEnum::Info, "doodads", stringizer() + "found " + doodads.size() + " doodad prototypes");
+	CAGE_LOG(SeverityEnum::Info, "doodads", Stringizer() + "found " + doodads.size() + " doodad prototypes");
 
 	Holder<File> f = writeFile(doodadsPath);
 	for (const auto &it : enumerate(navMesh->positions()))
@@ -177,8 +177,8 @@ void generateDoodads(const Holder<Mesh> &navMesh, const std::vector<Tile> &tiles
 			continue;
 		assetPackages.push_back(doodad->package);
 		f->writeLine("[]");
-		f->writeLine(stringizer() + "prototype = " + doodad->proto);
-		f->writeLine(stringizer() + "position = " + *it);
+		f->writeLine(Stringizer() + "prototype = " + doodad->proto);
+		f->writeLine(Stringizer() + "position = " + *it);
 		f->writeLine("");
 		const_cast<Doodad *>(doodad)->instances++;
 	}

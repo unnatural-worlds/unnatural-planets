@@ -15,15 +15,15 @@ namespace
 
 	// returns zero when the slope is at or above the threshold plus the smoothing,
 	// returns one when the slope is at or below the threshold minus the smoothing
-	real steepnessMask(degs slope, degs threshold, degs smoothing = degs(10))
+	Real steepnessMask(Degs slope, Degs threshold, Degs smoothing = Degs(10))
 	{
-		degs r = (threshold + smoothing - slope) / (2 * smoothing);
+		Degs r = (threshold + smoothing - slope) / (2 * smoothing);
 		return sharpEdge(saturate(r.value));
 	}
 
 	// returns zero when the value is at or below the lowest,
 	// returns one when the value is at or above the highest
-	real rangeMask(real value, real lowest, real highest)
+	Real rangeMask(Real value, Real lowest, Real highest)
 	{
 		return saturate((value - lowest) / (highest - lowest));
 	}
@@ -46,8 +46,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		real p = elevNoise->evaluate(tile.position);
-		real m = maskNoise->evaluate(tile.position);
+		Real p = elevNoise->evaluate(tile.position);
+		Real m = maskNoise->evaluate(tile.position);
 		m = 1 - smootherstep(abs(m));
 		tile.elevation += p * m * 30;
 	}
@@ -63,7 +63,7 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		real p = precpNoise->evaluate(tile.position) * 0.5 + 0.5;
+		Real p = precpNoise->evaluate(tile.position) * 0.5 + 0.5;
 		p = saturate(p);
 		p = smootherstep(p);
 		p = smootherstep(p);
@@ -96,14 +96,14 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real t = tempNoise->evaluate(tile.position) * 0.5 + 0.5;
+		Real t = tempNoise->evaluate(tile.position) * 0.5 + 0.5;
 		t = saturate(t);
 		t = smoothstep(t);
 		t = t * 2 - 1;
 
 		if (configPolesEnable)
 		{
-			real polar = abs(atan(tile.position[1] / length(vec2(tile.position[0], tile.position[2]))).value) / real::Pi() * 2;
+			Real polar = abs(atan(tile.position[1] / length(Vec2(tile.position[0], tile.position[2]))).value) / Real::Pi() * 2;
 			polar = pow(polar, 1.7);
 			polar += polarNoise->evaluate(tile.position) * 0.1;
 			t += 0.6 - polar * 3.2;
@@ -145,32 +145,32 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real shallow = rangeMask(tile.elevation, -20, 3);
+		Real shallow = rangeMask(tile.elevation, -20, 3);
 		shallow = smoothstep(shallow);
-		real hueShift = hueNoise->evaluate(tile.position) * 0.06;
-		vec3 color = colorHueShift(interpolate(vec3(54, 54, 97), vec3(26, 102, 125), shallow) / 255, hueShift);
+		Real hueShift = hueNoise->evaluate(tile.position) * 0.06;
+		Vec3 color = colorHueShift(interpolate(Vec3(54, 54, 97), Vec3(26, 102, 125), shallow) / 255, hueShift);
 
 		tile.albedo = color;
 		tile.roughness = 0.3;
 		tile.metallic = 0;
 
 		{ // waves
-			real x = xNoise->evaluate(tile.position);
-			real y = yNoise->evaluate(tile.position);
-			real z = zNoise->evaluate(tile.position);
-			vec3 dir = normalize(vec3(x, y, z));
+			Real x = xNoise->evaluate(tile.position);
+			Real y = yNoise->evaluate(tile.position);
+			Real z = zNoise->evaluate(tile.position);
+			Vec3 dir = normalize(Vec3(x, y, z));
 			CAGE_ASSERT(isUnit(dir));
-			real dist = dot(dir, tile.position) * length(tile.position);
-			rads a = rads(dist * 0.002);
-			rads b = rads(sin(a + sin(a) * 0.5)); // skewed wave
-			real c = sin(b + sin(b) * 0.5);
-			real wave = c * (1 - shallow * 0.9) * 0.1 + 0.5;
+			Real dist = dot(dir, tile.position) * length(tile.position);
+			Rads a = Rads(dist * 0.002);
+			Rads b = Rads(sin(a + sin(a) * 0.5)); 
+			Real c = sin(b + sin(b) * 0.5);
+			Real wave = c * (1 - shallow * 0.9) * 0.1 + 0.5;
 			tile.height = wave;
 		}
 
 		{
-			real d1 = 1 - sqr(rangeMask(tile.elevation, -10, 3)); // softer clip through terrain
-			real d2 = rescale(rangeMask(tile.elevation, 0, -200), 0, 1, 0.7, 0.95); // shallower water is more translucent
+			Real d1 = 1 - sqr(rangeMask(tile.elevation, -10, 3)); 
+			Real d2 = rescale(rangeMask(tile.elevation, 0, -200), 0, 1, 0.7, 0.95); 
 			tile.opacity = d1 * d2;
 		}
 
@@ -201,17 +201,17 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real bf = sharpEdge(rangeMask(tile.temperature, 0, -3));
+		Real bf = sharpEdge(rangeMask(tile.temperature, 0, -3));
 		if (bf < 1e-7)
 			return;
 
-		real scale = scaleNoise->evaluate(tile.position) * 0.02 + 0.5;
-		real crack = cracksNoise->evaluate(tile.position * scale) * 0.5 + 0.5;
+		Real scale = scaleNoise->evaluate(tile.position) * 0.02 + 0.5;
+		Real crack = cracksNoise->evaluate(tile.position * scale) * 0.5 + 0.5;
 		crack = pow(crack, 0.3);
-		vec3 color = vec3(61, 81, 82) / 255 + crack * 0.3;
-		real roughness = (1 - crack) * 0.6 + 0.15;
-		real metallic = 0;
-		real height = crack * 0.2 + 0.4;
+		Vec3 color = Vec3(61, 81, 82) / 255 + crack * 0.3;
+		Real roughness = (1 - crack) * 0.6 + 0.15;
+		Real metallic = 0;
+		Real height = crack * 0.2 + 0.4;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -229,15 +229,15 @@ namespace
 
 	void generateSlope(Tile &tile)
 	{
-		constexpr real radius = 0.5;
-		vec3 a = anyPerpendicular(tile.normal);
-		vec3 b = cross(tile.normal, a);
+		constexpr Real radius = 0.5;
+		Vec3 a = anyPerpendicular(tile.normal);
+		Vec3 b = cross(tile.normal, a);
 		a *= radius;
 		b *= radius;
-		const real div = 1 / sqrt(2);
-		vec3 c = (a + b) * div;
-		vec3 d = (a - b) * div;
-		real elevs[8] = {
+		const Real div = 1 / sqrt(2);
+		Vec3 c = (a + b) * div;
+		Vec3 d = (a - b) * div;
+		Real elevs[8] = {
 			terrainSdfElevation(tile.position + a),
 			terrainSdfElevation(tile.position + b),
 			terrainSdfElevation(tile.position - a),
@@ -247,14 +247,14 @@ namespace
 			terrainSdfElevation(tile.position - c),
 			terrainSdfElevation(tile.position - d),
 		};
-		real e1 = elevs[0];
-		real e2 = elevs[0];
-		for (real e : elevs)
+		Real e1 = elevs[0];
+		Real e2 = elevs[0];
+		for (Real e : elevs)
 		{
 			e1 = min(e1, e);
 			e2 = max(e2, e);
 		}
-		real md = (e2 - e1) * 0.1;
+		Real md = (e2 - e1) * 0.1;
 		tile.slope = atan(md / radius);
 	}
 
@@ -303,7 +303,7 @@ namespace
 			tile.type = TerrainTypeEnum::DeepWater;
 		else if (tile.elevation < 0)
 			tile.type = TerrainTypeEnum::ShallowWater;
-		else if (tile.slope > degs(20))
+		else if (tile.slope > Degs(20))
 			tile.type = TerrainTypeEnum::SteepSlope;
 		else switch (tile.biome)
 		{
@@ -378,14 +378,14 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real scale = scaleNoise->evaluate(tile.position) * 0.5 + 0.501;
+		Real scale = scaleNoise->evaluate(tile.position) * 0.5 + 0.501;
 		scale = sqr(scale) * 2;
-		real freq = freqNoise->evaluate(tile.position) * 0.05 + 0.15;
-		real cracks = cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5;
+		Real freq = freqNoise->evaluate(tile.position) * 0.05 + 0.15;
+		Real cracks = cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5;
 		cracks = saturate(pow(cracks, 0.8));
-		real value = valueNoise->evaluate(tile.position * freq) * 0.5 + 0.5;
-		real saturation = saturationNoise->evaluate(tile.position) * 0.5 + 0.5;
-		vec3 hsv = vec3(0.07, saturate(sharpEdge(saturation, 0.2)), (value * 0.6 + 0.2) * cracks);
+		Real value = valueNoise->evaluate(tile.position * freq) * 0.5 + 0.5;
+		Real saturation = saturationNoise->evaluate(tile.position) * 0.5 + 0.5;
+		Vec3 hsv = Vec3(0.07, saturate(sharpEdge(saturation, 0.2)), (value * 0.6 + 0.2) * cracks);
 		tile.albedo = colorHsvToRgb(hsv);
 		tile.roughness = interpolate(0.9, value * 0.2 + 0.7, cracks);
 		tile.height = cracks * scale;
@@ -393,12 +393,12 @@ namespace
 
 	void generateCliffs(Tile &tile)
 	{
-		real bf = saturate((degs(tile.slope).value - 20) * 0.05);
+		Real bf = saturate((Degs(tile.slope).value - 20) * 0.05);
 		if (bf < 1e-7)
 			return;
 
-		vec3 &color = tile.albedo;
-		vec3 hsv = colorRgbToHsv(color);
+		Vec3 &color = tile.albedo;
+		Vec3 hsv = colorRgbToHsv(color);
 		hsv[1] *= bf;
 		color = colorHsvToRgb(hsv);
 	}
@@ -427,15 +427,15 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real bf = saturate((maskNoise->evaluate(tile.position) - 1) * 10);
+		Real bf = saturate((maskNoise->evaluate(tile.position) - 1) * 10);
 		if (bf < 1e-7)
 			return;
 
-		real cracks = sharpEdge(saturate((cracksNoise->evaluate(tile.position) + 0.6)));
-		vec3 color = interpolate(vec3(122, 90, 88) / 255, vec3(184, 209, 187) / 255, cracks);
-		real roughness = cracks * 0.3 + 0.5;
-		real metallic = 1;
-		real height = tile.height - 0.05;
+		Real cracks = sharpEdge(saturate((cracksNoise->evaluate(tile.position) + 0.6)));
+		Vec3 color = interpolate(Vec3(122, 90, 88) / 255, Vec3(184, 209, 187) / 255, cracks);
+		Real roughness = cracks * 0.3 + 0.5;
+		Real metallic = 1;
+		Real height = tile.height - 0.05;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -475,27 +475,27 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real height = heightNoise->evaluate(tile.position) * 0.2 + 0.5;
-		real bf = sharpEdge(saturate(height - tile.height + 0.4)) * steepnessMask(tile.slope, degs(20));
+		Real height = heightNoise->evaluate(tile.position) * 0.2 + 0.5;
+		Real bf = sharpEdge(saturate(height - tile.height + 0.4)) * steepnessMask(tile.slope, Degs(20));
 		if (bf < 1e-7)
 			return;
 
-		vec3 color = vec3(84, 47, 14) / 255;
+		Vec3 color = Vec3(84, 47, 14) / 255;
 		{
-			real saturation = rangeMask(tile.precipitation, 0, 50);
-			vec3 hsv = colorRgbToHsv(color);
+			Real saturation = rangeMask(tile.precipitation, 0, 50);
+			Vec3 hsv = colorRgbToHsv(color);
 			hsv[1] *= saturation;
 			color = colorHsvToRgb(hsv);
 		}
-		real roughness = randomChance() * 0.1 + 0.7;
-		real metallic = 0;
+		Real roughness = randomChance() * 0.1 + 0.7;
+		Real metallic = 0;
 
 		{ // cracks
-			real cracks = sharpEdge(saturate(cracksNoise->evaluate(tile.position) * 2 - 1.2), 0.15);
+			Real cracks = sharpEdge(saturate(cracksNoise->evaluate(tile.position) * 2 - 1.2), 0.15);
 			cracks *= sqr(smoothstep(saturate(cracksMaskNoise->evaluate(tile.position) * 0.5 + 0.5))) * 0.9 + 0.1;
 			cracks *= rangeMask(tile.precipitation, 70, 20) * 0.9 + 0.1;
 			height = interpolate(height, height * 0.5, cracks);
-			color = interpolate(color, vec3(0.1), cracks);
+			color = interpolate(color, Vec3(0.1), cracks);
 			roughness = interpolate(roughness, 0.9, cracks);
 		}
 
@@ -527,18 +527,18 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		real bf = rangeMask(tile.temperature, 24, 28) * steepnessMask(tile.slope, degs(19));
+		Real bf = rangeMask(tile.temperature, 24, 28) * steepnessMask(tile.slope, Degs(19));
 		if (bf < 1e-7)
 			return;
 
-		real height = heightNoise->evaluate(tile.position) * 0.2;
+		Real height = heightNoise->evaluate(tile.position) * 0.2;
 		height *= rangeMask(tile.precipitation, 100, 50) * 0.6 + 0.4;
 		height += 0.5;
-		real hueShift = hueNoise->evaluate(tile.position) * 0.1;
-		vec3 color = colorHueShift(vec3(172, 159, 139) / 255, hueShift);
+		Real hueShift = hueNoise->evaluate(tile.position) * 0.1;
+		Vec3 color = colorHueShift(Vec3(172, 159, 139) / 255, hueShift);
 		color = colorDeviation(color, 0.08);
-		real roughness = randomChance() * 0.3 + 0.6;
-		real metallic = 0;
+		Real roughness = randomChance() * 0.3 + 0.6;
+		Real metallic = 0;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -576,14 +576,14 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		real bf = rangeMask(abs(tile.temperature - 13), 10, 7) * rangeMask(abs(tile.precipitation - 140), 90, 60) * steepnessMask(tile.slope, degs(30));
+		Real bf = rangeMask(abs(tile.temperature - 13), 10, 7) * rangeMask(abs(tile.precipitation - 140), 90, 60) * steepnessMask(tile.slope, Degs(30));
 		if (bf < 1e-7)
 			return;
 
-		real bladesMask = 0;
+		Real bladesMask = 0;
 		for (uint32 i = 0; i < sizeof(bladesNoise) / sizeof(bladesNoise[0]); i++)
 		{
-			const real bn = bladesNoise[i]->evaluate(tile.position);
+			const Real bn = bladesNoise[i]->evaluate(tile.position);
 			bladesMask += sharpEdge(bf * 0.5 + 0.5 + bn);
 		}
 
@@ -591,12 +591,12 @@ namespace
 		if (bf < 1e-7)
 			return;
 
-		real height = tile.height + bladesMask * 0.05;
-		real ratio = tile.temperature - (tile.precipitation + 100) * 30 / 400;
-		real hueShift = hueNoise->evaluate(tile.position) * 0.09 - max(ratio, 0) * 0.02;
-		vec3 color = colorHueShift(vec3(79, 114, 55) / 255, hueShift);
-		real roughness = 0.7 + min(ratio, 0) * 0.02 + randomChance() * 0.2;
-		real metallic = 0;
+		Real height = tile.height + bladesMask * 0.05;
+		Real ratio = tile.temperature - (tile.precipitation + 100) * 30 / 400;
+		Real hueShift = hueNoise->evaluate(tile.position) * 0.09 - max(ratio, 0) * 0.02;
+		Vec3 color = colorHueShift(Vec3(79, 114, 55) / 255, hueShift);
+		Real roughness = 0.7 + min(ratio, 0) * 0.02 + randomChance() * 0.2;
+		Real metallic = 0;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -653,25 +653,25 @@ namespace
 			return;
 
 		const auto centers = centerVoronoi->evaluate(tile.position, tile.normal);
-		vec3 center = centers.points[0];
+		Vec3 center = centers.points[0];
 
-		real dist = distance(center, tile.position);
-		real size = sizeNoise->evaluate(tile.position) * 0.5 + 0.5;
+		Real dist = distance(center, tile.position);
+		Real size = sizeNoise->evaluate(tile.position) * 0.5 + 0.5;
 		size = smootherstep(smootherstep(saturate(size))) * 2 + 0.5;
 
-		real bf = rangeMask(size - dist, 0, 0.1);
+		Real bf = rangeMask(size - dist, 0, 0.1);
 		if (bf < 1e-7)
 			return;
 
-		real hueShift = hueNoise->evaluate(tile.position) * 0.07;
-		real valueShift = valueNoise->evaluate(tile.position) * 0.15;
-		vec3 color = colorRgbToHsv(vec3(0.6));
+		Real hueShift = hueNoise->evaluate(tile.position) * 0.07;
+		Real valueShift = valueNoise->evaluate(tile.position) * 0.15;
+		Vec3 color = colorRgbToHsv(Vec3(0.6));
 		color[0] = (color[0] + hueShift + 1) % 1;
 		color[2] = saturate(color[2] + valueShift);
 		color = colorHsvToRgb(color);
-		real roughness = scratchesNoise->evaluate(tile.position) * 0.1 + 0.6;
-		real metallic = 0;
-		real height = 1 - sqr(dist / size) * 0.5;
+		Real roughness = scratchesNoise->evaluate(tile.position) * 0.1 + 0.6;
+		Real metallic = 0;
+		Real height = 1 - sqr(dist / size) * 0.5;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -728,22 +728,22 @@ namespace
 			return;
 
 		const auto centers = centerVoronoi->evaluate(tile.position, tile.normal);
-		vec3 center = centers.points[0];
+		Vec3 center = centers.points[0];
 
-		real dist = distance(center, tile.position);
-		real size = sizeNoise->evaluate(tile.position) * 0.5 + 0.5;
+		Real dist = distance(center, tile.position);
+		Real size = sizeNoise->evaluate(tile.position) * 0.5 + 0.5;
 		size = smootherstep(saturate(size)) * 0.4 + 0.7;
 
-		real bf = rangeMask(size - dist, 0, 0.1);
+		Real bf = rangeMask(size - dist, 0, 0.1);
 		if (bf < 1e-7)
 			return;
 
-		real hueShift = hueNoise->evaluate(tile.position) * 0.08;
-		vec3 baseColor = colorHueShift(vec3(180, 146, 88) / 255, hueShift);
-		vec3 color = interpolate(vec3(0.5), baseColor, rangeMask(size - dist, 0.2, 0.7));
-		real roughness = 0.8;
-		real metallic = 0;
-		real height = interpolate(height, 1, rangeMask(size - dist, 0, 0.3));
+		Real hueShift = hueNoise->evaluate(tile.position) * 0.08;
+		Vec3 baseColor = colorHueShift(Vec3(180, 146, 88) / 255, hueShift);
+		Vec3 color = interpolate(Vec3(0.5), baseColor, rangeMask(size - dist, 0.2, 0.7));
+		Real roughness = 0.8;
+		Real metallic = 0;
+		Real height = interpolate(height, 1, rangeMask(size - dist, 0, 0.3));
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -780,21 +780,21 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		real bf = rangeMask(abs(tile.temperature - 22), 6, 3) * rangeMask(tile.precipitation, 200, 250) * steepnessMask(tile.slope, degs(22));
+		Real bf = rangeMask(abs(tile.temperature - 22), 6, 3) * rangeMask(tile.precipitation, 200, 250) * steepnessMask(tile.slope, Degs(22));
 		if (bf < 1e-7)
 			return;
 
-		real cracks = cracksNoise->evaluate(tile.position) * 0.5 + 0.5;
+		Real cracks = cracksNoise->evaluate(tile.position) * 0.5 + 0.5;
 		cracks = saturate(pow(cracks, 0.4));
 		bf *= cracks * 0.5 + 0.5;
 
-		real pores = saturate(pow(randomChance(), 0.4));
-		real height = interpolate(tile.height, 0.5, 0.5) + min(cracks, pores) * 0.05;
-		real hueShift = hueshiftNoise->evaluate(tile.position) * 0.07;
-		vec3 color = colorHueShift(vec3(99, 147, 65) / 255, hueShift);
-		color = interpolate(vec3(76, 61, 50) / 255, color, pores);
-		real roughness = interpolate(0.9, randomChance() * 0.2 + 0.3, min(cracks, pores));
-		real metallic = 0;
+		Real pores = saturate(pow(randomChance(), 0.4));
+		Real height = interpolate(tile.height, 0.5, 0.5) + min(cracks, pores) * 0.05;
+		Real hueShift = hueshiftNoise->evaluate(tile.position) * 0.07;
+		Vec3 color = colorHueShift(Vec3(99, 147, 65) / 255, hueShift);
+		color = interpolate(Vec3(76, 61, 50) / 255, color, pores);
+		Real roughness = interpolate(0.9, randomChance() * 0.2 + 0.3, min(cracks, pores));
+		Real metallic = 0;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -817,16 +817,16 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		real bf = rangeMask(tile.temperature, 0, -2) * rangeMask(tile.precipitation, 50, 60) * steepnessMask(tile.slope, degs(18));
+		Real bf = rangeMask(tile.temperature, 0, -2) * rangeMask(tile.precipitation, 50, 60) * steepnessMask(tile.slope, Degs(18));
 		if (bf < 1e-7)
 			return;
-		real factor = (thresholdNoise->evaluate(tile.position) * 0.5 + 0.5) * 0.5 + 0.7;
+		Real factor = (thresholdNoise->evaluate(tile.position) * 0.5 + 0.5) * 0.5 + 0.7;
 		bf *= saturate(factor);
 
-		vec3 color = vec3(248) / 255;
-		real roughness = randomChance() * 0.3 + 0.2;
-		real metallic = 0;
-		real height = tile.height * 0.1 + factor * 0.2 + 0.7;
+		Vec3 color = Vec3(248) / 255;
+		Real roughness = randomChance() * 0.3 + 0.2;
+		Real metallic = 0;
+		Real height = tile.height * 0.1 + factor * 0.2 + 0.7;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -896,8 +896,8 @@ void terrainTileNavigation(Tile &tile)
 {
 	CAGE_ASSERT(isUnit(tile.normal));
 	{
-		real l = terrainSdfElevation(tile.position);
-		real w = terrainSdfElevationRaw(tile.position);
+		Real l = terrainSdfElevation(tile.position);
+		Real w = terrainSdfElevationRaw(tile.position);
 		tile.elevation = interpolate(w, l, rangeMask(l, 5, 10));
 	}
 	generateLand(tile);
@@ -907,17 +907,17 @@ void terrainTileNavigation(Tile &tile)
 void terrainPreseed()
 {
 	{
-		terrainSdfLand(vec3());
+		terrainSdfLand(Vec3());
 		Tile tile;
-		tile.position = vec3(0, 1, 0);
-		tile.normal = vec3(0, 1, 0);
+		tile.position = Vec3(0, 1, 0);
+		tile.normal = Vec3(0, 1, 0);
 		terrainTileLand(tile);
 	}
 	{
-		terrainSdfWater(vec3());
+		terrainSdfWater(Vec3());
 		Tile tile;
-		tile.position = vec3(0, 1, 0);
-		tile.normal = vec3(0, 1, 0);
+		tile.position = Vec3(0, 1, 0);
+		tile.normal = Vec3(0, 1, 0);
 		terrainTileWater(tile);
 	}
 }

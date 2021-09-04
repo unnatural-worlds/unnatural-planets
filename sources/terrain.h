@@ -12,7 +12,7 @@ enum class TerrainBiomeEnum : uint8
 	//                        //    (°C)     //     (cm)      //   (%)    //
 	Bare,                     // -15 .. -5   //    0 ..  10   //          //
 	Tundra,                   // -15 .. -5   //   10 ..  30   //    11    //
-	Taiga,                    //  -5 ..  5   //   30 .. 150   //    17    // (BorealForest)
+	Taiga,                    
 	Shrubland,                //   5 .. 20   //    0 ..  30   //     3    //
 	Grassland,                //   5 .. 20   //   30 .. 100   //    13    //
 	TemperateSeasonalForest,  //   5 .. 20   //  100 .. 200   //     4    // (TemperateDeciduousForest)
@@ -36,31 +36,31 @@ enum class TerrainTypeEnum : uint8
 	_Total
 };
 
-stringizer &operator + (stringizer &str, const TerrainBiomeEnum &other);
-stringizer &operator + (stringizer &str, const TerrainTypeEnum &other);
+Stringizer &operator + (Stringizer &str, const TerrainBiomeEnum &other);
+Stringizer &operator + (Stringizer &str, const TerrainTypeEnum &other);
 
 struct Tile
 {
-	vec3 position;
-	vec3 normal;
-	vec3 albedo;
-	real roughness;
-	real metallic;
-	real height; // bump map value
-	real elevation; // (meters) above sea
-	rads slope;
-	real temperature; // °C average annual
-	real precipitation; // cm total annual
-	real opacity = 1; // only applies to water
+	Vec3 position;
+	Vec3 normal;
+	Vec3 albedo;
+	Real roughness;
+	Real metallic;
+	Real height; 
+	Real elevation; 
+	Rads slope;
+	Real temperature; 
+	Real precipitation; 
+	Real opacity = 1; 
 	TerrainBiomeEnum biome;
 	TerrainTypeEnum type;
 };
 
-real terrainSdfElevation(const vec3 &pos);
-real terrainSdfElevationRaw(const vec3 &pos);
-real terrainSdfLand(const vec3 &pos);
-real terrainSdfWater(const vec3 &pos);
-real terrainSdfNavigation(const vec3 &pos);
+Real terrainSdfElevation(const Vec3 &pos);
+Real terrainSdfElevationRaw(const Vec3 &pos);
+Real terrainSdfLand(const Vec3 &pos);
+Real terrainSdfWater(const Vec3 &pos);
+Real terrainSdfNavigation(const Vec3 &pos);
 void terrainTileLand(Tile &tile);
 void terrainTileWater(Tile &tile);
 void terrainTileNavigation(Tile &tile);

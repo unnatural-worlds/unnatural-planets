@@ -1,6 +1,6 @@
 #include "terrain.h"
 
-stringizer &operator + (stringizer &str, const TerrainBiomeEnum &other)
+Stringizer &operator + (Stringizer &str, const TerrainBiomeEnum &other)
 {
 	switch (other)
 	{
@@ -21,7 +21,7 @@ stringizer &operator + (stringizer &str, const TerrainBiomeEnum &other)
 	return str;
 }
 
-stringizer &operator + (stringizer &str, const TerrainTypeEnum &other)
+Stringizer &operator + (Stringizer &str, const TerrainTypeEnum &other)
 {
 	switch (other)
 	{

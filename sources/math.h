@@ -5,16 +5,16 @@
 
 using namespace cage;
 
-real rescale(real v, real ia, real ib, real oa, real ob);
-real sharpEdge(real v, real p = 0.05);
-real terrace(real x, real steepness);
-real smoothMin(real a, real b, real k);
-real smoothMax(real a, real b, real k);
-vec3 colorDeviation(const vec3 &color, real deviation = 0.05);
-vec3 colorHueShift(const vec3 &rgb, real shift);
-vec3 normalDeviation(const vec3 &normal, real strength);
-bool isUnit(const vec3 &v);
-vec3 anyPerpendicular(const vec3 &a);
+Real rescale(Real v, Real ia, Real ib, Real oa, Real ob);
+Real sharpEdge(Real v, Real p = 0.05);
+Real terrace(Real x, Real steepness);
+Real smoothMin(Real a, Real b, Real k);
+Real smoothMax(Real a, Real b, Real k);
+Vec3 colorDeviation(const Vec3 &color, Real deviation = 0.05);
+Vec3 colorHueShift(const Vec3 &rgb, Real shift);
+Vec3 normalDeviation(const Vec3 &normal, Real strength);
+bool isUnit(const Vec3 &v);
+Vec3 anyPerpendicular(const Vec3 &a);
 uint32 noiseSeed();
 
 #endif

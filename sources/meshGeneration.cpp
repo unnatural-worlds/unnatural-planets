@@ -11,7 +11,7 @@
 
 namespace
 {
-	constexpr real boxSize = 2500;
+	constexpr Real boxSize = 2500;
 #ifdef CAGE_DEBUG
 	constexpr uint32 boxResolution = 70;
 	constexpr uint32 iterations = 1;
@@ -24,14 +24,14 @@ namespace
 
 	ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize");
 
-	template<real(*FNC)(const vec3 &)>
+	template<Real(*FNC)(const Vec3 &)>
 	Holder<Mesh> meshGenerateGeneric()
 	{
 		MarchingCubesCreateConfig cfg;
-		cfg.box = Aabb(vec3(boxSize * -0.5), vec3(boxSize * 0.5));
-		cfg.resolution = ivec3(boxResolution);
+		cfg.box = Aabb(Vec3(boxSize * -0.5), Vec3(boxSize * 0.5));
+		cfg.resolution = Vec3i(boxResolution);
 		Holder<MarchingCubes> cubes = newMarchingCubes(cfg);
-		cubes->updateByPosition(Delegate<real(const vec3 &)>().bind<FNC>());
+		cubes->updateByPosition(Delegate<Real(const Vec3 &)>().bind<FNC>());
 		Holder<Mesh> poly = cubes->makeMesh();
 		meshDiscardDisconnected(+poly);
 		meshFlipNormals(+poly);
@@ -59,7 +59,7 @@ Holder<Mesh> meshGenerateBaseWater()
 		// check which vertices are needed
 		std::vector<bool> valid;
 		valid.reserve(poly->verticesCount());
-		for (const vec3 &p : poly->positions())
+		for (const Vec3 &p : poly->positions())
 			valid.push_back(terrainSdfElevationRaw(p) < 0.1);
 
 		// expand valid vertices to whole triangles and their neighbors
@@ -80,9 +80,9 @@ Holder<Mesh> meshGenerateBaseWater()
 		// invalidate unnecessary vertices
 		{
 			auto v = valid.begin();
-			for (vec3 &p : poly->positions())
+			for (Vec3 &p : poly->positions())
 				if (!*v++)
-					p = vec3::Nan();
+					p = Vec3::Nan();
 		}
 
 		meshDiscardInvalid(+poly);
@@ -137,7 +137,7 @@ void meshSimplifyCollider(Holder<Mesh> &mesh)
 	if (m->indicesCount() <= mesh->indicesCount())
 		mesh = std::move(m);
 	else
-		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified collider mesh has more triangles than the original");
+		CAGE_LOG(SeverityEnum::Warning, "generator", Stringizer() + "the simplified collider mesh has more triangles than the original");
 }
 
 void meshSimplifyRender(Holder<Mesh> &mesh)
@@ -155,7 +155,7 @@ void meshSimplifyRender(Holder<Mesh> &mesh)
 	if (m->indicesCount() <= mesh->indicesCount())
 		mesh = std::move(m);
 	else
-		CAGE_LOG(SeverityEnum::Warning, "generator", stringizer() + "the simplified render mesh has more triangles than the original");
+		CAGE_LOG(SeverityEnum::Warning, "generator", Stringizer() + "the simplified render mesh has more triangles than the original");
 }
 
 std::vector<Holder<Mesh>> meshSplit(const Holder<Mesh> &mesh)

@@ -19,9 +19,9 @@
 
 namespace
 {
-	string findOutputDirectory(const string &planetName)
+	String findOutputDirectory(const String &planetName)
 	{
-		string root;
+		String root;
 		try
 		{
 			root = pathSearchTowardsRoot("output", PathTypeFlags::Directory);
@@ -32,12 +32,12 @@ namespace
 		}
 
 		{
-			string name = pathReplaceInvalidCharacters(planetName);
+			String name = pathReplaceInvalidCharacters(planetName);
 			name = replace(name, " ", "_");
 #ifdef CAGE_DEBUG
 			name += "_debug";
 #endif // CAGE_DEBUG
-			const string pth = pathJoin(root, name);
+			const String pth = pathJoin(root, name);
 			if (pathType(pth) == PathTypeFlags::NotFound)
 				return pth;
 		}
@@ -45,31 +45,31 @@ namespace
 		uint32 index = 1;
 		while (true)
 		{
-			const string pth = pathJoin(root, stringizer() + index);
+			const String pth = pathJoin(root, Stringizer() + index);
 			if (pathType(pth) == PathTypeFlags::NotFound)
 				return pth;
 			index++;
 		}
 	}
 
-	string findTmpDirectory()
+	String findTmpDirectory()
 	{
-		return pathToAbs(pathJoin("tmp", stringizer() + currentProcessId()));
+		return pathToAbs(pathJoin("tmp", Stringizer() + currentProcessId()));
 	}
 
-	const string planetName = generateName();
-	const string baseDirectory = findTmpDirectory();
-	const string assetsDirectory = pathJoin(baseDirectory, "data");
-	const string debugDirectory = pathJoin(baseDirectory, "intermediate");
+	const String planetName = generateName();
+	const String baseDirectory = findTmpDirectory();
+	const String assetsDirectory = pathJoin(baseDirectory, "data");
+	const String debugDirectory = pathJoin(baseDirectory, "intermediate");
 	ConfigString configShapeMode("unnatural-planets/shape/mode");
 	ConfigBool configDebugSaveIntermediate("unnatural-planets/debug/saveIntermediate");
 	ConfigBool configPreviewEnable("unnatural-planets/preview/enable");
-	std::vector<string> assetPackages;
+	std::vector<String> assetPackages;
 	struct Chunk
 	{
-		string mesh;
-		string material;
-		string albedo, special, heightmap;
+		String mesh;
+		String material;
+		String albedo, special, heightmap;
 		bool transparency = false;
 	};
 	std::vector<Chunk> chunks;
@@ -82,7 +82,7 @@ namespace
 		{ // write unnatural-map
 			Holder<File> f = writeFile(pathJoin(baseDirectory, "unnatural-map.ini"));
 			f->writeLine("[map]");
-			f->writeLine(stringizer() + "name = " + planetName);
+			f->writeLine(Stringizer() + "name = " + planetName);
 			f->writeLine("version = 0");
 			f->writeLine("[description]");
 			f->writeLine(configShapeMode);
@@ -90,7 +90,7 @@ namespace
 				const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 				char buffer[50];
 				std::strftime(buffer, 50, "%Y-%m-%d %H:%M:%S", std::localtime(&now));
-				f->writeLine(stringizer() + "date: " + buffer);
+				f->writeLine(Stringizer() + "date: " + buffer);
 			}
 #ifdef CAGE_DEBUG
 			f->writeLine("generated with DEBUG build");
@@ -103,7 +103,7 @@ namespace
 			f->writeLine("collider = collider.obj");
 			f->writeLine("[packages]");
 			f->writeLine("unnatural/base/base.pack");
-			for (const string &s : assetPackages)
+			for (const String &s : assetPackages)
 				f->writeLine(s);
 			f->close();
 		}
@@ -154,7 +154,7 @@ namespace
 				f->writeLine("[]");
 				f->writeLine("scheme = model");
 				f->writeLine("tangents = true");
-				f->writeLine(stringizer() + "material = " + c.material);
+				f->writeLine(Stringizer() + "material = " + c.material);
 				f->writeLine(c.mesh);
 			}
 			f->writeLine("[]");
@@ -212,7 +212,7 @@ def loadChunk(meshname, objname, albedoname, specialname, heightname, transparen
 )Python");
 			for (const Chunk &c : chunks)
 			{
-				f->writeLine(stringizer() + "loadChunk('" + c.mesh + "', '" + replace(c.mesh, ".obj", "") + "', '"
+				f->writeLine(Stringizer() + "loadChunk('" + c.mesh + "', '" + replace(c.mesh, ".obj", "") + "', '"
 					+ c.albedo + "', '" + c.special + "', '" + c.heightmap + "', " + (c.transparency ? "True" : "False") + ")");
 			}
 			f->write(R"Python(
@@ -241,7 +241,7 @@ bpy.ops.object.select_all(action='DESELECT')
 			{
 				Holder<Mesh> navmesh = base->copy();
 				meshSimplifyNavmesh(navmesh);
-				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "navmesh tiles: " + navmesh->verticesCount());
+				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "navmesh tiles: " + navmesh->verticesCount());
 				std::vector<Tile> tiles;
 				generateTileProperties(navmesh, tiles, pathJoin(baseDirectory, "tileStats.log"));
 				meshSaveNavigation(pathJoin(assetsDirectory, "navmesh.obj"), navmesh, tiles);
@@ -274,11 +274,11 @@ bpy.ops.object.select_all(action='DESELECT')
 		void chunkEntry(uint32 index)
 		{
 			Chunk c;
-			c.mesh = stringizer() + "land-" + index + ".obj";
-			c.material = stringizer() + "land-" + index + ".cpm";
-			c.albedo = stringizer() + "land-" + index + "-albedo.png";
-			c.special = stringizer() + "land-" + index + "-special.png";
-			c.heightmap = stringizer() + "land-" + index + "-height.png";
+			c.mesh = Stringizer() + "land-" + index + ".obj";
+			c.material = Stringizer() + "land-" + index + ".cpm";
+			c.albedo = Stringizer() + "land-" + index + "-albedo.png";
+			c.special = Stringizer() + "land-" + index + "-special.png";
+			c.heightmap = Stringizer() + "land-" + index + "-height.png";
 			const auto &msh = split[index];
 			const uint32 resolution = meshUnwrap(msh);
 			meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh, c.transparency);
@@ -303,7 +303,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				if (configDebugSaveIntermediate)
 					meshSaveDebug(pathJoin(debugDirectory, "landMeshSimplified.obj"), mesh);
 				split = meshSplit(mesh);
-				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "land mesh split into " + split.size() + " chunks");
+				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "land mesh split into " + split.size() + " chunks");
 			}
 			tasksRunBlocking("land chunk", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 		}
@@ -328,11 +328,11 @@ bpy.ops.object.select_all(action='DESELECT')
 		void chunkEntry(uint32 index)
 		{
 			Chunk c;
-			c.mesh = stringizer() + "water-" + index + ".obj";
-			c.material = stringizer() + "water-" + index + ".cpm";
-			c.albedo = stringizer() + "water-" + index + "-albedo.png";
-			c.special = stringizer() + "water-" + index + "-special.png";
-			c.heightmap = stringizer() + "water-" + index + "-height.png";
+			c.mesh = Stringizer() + "water-" + index + ".obj";
+			c.material = Stringizer() + "water-" + index + ".cpm";
+			c.albedo = Stringizer() + "water-" + index + "-albedo.png";
+			c.special = Stringizer() + "water-" + index + "-special.png";
+			c.heightmap = Stringizer() + "water-" + index + "-height.png";
 			c.transparency = true;
 			const auto &msh = split[index];
 			const uint32 resolution = meshUnwrap(msh);
@@ -363,7 +363,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				if (configDebugSaveIntermediate)
 					meshSaveDebug(pathJoin(debugDirectory, "waterMeshSimplified.obj"), mesh);
 				split = meshSplit(mesh);
-				CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "water mesh split into " + split.size() + " chunks");
+				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "water mesh split into " + split.size() + " chunks");
 			}
 			tasksRunBlocking("water chunk", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 		}
@@ -382,8 +382,8 @@ bpy.ops.object.select_all(action='DESELECT')
 
 void generateEntry()
 {
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "planet name: '" + planetName + "'");
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "tmp directory: " + baseDirectory);
+	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "planet name: '" + planetName + "'");
+	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "tmp directory: " + baseDirectory);
 
 	terrainPreseed();
 
@@ -398,8 +398,8 @@ void generateEntry()
 
 	exportConfiguration();
 
-	const string outDirectory = findOutputDirectory(planetName);
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "output directory: " + outDirectory);
+	const String outDirectory = findOutputDirectory(planetName);
+	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "output directory: " + outDirectory);
 	pathMove(baseDirectory, outDirectory);
 
 	if (configPreviewEnable)

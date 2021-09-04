@@ -18,9 +18,9 @@ void meshSimplifyCollider(Holder<Mesh> &mesh);
 void meshSimplifyRender(Holder<Mesh> &mesh);
 uint32 meshUnwrap(const Holder<Mesh> &mesh);
 
-void meshSaveDebug(const string &path, const Holder<Mesh> &mesh);
-void meshSaveRender(const string &path, const Holder<Mesh> &mesh, bool transparency);
-void meshSaveNavigation(const string &path, const Holder<Mesh> &mesh, const std::vector<Tile> &tiles);
-void meshSaveCollider(const string &path, const Holder<Mesh> &mesh);
+void meshSaveDebug(const String &path, const Holder<Mesh> &mesh);
+void meshSaveRender(const String &path, const Holder<Mesh> &mesh, bool transparency);
+void meshSaveNavigation(const String &path, const Holder<Mesh> &mesh, const std::vector<Tile> &tiles);
+void meshSaveCollider(const String &path, const Holder<Mesh> &mesh);
 
 #endif

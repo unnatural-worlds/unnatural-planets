@@ -3,68 +3,68 @@
 
 #include "math.h"
 
-real rescale(real v, real ia, real ib, real oa, real ob)
+Real rescale(Real v, Real ia, Real ib, Real oa, Real ob)
 {
 	return (v - ia) / (ib - ia) * (ob - oa) + oa;
 }
 
-real sharpEdge(real v, real p)
+Real sharpEdge(Real v, Real p)
 {
 	return rescale(clamp(v, 0.5 - p, 0.5 + p), 0.5 - p, 0.5 + p, 0, 1);
 }
 
-real terrace(real x, real steepness)
+Real terrace(Real x, Real steepness)
 {
 	CAGE_ASSERT(steepness >= 0);
-	const real f = floor(x);
-	const real t = smootherstep(saturate((x - f) * max(steepness, 1))) + f;
-	const real r = interpolate(x, t, saturate(steepness));
+	const Real f = floor(x);
+	const Real t = smootherstep(saturate((x - f) * max(steepness, 1))) + f;
+	const Real r = interpolate(x, t, saturate(steepness));
 	CAGE_ASSERT(r > f - 1e-3 && r < f + 1 + 1e-3);
 	return r;
 }
 
-real smoothMin(real a, real b, real k)
+Real smoothMin(Real a, Real b, Real k)
 {
 	// https://www.shadertoy.com/view/3ssGWj
-	const real h = saturate((b - a) / k * 0.5 + 0.5);
+	const Real h = saturate((b - a) / k * 0.5 + 0.5);
 	return interpolate(b, a, h) - k * h * (1 - h);
 }
 
-real smoothMax(real a, real b, real k)
+Real smoothMax(Real a, Real b, Real k)
 {
 	return -smoothMin(-a, -b, k);
 }
 
-vec3 colorDeviation(const vec3 &color, real deviation)
+Vec3 colorDeviation(const Vec3 &color, Real deviation)
 {
-	vec3 hsl = colorRgbToHsluv(color) + (randomChance3() - 0.5) * deviation;
+	Vec3 hsl = colorRgbToHsluv(color) + (randomChance3() - 0.5) * deviation;
 	hsl[0] = (hsl[0] + 1) % 1;
 	return colorHsluvToRgb(saturate(hsl));
 }
 
-vec3 colorHueShift(const vec3 &rgb, real shift)
+Vec3 colorHueShift(const Vec3 &rgb, Real shift)
 {
-	vec3 hsv = colorRgbToHsv(rgb);
+	Vec3 hsv = colorRgbToHsv(rgb);
 	hsv[0] = (hsv[0] + shift + 1) % 1;
 	return colorHsvToRgb(hsv);
 }
 
-vec3 normalDeviation(const vec3 &normal, real strength)
+Vec3 normalDeviation(const Vec3 &normal, Real strength)
 {
 	return normalize(normal + strength * randomDirection3());
 }
 
-bool isUnit(const vec3 &v)
+bool isUnit(const Vec3 &v)
 {
 	return abs(length(v) - 1) < 1e-3;
 }
 
-vec3 anyPerpendicular(const vec3 &a)
+Vec3 anyPerpendicular(const Vec3 &a)
 {
 	CAGE_ASSERT(isUnit(a));
-	vec3 b = vec3(1, 0, 0);
+	Vec3 b = Vec3(1, 0, 0);
 	if (abs(dot(a, b)) > 0.9)
-		b = vec3(0, 1, 0);
+		b = Vec3(0, 1, 0);
 	return normalize(cross(a, b));
 }
 

@@ -7,12 +7,12 @@
 
 namespace
 {
-	void statistics(const string &name, uint32 current, uint32 maxc, uint32 total)
+	void statistics(const String &name, uint32 current, uint32 maxc, uint32 total)
 	{
-		const string c = stringizer() + current;
-		const string r = stringizer() + 100 * real(current) / total;
-		const string g = maxc > 0 ? fill(string(), 30 * current / maxc, '#') : string();
-		CAGE_LOG_CONTINUE(SeverityEnum::Info, "tileStats", stringizer() + fill(name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 12)) + " % " + g);
+		const String c = Stringizer() + current;
+		const String r = Stringizer() + 100 * Real(current) / total;
+		const String g = maxc > 0 ? fill(String(), 30 * current / maxc, '#') : String();
+		CAGE_LOG_CONTINUE(SeverityEnum::Info, "tileStats", Stringizer() + fill(name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 12)) + " % " + g);
 	}
 
 	struct PropertyCounters
@@ -20,15 +20,15 @@ namespace
 		uint32 counts[256] = {};
 		uint32 total = 0;
 		uint32 maxc = 0;
-		real a = 0;
-		real b = 1;
+		Real a = 0;
+		Real b = 1;
 		uint8 minIndex = m;
 		uint8 maxIndex = 0;
 
-		PropertyCounters(real a, real b) : a(a), b(b)
+		PropertyCounters(Real a, Real b) : a(a), b(b)
 		{}
 
-		void insert(real value)
+		void insert(Real value)
 		{
 			uint8 index = numeric_cast<uint8>(clamp(255 * (value - a) / (b - a) + 0.5, 0, 255));
 			counts[index]++;
@@ -40,19 +40,19 @@ namespace
 
 		void print() const
 		{
-			real meanValue = real::Nan();
+			Real meanValue = Real::Nan();
 			uint32 meanCnt = 0;
-			real sum = 0;
+			Real sum = 0;
 			for (uint32 i = minIndex; i <= maxIndex; i++)
 			{
-				real v = interpolate(a, b, (i / 255.0));
-				statistics(stringizer() + v, counts[i], maxc, total);
+				Real v = interpolate(a, b, (i / 255.0));
+				statistics(Stringizer() + v, counts[i], maxc, total);
 				sum += v * counts[i];
 				if (meanCnt < total / 2)
 					meanValue = v;
 				meanCnt += counts[i];
 			}
-			CAGE_LOG(SeverityEnum::Info, "tileStats", stringizer() + "average: " + (sum / total) + ", mean: " + meanValue);
+			CAGE_LOG(SeverityEnum::Info, "tileStats", Stringizer() + "average: " + (sum / total) + ", mean: " + meanValue);
 			CAGE_LOG(SeverityEnum::Info, "tileStats", "");
 		}
 	};
@@ -63,7 +63,7 @@ namespace
 	}
 }
 
-void generateTileProperties(const Holder<Mesh> &navMesh, std::vector<Tile> &tiles, const string &statsLogPath)
+void generateTileProperties(const Holder<Mesh> &navMesh, std::vector<Tile> &tiles, const String &statsLogPath)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating tile properties");
 
@@ -111,7 +111,7 @@ void generateTileProperties(const Holder<Mesh> &navMesh, std::vector<Tile> &tile
 	for (uint32 i = 0; i < (uint32)TerrainBiomeEnum::_Total; i++)
 	{
 		TerrainBiomeEnum b = (TerrainBiomeEnum)i;
-		statistics(stringizer() + b, biomesCounts.counts[i], biomesCounts.maxc, biomesCounts.total);
+		statistics(Stringizer() + b, biomesCounts.counts[i], biomesCounts.maxc, biomesCounts.total);
 	}
 	CAGE_LOG(SeverityEnum::Info, "tileStats", "");
 
@@ -119,7 +119,7 @@ void generateTileProperties(const Holder<Mesh> &navMesh, std::vector<Tile> &tile
 	for (uint32 i = 0; i < (uint32)TerrainTypeEnum::_Total; i++)
 	{
 		TerrainTypeEnum t = (TerrainTypeEnum)i;
-		statistics(stringizer() + t, typesCounts.counts[i], typesCounts.maxc, typesCounts.total);
+		statistics(Stringizer() + t, typesCounts.counts[i], typesCounts.maxc, typesCounts.total);
 	}
 	CAGE_LOG(SeverityEnum::Info, "tileStats", "");
 }

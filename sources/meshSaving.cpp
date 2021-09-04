@@ -4,18 +4,18 @@
 #include "terrain.h"
 #include "mesh.h"
 
-void meshSaveDebug(const string &path, const Holder<Mesh> &mesh)
+void meshSaveDebug(const String &path, const Holder<Mesh> &mesh)
 {
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving debug mesh: " + path);
+	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "saving debug mesh: " + path);
 
 	MeshExportObjConfig cfg;
 	cfg.objectName = pathExtractFilenameNoExtension(path);
 	mesh->exportObjFile(cfg, path);
 }
 
-void meshSaveRender(const string &path, const Holder<Mesh> &mesh, bool transparency)
+void meshSaveRender(const String &path, const Holder<Mesh> &mesh, bool transparency)
 {
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving render mesh: " + path);
+	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "saving render mesh: " + path);
 
 	CAGE_ASSERT(mesh->normals().size() == mesh->verticesCount());
 	CAGE_ASSERT(mesh->uvs().size() == mesh->verticesCount());
@@ -25,24 +25,24 @@ void meshSaveRender(const string &path, const Holder<Mesh> &mesh, bool transpare
 	cfg.materialName = cfg.objectName;
 	mesh->exportObjFile(cfg, path);
 
-	const string directory = pathExtractDirectory(path);
-	const string cpmName = cfg.objectName + ".cpm";
+	const String directory = pathExtractDirectory(path);
+	const String cpmName = cfg.objectName + ".cpm";
 
 	{ // write mtl file with link to albedo texture
 		Holder<File> f = writeFile(pathJoin(directory, cfg.materialLibraryName));
-		f->writeLine(stringizer() + "newmtl " + cfg.materialName);
-		f->writeLine(stringizer() + "map_Kd " + cfg.objectName + "-albedo.png");
-		//f->writeLine(stringizer() + "map_bump " + cfg.objectName + "-height.png");
+		f->writeLine(Stringizer() + "newmtl " + cfg.materialName);
+		f->writeLine(Stringizer() + "map_Kd " + cfg.objectName + "-albedo.png");
+		
 		if (transparency)
-			f->writeLine(stringizer() + "map_d " + cfg.objectName + "-albedo.png");
+			f->writeLine(Stringizer() + "map_d " + cfg.objectName + "-albedo.png");
 	}
 
 	{ // write cpm material file
 		Holder<File> f = newFile(pathJoin(directory, cpmName), FileMode(false, true));
 		f->writeLine("[textures]");
-		f->writeLine(stringizer() + "albedo = " + cfg.objectName + "-albedo.png");
-		f->writeLine(stringizer() + "special = " + cfg.objectName + "-special.png");
-		f->writeLine(stringizer() + "normal = " + cfg.objectName + "-height.png");
+		f->writeLine(Stringizer() + "albedo = " + cfg.objectName + "-albedo.png");
+		f->writeLine(Stringizer() + "special = " + cfg.objectName + "-special.png");
+		f->writeLine(Stringizer() + "normal = " + cfg.objectName + "-height.png");
 		if (transparency)
 		{
 			f->writeLine("[flags]");
@@ -52,19 +52,19 @@ void meshSaveRender(const string &path, const Holder<Mesh> &mesh, bool transpare
 	}
 }
 
-void meshSaveNavigation(const string &path, const Holder<Mesh> &mesh, const std::vector<Tile> &tiles)
+void meshSaveNavigation(const String &path, const Holder<Mesh> &mesh, const std::vector<Tile> &tiles)
 {
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving navigation mesh: " + path);
+	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "saving navigation mesh: " + path);
 
 	CAGE_ASSERT(mesh->normals().size() == mesh->verticesCount());
 	CAGE_ASSERT(tiles.size() == mesh->verticesCount());
 	Holder<Mesh> m = mesh->copy();
-	std::vector<vec2> uvs;
+	std::vector<Vec2> uvs;
 	uvs.reserve(tiles.size());
 	for (const Tile &t : tiles)
 	{
 		static_assert((uint8)TerrainTypeEnum::_Total <= 32);
-		uvs.push_back(vec2(((uint8)(t.type) + 0.5) / 32, 0));
+		uvs.push_back(Vec2(((uint8)(t.type) + 0.5) / 32, 0));
 	}
 	m->uvs(uvs);
 
@@ -73,9 +73,9 @@ void meshSaveNavigation(const string &path, const Holder<Mesh> &mesh, const std:
 	m->exportObjFile(cfg, path);
 }
 
-void meshSaveCollider(const string &path, const Holder<Mesh> &mesh)
+void meshSaveCollider(const String &path, const Holder<Mesh> &mesh)
 {
-	CAGE_LOG(SeverityEnum::Info, "generator", stringizer() + "saving collider: " + path);
+	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "saving collider: " + path);
 
 	Holder<Mesh> m = mesh->copy();
 	m->normals({});
