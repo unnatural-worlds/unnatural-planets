@@ -11,13 +11,13 @@
 
 namespace
 {
-	constexpr Real boxSize = 2500;
+	constexpr Real boxSize = 4000;
 #ifdef CAGE_DEBUG
-	constexpr uint32 boxResolution = 70;
+	constexpr uint32 boxResolution = 110;
 	constexpr uint32 iterations = 1;
 	constexpr float tileSize = 30;
 #else
-	constexpr uint32 boxResolution = 300;
+	constexpr uint32 boxResolution = 500;
 	constexpr uint32 iterations = 10;
 	constexpr float tileSize = 10;
 #endif // CAGE_DEBUG

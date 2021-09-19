@@ -2,6 +2,10 @@
 #include <cage-core/string.h>
 #include <cage-core/mesh.h>
 #include <cage-core/flatSet.h>
+#include <cage-core/files.h>
+#include <cage-core/config.h>
+#include <cage-core/spatialStructure.h>
+#include <cage-core/geometry.h>
 
 #include "terrain.h"
 #include "generator.h"
@@ -158,6 +162,11 @@ namespace
 		// buildable
 		uint32 totalBuildable = 0;
 		uint64 totalOverlapped = 0;
+		Holder<SpatialStructure> spatStruct = newSpatialStructure({});
+		for (uint32 i = 0; i < cnt; i++)
+			spatStruct->update(i, navMesh->position(i));
+		spatStruct->rebuild();
+		Holder<SpatialQuery> spatQuery = newSpatialQuery(spatStruct.share());
 		for (uint32 i = 0; i < cnt; i++)
 		{
 			if (tiles[i].flatRadius < 40)
@@ -166,10 +175,9 @@ namespace
 				continue;
 			tiles[i].buildable = true;
 			uint32 overlapped = 0;
-			for (uint32 j = 0; j < cnt; j++)
+			spatQuery->intersection(Sphere(navMesh->position(i), 40));
+			for (uint32 j : spatQuery->result())
 			{
-				if (distanceSquared(navMesh->position(i), navMesh->position(j)) >= sqr(40))
-					continue;
 				if (tiles[j].type >= TerrainTypeEnum::SteepSlope)
 				{
 					tiles[i].buildable = false;
@@ -183,10 +191,22 @@ namespace
 				totalOverlapped += overlapped;
 			}
 		}
+		const uint32 totalBuildings = totalOverlapped ? numeric_cast<uint32>(uint64(totalBuildable) * totalBuildable / totalOverlapped) : 0;
+		CAGE_LOG(SeverityEnum::Info, "tileStats", Stringizer() + "total tiles: " + tiles.size());
 		CAGE_LOG(SeverityEnum::Info, "tileStats", Stringizer() + "buildable tiles: " + totalBuildable);
-		if (totalOverlapped)
-			CAGE_LOG(SeverityEnum::Info, "tileStats", Stringizer() + "total buildings: " + uint64(totalBuildable) * totalBuildable / totalOverlapped);
+		CAGE_LOG(SeverityEnum::Info, "tileStats", Stringizer() + "total buildings: " + totalBuildings);
 		CAGE_LOG(SeverityEnum::Info, "tileStats", "");
+
+#if 0
+		{
+			ConfigString configShapeMode("unnatural-planets/shape/mode");
+			FileMode fm(false, true);
+			fm.append = true;
+			Holder<File> f = newFile("tileStats.csv", fm);
+			f->writeLine(Stringizer() + String(configShapeMode) + "," + tiles.size() + "," + totalBuildings);
+			f->close();
+		}
+#endif
 	}
 }
 
