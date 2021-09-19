@@ -46,14 +46,16 @@ struct Tile
 	Vec3 albedo;
 	Real roughness;
 	Real metallic;
-	Real height; 
-	Real elevation; 
+	Real height;
+	Real elevation;
 	Rads slope;
-	Real temperature; 
-	Real precipitation; 
-	Real opacity = 1; 
+	Real temperature;
+	Real precipitation;
+	Real opacity = 1;
+	Real flatRadius = 0;
 	TerrainBiomeEnum biome;
 	TerrainTypeEnum type;
+	bool buildable = false;
 };
 
 Real terrainSdfElevation(const Vec3 &pos);

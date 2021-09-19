@@ -896,8 +896,8 @@ void terrainTileNavigation(Tile &tile)
 {
 	CAGE_ASSERT(isUnit(tile.normal));
 	{
-		Real l = terrainSdfElevation(tile.position);
-		Real w = terrainSdfElevationRaw(tile.position);
+		const Real l = terrainSdfElevation(tile.position);
+		const Real w = terrainSdfElevationRaw(tile.position);
 		tile.elevation = interpolate(w, l, rangeMask(l, 5, 10));
 	}
 	generateLand(tile);
