@@ -146,6 +146,7 @@ namespace
 			f->writeLine("[]");
 			f->writeLine("scheme = texture");
 			f->writeLine("convert = heightToNormal");
+			f->writeLine("normal = true");
 			for (const Chunk &c : chunks)
 				if (!c.heightmap.empty())
 					f->writeLine(c.heightmap);
