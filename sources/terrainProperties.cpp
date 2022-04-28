@@ -162,15 +162,15 @@ namespace
 			CAGE_ASSERT(isUnit(dir));
 			Real dist = dot(dir, tile.position) * length(tile.position);
 			Rads a = Rads(dist * 0.002);
-			Rads b = Rads(sin(a + sin(a) * 0.5)); 
+			Rads b = Rads(sin(a + sin(a) * 0.5));
 			Real c = sin(b + sin(b) * 0.5);
 			Real wave = c * (1 - shallow * 0.9) * 0.1 + 0.5;
 			tile.height = wave;
 		}
 
 		{
-			Real d1 = 1 - sqr(rangeMask(tile.elevation, -10, 3)); 
-			Real d2 = rescale(rangeMask(tile.elevation, 0, -200), 0, 1, 0.7, 0.95); 
+			Real d1 = 1 - sqr(rangeMask(tile.elevation, -10, 3));
+			Real d2 = rescale(rangeMask(tile.elevation, 0, -200), 0, 1, 0.7, 0.95);
 			tile.opacity = d1 * d2;
 		}
 

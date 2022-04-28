@@ -306,7 +306,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "land mesh split into " + split.size() + " chunks");
 			}
-			tasksRunBlocking("land chunk", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
+			tasksRunBlocking("land chunk", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()), tasksCurrentPriority());
 		}
 
 		LandProcessor()
@@ -366,7 +366,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "water mesh split into " + split.size() + " chunks");
 			}
-			tasksRunBlocking("water chunk", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
+			tasksRunBlocking("water chunk", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()), tasksCurrentPriority());
 		}
 
 		WaterProcessor()
