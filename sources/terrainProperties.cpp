@@ -11,7 +11,7 @@
 
 namespace
 {
-	ConfigBool configPolesEnable("unnatural-planets/poles/enable");
+	const ConfigBool configPolesEnable("unnatural-planets/poles/enable");
 
 	// returns zero when the slope is at or above the threshold plus the smoothing,
 	// returns one when the slope is at or below the threshold minus the smoothing
@@ -21,11 +21,9 @@ namespace
 		return sharpEdge(saturate(r.value));
 	}
 
-	// returns zero when the value is at or below the lowest,
-	// returns one when the value is at or above the highest
-	Real rangeMask(Real value, Real lowest, Real highest)
+	Real rangeMask(Real value, Real zeroAt, Real oneAt)
 	{
-		return saturate((value - lowest) / (highest - lowest));
+		return saturate((value - zeroAt) / (oneAt - zeroAt));
 	}
 
 	void generateElevation(Tile &tile)
@@ -59,7 +57,7 @@ namespace
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 4;
-			cfg.frequency = 0.0015;
+			cfg.frequency = 0.0005;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -82,7 +80,7 @@ namespace
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 5;
 			cfg.gain = 0.4;
-			cfg.frequency = 0.00065;
+			cfg.frequency = 0.0002;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -507,6 +505,15 @@ namespace
 
 	void generateSand(Tile &tile)
 	{
+		static const Holder<NoiseFunction> heightScaleNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Simplex;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 3;
+			cfg.frequency = 0.001;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
 		static const Holder<NoiseFunction> heightNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Simplex;
@@ -521,8 +528,8 @@ namespace
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.01;
+			cfg.octaves = 3;
+			cfg.frequency = 0.003;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -531,14 +538,15 @@ namespace
 		if (bf < 1e-7)
 			return;
 
-		Real height = heightNoise->evaluate(tile.position) * 0.2;
-		height *= rangeMask(tile.precipitation, 100, 50) * 0.6 + 0.4;
+		Real heightScale = heightScaleNoise->evaluate(tile.position) * 0.3 + 1;
+		Real height = heightNoise->evaluate(tile.position * heightScale) * 0.2;
+		height *= rangeMask(tile.precipitation, 100, 50) * 0.4 + 0.6;
 		height += 0.5;
 		Real hueShift = hueNoise->evaluate(tile.position) * 0.1;
 		Vec3 color = colorHueShift(Vec3(172, 159, 139) / 255, hueShift);
 		color = colorDeviation(color, 0.08);
 		Real roughness = randomChance() * 0.3 + 0.6;
-		Real metallic = 0;
+		Real metallic = sqr(sqr(randomChance()));
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -568,7 +576,7 @@ namespace
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 2;
-			cfg.frequency = 0.05;
+			cfg.frequency = 0.01;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -576,7 +584,7 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		Real bf = rangeMask(abs(tile.temperature - 13), 10, 7) * rangeMask(abs(tile.precipitation - 140), 90, 60) * steepnessMask(tile.slope, Degs(30));
+		Real bf = rangeMask(abs(tile.temperature - 14), 20, 15) * rangeMask(abs(tile.precipitation - 150), 120, 90) * steepnessMask(tile.slope, Degs(30));
 		if (bf < 1e-7)
 			return;
 
@@ -592,11 +600,11 @@ namespace
 			return;
 
 		Real height = tile.height + bladesMask * 0.05;
-		Real ratio = tile.temperature - (tile.precipitation + 100) * 30 / 400;
-		Real hueShift = hueNoise->evaluate(tile.position) * 0.09 - max(ratio, 0) * 0.02;
+		Real ratio = clamp(tile.temperature - (tile.precipitation + 100) * 30 / 400, 0, 5);
+		Real hueShift = hueNoise->evaluate(tile.position) * 0.09 - ratio * 0.02;
 		Vec3 color = colorHueShift(Vec3(79, 114, 55) / 255, hueShift);
 		Real roughness = 0.7 + min(ratio, 0) * 0.02 + randomChance() * 0.2;
-		Real metallic = 0;
+		Real metallic = rangeMask(tile.precipitation, 230, 270) * 0.1;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -780,7 +788,7 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		Real bf = rangeMask(abs(tile.temperature - 22), 6, 3) * rangeMask(tile.precipitation, 200, 250) * steepnessMask(tile.slope, Degs(22));
+		Real bf = rangeMask(abs(tile.temperature - 30), 15, 10) * rangeMask(tile.precipitation, 200, 250) * steepnessMask(tile.slope, Degs(22));
 		if (bf < 1e-7)
 			return;
 
@@ -794,7 +802,7 @@ namespace
 		Vec3 color = colorHueShift(Vec3(99, 147, 65) / 255, hueShift);
 		color = interpolate(Vec3(76, 61, 50) / 255, color, pores);
 		Real roughness = interpolate(0.9, randomChance() * 0.2 + 0.3, min(cracks, pores));
-		Real metallic = 0;
+		Real metallic = rangeMask(tile.precipitation, 300, 400) * 0.1;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
