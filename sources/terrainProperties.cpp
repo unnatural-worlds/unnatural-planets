@@ -524,12 +524,19 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
+		static const Holder<NoiseFunction> colorNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.0008;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
 		static const Holder<NoiseFunction> hueNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 3;
-			cfg.frequency = 0.003;
+			cfg.octaves = 2;
+			cfg.frequency = 0.02;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -543,7 +550,9 @@ namespace
 		height *= rangeMask(tile.precipitation, 100, 50) * 0.4 + 0.6;
 		height += 0.5;
 		Real hueShift = hueNoise->evaluate(tile.position) * 0.1;
-		Vec3 color = colorHueShift(Vec3(172, 159, 139) / 255, hueShift);
+		Vec3 color1 = colorHueShift(Vec3(172, 159, 139) / 255, hueShift);
+		Real colorShift = smootherstep(smootherstep(colorNoise->evaluate(tile.position) * 0.5 + 0.5));
+		Vec3 color = interpolateColor(color1, Vec3(170, 95, 46) / 255, colorShift);
 		color = colorDeviation(color, 0.08);
 		Real roughness = randomChance() * 0.3 + 0.6;
 		Real metallic = sqr(sqr(randomChance()));
