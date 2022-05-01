@@ -52,9 +52,9 @@ struct Tile
 	Real temperature;
 	Real precipitation;
 	Real opacity = 1;
-	Real flatRadius = 0;
-	TerrainBiomeEnum biome;
-	TerrainTypeEnum type;
+	Real flatRadius;
+	TerrainBiomeEnum biome = TerrainBiomeEnum::_Total;
+	TerrainTypeEnum type = TerrainTypeEnum::_Total;
 	bool buildable = false;
 };
 

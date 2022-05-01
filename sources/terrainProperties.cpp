@@ -612,6 +612,82 @@ namespace
 		tile.height = interpolate(tile.height, height, bf);
 	}
 
+	void generateFlowers(Tile &tile)
+	{
+		static const Holder<Voronoi> clusterVoronoi = []() {
+			VoronoiCreateConfig cfg;
+			cfg.cellSize = 150;
+			cfg.seed = noiseSeed();
+			return newVoronoi(cfg);
+		}();
+		static const Holder<Voronoi> centerVoronoi = []() {
+			VoronoiCreateConfig cfg;
+			cfg.cellSize = 15;
+			cfg.seed = noiseSeed();
+			return newVoronoi(cfg);
+		}();
+		static const Holder<NoiseFunction> sizeNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.7;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> colorNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 1;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> hue1Noise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.01;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> hue2Noise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.8;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		if (tile.biome == TerrainBiomeEnum::Water)
+			return;
+
+		if (rangeMask(abs(tile.temperature - 18), 12, 7) * rangeMask(abs(tile.precipitation - 200), 100, 70) < 1e-5)
+			return;
+
+		const Vec3 center = centerVoronoi->evaluate(tile.position, tile.normal).points[0];
+		if (distanceSquared(center, tile.position) > sqr(2))
+			return;
+		const Vec3 cluster = clusterVoronoi->evaluate(tile.position, tile.normal).points[0];
+		if (distanceSquared(center, cluster) > sqr(10))
+			return;
+
+		Real dist = distance(center, tile.position);
+		Real size = sizeNoise->evaluate(tile.position) * 0.5 + 0.5;
+		size = smootherstep(smootherstep(saturate(size))) + 0.5;
+
+		Real bf = rangeMask(size - dist, 0, 0.1);
+		if (bf < 1e-7)
+			return;
+
+		Vec3 color = colorNoise->evaluate(cluster) < 0.1 ? Vec3(1, 0, 0.7) : Vec3(1, 0.8, 0);
+		color = colorHueShift(color, hue1Noise->evaluate(tile.position) * 0.1 + hue2Noise->evaluate(tile.position) * 0.1);
+		Real roughness = 0.5;
+		Real metallic = 0;
+		Real height = 0.7 + sqr(dist / size) * 0.2;
+
+		tile.albedo = interpolate(tile.albedo, color, bf);
+		tile.roughness = interpolate(tile.roughness, roughness, bf);
+		tile.metallic = interpolate(tile.metallic, metallic, bf);
+		tile.height = interpolate(tile.height, height, bf);
+	}
+
 	void generateBoulders(Tile &tile)
 	{
 		static const Holder<NoiseFunction> thresholdNoise = []() {
@@ -862,13 +938,10 @@ namespace
 		generateDirt(tile);
 		generateSand(tile);
 		generateGrass(tile);
+		generateFlowers(tile);
 		generateBoulders(tile);
 		generateTreeStumps(tile);
-		// corals
-		// seaweed
 		generateMoss(tile);
-		// leaves
-		// flowers
 		generateSnow(tile);
 	}
 

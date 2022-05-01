@@ -1,15 +1,9 @@
 #include <cage-core/geometry.h>
+#include <cage-core/memoryAlloca.h>
 
 #include "voronoi.h"
 
 #include <algorithm> // std::sort
-
-#ifdef _MSC_VER
-#include <malloc.h>
-#define ALLOCA _alloca
-#else
-#define ALLOCA __builtin_alloca
-#endif // _MSC_VER
 
 class VoronoiImpl : public Voronoi
 {
@@ -46,7 +40,7 @@ public:
 	VoronoiResult evaluate(const Vec3 &position, const Vec3 &normal)
 	{
 		const uint32 totalPoints = cfg.pointsPerCell * 27;
-		Vec3 *const pointsMem = (Vec3 *)ALLOCA(totalPoints * sizeof(Vec3));
+		Vec3 *const pointsMem = (Vec3 *)CAGE_ALLOCA(totalPoints * sizeof(Vec3));
 		
 		{ // generate all points (including neighboring cells)
 			Vec3 *gen = pointsMem;
@@ -69,7 +63,7 @@ public:
 		{ // sort all points by distance
 			std::sort(points.begin(), points.end(), [&](const Vec3 &a, const Vec3 &b) {
 				return distanceSquared(a, position) < distanceSquared(b, position);
-				});
+			});
 		}
 
 		VoronoiResult res;
