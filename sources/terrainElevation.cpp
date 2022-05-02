@@ -8,7 +8,7 @@
 namespace
 {
 	ConfigString configShapeMode("unnatural-planets/shape/mode");
-	ConfigString configElevationMode("unnatural-planets/elevation/mode");
+	const ConfigString configElevationMode("unnatural-planets/elevation/mode");
 
 	typedef Real (*TerrainFunctor)(const Vec3 &);
 	TerrainFunctor terrainElevationFnc = 0;
@@ -222,6 +222,7 @@ namespace
 			&sdfH4O,
 			&sdfTriangularPrism,
 			&sdfHexagonalPrism,
+			&sdfGear,
 		};
 
 		constexpr uint32 shapeModesCount = sizeof(shapeModeFunctions) / sizeof(shapeModeFunctions[0]);
@@ -246,6 +247,7 @@ namespace
 			"h4o",
 			"triangularprism",
 			"hexagonalprism",
+			"gear",
 		};
 
 		static_assert(shapeModesCount == sizeof(shapeModeNames) / sizeof(shapeModeNames[0]), "number of functions and names must match");

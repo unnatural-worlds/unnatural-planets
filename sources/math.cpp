@@ -70,6 +70,6 @@ Vec3 anyPerpendicular(const Vec3 &a)
 
 uint32 noiseSeed()
 {
-	static RandomGenerator gen = detail::globalRandomGenerator();
+	static RandomGenerator gen = detail::randomGenerator();
 	return (uint32)gen.next();
 }

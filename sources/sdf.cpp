@@ -168,3 +168,28 @@ Real sdfH4O(const Vec3 &pos_)
 	const Real h = min(min(hs[0], hs[1]), min(hs[2], hs[3]));
 	return smoothMin(o, h, 100) / scale;
 }
+
+Real sdfGear(const Vec3 &pos)
+{
+	const auto &rotate = [](const Vec2 &p, const Rads a) -> Vec2 {
+		const Real s = sin(a);
+		const Real c = cos(a);
+		const Real x = c * p[0] - s * p[1];
+		const Real y = s * p[0] + c * p[1];
+		return Vec2(x, y);
+	};
+
+	const auto &sdBox = [](const Vec2 &p, const Vec2 &r) -> Real {
+		return length(max(abs(p) - r, 0));
+	};
+
+	const Vec2 p = Vec2(pos[0], pos[2]);
+	constexpr uint32 teeths = 9;
+	const Rads angle = Rads::Full() / teeths;
+	const uint32 sector = numeric_cast<uint32>((atan2(p[0], p[1]) / angle).value + teeths + 0.5) % teeths;
+	const Vec2 q = rotate(p, sector * -angle);
+	const Real b = sdBox(q - Vec2(700, 0), Vec2(150, 70));
+	const Real c = abs(length(p) - 450) - 150;
+	const Real h = abs(pos[1]) - 30;
+	return smoothMax(min(b, c), h, 50) - 50;
+}
