@@ -21,11 +21,12 @@ namespace
 		String proto;
 
 		// requirements
-		Vec2 temperature;
-		Vec2 precipitation;
+		Vec2 temperature = Vec2(-Real::Infinity(), Real::Infinity());
+		Vec2 precipitation = Vec2(-Real::Infinity(), Real::Infinity());
 		Real probability;
 		bool ocean = false;
 		bool slope = false;
+		bool buildable = false;
 	};
 
 	Doodad loadDoodad(const String &root, const String &path)
@@ -36,11 +37,14 @@ namespace
 		d.name = pathToRel(path, root);
 		d.package = ini->getString("doodad", "package");
 		d.proto = ini->getString("doodad", "prototype");
-		d.temperature = Vec2::parse(ini->getString("requirements", "temperature", "-50, 50"));
-		d.precipitation = Vec2::parse(ini->getString("requirements", "precipitation", "0, 500"));
+		if (ini->itemExists("requirements", "temperature"))
+			d.temperature = Vec2::parse(ini->getString("requirements", "temperature"));
+		if (ini->itemExists("requirements", "precipitation"))
+			d.precipitation = Vec2::parse(ini->getString("requirements", "precipitation"));
 		d.probability = ini->getFloat("requirements", "probability", 0.15f);
 		d.ocean = ini->getBool("requirements", "ocean", false);
 		d.slope = ini->getBool("requirements", "slope", false);
+		d.buildable = ini->getBool("requirements", "buildable", false);
 		ini->checkUnused();
 		if (!(d.temperature[0] < d.temperature[1]))
 			CAGE_THROW_ERROR(Exception, "invalid temperature range");
@@ -71,6 +75,8 @@ namespace
 
 	Real factorInRange(const Vec2 &range, Real value)
 	{
+		if (range[1] - range[0] == Real::Infinity())
+			return 1;
 		const Real m = (range[0] + range[1]) * 0.5;
 		const Real d = range[1] - m;
 		const Real v = 1 - (abs(value - m) / d);
@@ -94,12 +100,14 @@ namespace
 				continue;
 			if (d.slope != (tile.type == TerrainTypeEnum::SteepSlope))
 				continue;
+			if (d.buildable && !tile.buildable)
+				continue;
 			const Real t = factorInRange(d.temperature, tile.temperature);
 			const Real p = factorInRange(d.precipitation, tile.precipitation);
 			Eligible e;
 			e.prob = d.probability * t * p;
 			CAGE_ASSERT(e.prob >= 0 && e.prob < 1);
-			if (e.prob < 1e-3)
+			if (e.prob < 1e-5)
 				continue;
 			e.doodad = &d;
 			eligible.push_back(e);
@@ -112,7 +120,7 @@ namespace
 			if (abs(a.prob - b.prob) < 1e-5)
 				return a.doodad->instances < b.doodad->instances;
 			return a.prob > b.prob;
-			});
+		});
 
 		Real probSum = 0;
 		for (const Eligible &e : eligible)

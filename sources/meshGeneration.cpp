@@ -22,7 +22,7 @@ namespace
 	constexpr float tileSize = 10;
 #endif // CAGE_DEBUG
 
-	ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize");
+	const ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize");
 
 	template<Real(*FNC)(const Vec3 &)>
 	Holder<Mesh> meshGenerateGeneric()

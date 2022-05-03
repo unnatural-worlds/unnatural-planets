@@ -233,31 +233,41 @@ bpy.ops.object.select_all(action='DESELECT')
 	struct NavmeshProcessor
 	{
 		Holder<AsyncTask> taskRef;
+		Holder<Mesh> base;
+
+		void taskNavmesh(uint32)
+		{
+			Holder<Mesh> navmesh = base->copy();
+			meshSimplifyNavmesh(navmesh);
+			CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "navmesh tiles: " + navmesh->verticesCount());
+			std::vector<Tile> tiles;
+			generateTileProperties(navmesh, tiles, pathJoin(baseDirectory, "tileStats.log"));
+			meshSaveNavigation(pathJoin(assetsDirectory, "navmesh.obj"), navmesh, tiles);
+			generateDoodads(navmesh, tiles, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
+			generateStartingPositions(navmesh, tiles, pathJoin(baseDirectory, "starts.ini"));
+		}
+
+		void taskCollider(uint32)
+		{
+			Holder<Mesh> collider = base->copy();
+			meshSimplifyCollider(collider);
+			meshSaveCollider(pathJoin(assetsDirectory, "collider.obj"), collider);
+		}
 
 		void processEntry(uint32)
 		{
-			Holder<Mesh> base = meshGenerateBaseNavigation();
+			base = meshGenerateBaseNavigation();
 			if (configDebugSaveIntermediate)
 				meshSaveDebug(pathJoin(debugDirectory, "navMeshBase.obj"), base);
-			{
-				Holder<Mesh> navmesh = base->copy();
-				meshSimplifyNavmesh(navmesh);
-				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "navmesh tiles: " + navmesh->verticesCount());
-				std::vector<Tile> tiles;
-				generateTileProperties(navmesh, tiles, pathJoin(baseDirectory, "tileStats.log"));
-				meshSaveNavigation(pathJoin(assetsDirectory, "navmesh.obj"), navmesh, tiles);
-				generateDoodads(navmesh, tiles, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
-			}
-			{
-				Holder<Mesh> collider = base->copy();
-				meshSimplifyCollider(collider);
-				meshSaveCollider(pathJoin(assetsDirectory, "collider.obj"), collider);
-			}
+			Holder<AsyncTask> tn = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskNavmesh>(this), 1, tasksCurrentPriority());
+			Holder<AsyncTask> tc = tasksRunAsync("collider", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskCollider>(this), 1, tasksCurrentPriority());
+			tn->wait();
+			tc->wait();
 		}
 
 		NavmeshProcessor()
 		{
-			taskRef = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::processEntry>(this), 1, 15);
+			taskRef = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::processEntry>(this), 1, 30);
 		}
 
 		void wait()
