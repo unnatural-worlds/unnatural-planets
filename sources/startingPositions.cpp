@@ -96,4 +96,6 @@ void generateStartingPositions(const Holder<Mesh> &navMesh, const std::vector<Ti
 		}
 		msh->exportObjFile(startsPath + "-preview.obj");
 	}
+
+	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "generated " + bestSolution.size() + " starting positions");
 }
