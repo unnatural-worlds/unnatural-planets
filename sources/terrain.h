@@ -28,8 +28,8 @@ enum class TerrainBiomeEnum : uint8
 enum class TerrainTypeEnum : uint8
 {
 	Road = 0,
-	Fast = 1,
-	Slow = 2,
+	Flat = 1,
+	Rough = 2,
 	SteepSlope = 3,
 	ShallowWater = 4,
 	DeepWater = 5,

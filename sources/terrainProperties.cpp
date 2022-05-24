@@ -221,7 +221,7 @@ namespace
 		{
 			tile.biome = TerrainBiomeEnum::Bare;
 			if (tile.type != TerrainTypeEnum::SteepSlope)
-				tile.type = TerrainTypeEnum::Slow;
+				tile.type = TerrainTypeEnum::Rough;
 		}
 	}
 
@@ -310,7 +310,7 @@ namespace
 		case TerrainBiomeEnum::Savanna:
 		case TerrainBiomeEnum::TemperateSeasonalForest:
 		case TerrainBiomeEnum::TropicalSeasonalForest:
-			tile.type = TerrainTypeEnum::Fast;
+			tile.type = TerrainTypeEnum::Flat;
 			break;
 		case TerrainBiomeEnum::Bare:
 		case TerrainBiomeEnum::Tundra:
@@ -318,7 +318,7 @@ namespace
 		case TerrainBiomeEnum::Desert:
 		case TerrainBiomeEnum::TemperateRainForest:
 		case TerrainBiomeEnum::TropicalRainForest:
-			tile.type = TerrainTypeEnum::Slow;
+			tile.type = TerrainTypeEnum::Rough;
 			break;
 		default:
 			CAGE_THROW_CRITICAL(Exception, "invalid biome enum");
@@ -929,7 +929,7 @@ namespace
 		if (bf > 0.1)
 		{
 			if (tile.type != TerrainTypeEnum::SteepSlope)
-				tile.type = TerrainTypeEnum::Slow;
+				tile.type = TerrainTypeEnum::Rough;
 		}
 	}
 

@@ -4,18 +4,18 @@ Stringizer &operator + (Stringizer &str, const TerrainBiomeEnum &other)
 {
 	switch (other)
 	{
-	case TerrainBiomeEnum::Bare: str + "Bare"; break;
-	case TerrainBiomeEnum::Tundra: str + "Tundra"; break;
-	case TerrainBiomeEnum::Taiga: str + "Taiga"; break;
-	case TerrainBiomeEnum::Shrubland: str + "Shrubland"; break;
-	case TerrainBiomeEnum::Grassland: str + "Grassland"; break;
-	case TerrainBiomeEnum::TemperateSeasonalForest: str + "TemperateSeasonalForest"; break;
-	case TerrainBiomeEnum::TemperateRainForest: str + "TemperateRainForest"; break;
-	case TerrainBiomeEnum::Desert: str + "Desert"; break;
-	case TerrainBiomeEnum::Savanna: str + "Savanna"; break;
-	case TerrainBiomeEnum::TropicalSeasonalForest: str + "TropicalSeasonalForest"; break;
-	case TerrainBiomeEnum::TropicalRainForest: str + "TropicalRainForest"; break;
-	case TerrainBiomeEnum::Water: str + "Water"; break;
+	case TerrainBiomeEnum::Bare: str + "bare"; break;
+	case TerrainBiomeEnum::Tundra: str + "tundra"; break;
+	case TerrainBiomeEnum::Taiga: str + "taiga"; break;
+	case TerrainBiomeEnum::Shrubland: str + "shrubland"; break;
+	case TerrainBiomeEnum::Grassland: str + "grassland"; break;
+	case TerrainBiomeEnum::TemperateSeasonalForest: str + "temperate seasonal forest"; break;
+	case TerrainBiomeEnum::TemperateRainForest: str + "temperate rain forest"; break;
+	case TerrainBiomeEnum::Desert: str + "desert"; break;
+	case TerrainBiomeEnum::Savanna: str + "savanna"; break;
+	case TerrainBiomeEnum::TropicalSeasonalForest: str + "tropical seasonal forest"; break;
+	case TerrainBiomeEnum::TropicalRainForest: str + "tropical rain forest"; break;
+	case TerrainBiomeEnum::Water: str + "water"; break;
 	default: str + "<unknown>"; break;
 	}
 	return str;
@@ -25,12 +25,12 @@ Stringizer &operator + (Stringizer &str, const TerrainTypeEnum &other)
 {
 	switch (other)
 	{
-	case TerrainTypeEnum::Road: str + "Road"; break;
-	case TerrainTypeEnum::Slow: str + "Slow"; break;
-	case TerrainTypeEnum::Fast: str + "Fast"; break;
-	case TerrainTypeEnum::SteepSlope: str + "SteepSlope"; break;
-	case TerrainTypeEnum::ShallowWater: str + "ShallowWater"; break;
-	case TerrainTypeEnum::DeepWater: str + "DeepWater"; break;
+	case TerrainTypeEnum::Road: str + "road"; break;
+	case TerrainTypeEnum::Flat: str + "flat"; break;
+	case TerrainTypeEnum::Rough: str + "rough"; break;
+	case TerrainTypeEnum::SteepSlope: str + "steep slope"; break;
+	case TerrainTypeEnum::ShallowWater: str + "shallow water"; break;
+	case TerrainTypeEnum::DeepWater: str + "deep water"; break;
 	default: str + "<unknown>"; break;
 	}
 	return str;
