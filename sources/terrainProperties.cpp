@@ -621,6 +621,7 @@ namespace
 		tile.height = interpolate(tile.height, height, bf);
 	}
 
+	template<bool Waterlily>
 	void generateFlowers(Tile &tile)
 	{
 		static const Holder<Voronoi> clusterVoronoi = []() {
@@ -664,10 +665,13 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		if (tile.biome == TerrainBiomeEnum::Water)
+		if ((tile.biome == TerrainBiomeEnum::Water) != Waterlily)
 			return;
 
-		if (rangeMask(abs(tile.temperature - 18), 12, 7) * rangeMask(abs(tile.precipitation - 200), 100, 70) < 1e-5)
+		if (rangeMask(abs(tile.temperature - 18), 12, 7) < 1e-5)
+			return;
+
+		if (!Waterlily && rangeMask(abs(tile.precipitation - 200), 100, 70) < 1e-5)
 			return;
 
 		const Vec3 center = centerVoronoi->evaluate(tile.position, tile.normal).points[0];
@@ -685,7 +689,7 @@ namespace
 		if (bf < 1e-7)
 			return;
 
-		Vec3 color = colorNoise->evaluate(cluster) < 0.1 ? Vec3(1, 0, 0.7) : Vec3(1, 0.8, 0);
+		Vec3 color = Waterlily ? Vec3(0.1, 0.7, 0) : colorNoise->evaluate(cluster) < 0.1 ? Vec3(1, 0, 0.7) : Vec3(1, 0.8, 0);
 		color = colorHueShift(color, hue1Noise->evaluate(tile.position) * 0.1 + hue2Noise->evaluate(tile.position) * 0.1);
 		Real roughness = 0.5;
 		Real metallic = 0;
@@ -947,7 +951,7 @@ namespace
 		generateDirt(tile);
 		generateSand(tile);
 		generateGrass(tile);
-		generateFlowers(tile);
+		generateFlowers<false>(tile);
 		generateBoulders(tile);
 		generateTreeStumps(tile);
 		generateMoss(tile);
@@ -978,6 +982,7 @@ void terrainTileWater(Tile &tile)
 	tile.elevation = terrainSdfElevationRaw(tile.position);
 	generateTemperature(tile);
 	generateWater(tile);
+	generateFlowers<true>(tile);
 	generateIce(tile);
 	generateFinalization(tile);
 }
