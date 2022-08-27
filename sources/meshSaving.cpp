@@ -9,8 +9,8 @@ void meshSaveDebug(const String &path, const Holder<Mesh> &mesh)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "saving debug mesh: " + path);
 
-	MeshExportObjConfig cfg;
-	cfg.objectName = pathExtractFilenameNoExtension(path);
+	MeshExportGltfConfig cfg;
+	cfg.name = pathExtractFilenameNoExtension(path);
 	cfg.mesh = +mesh;
 	meshExportFiles(path, cfg);
 }
@@ -21,38 +21,13 @@ void meshSaveRender(const String &path, const Holder<Mesh> &mesh, bool transpare
 
 	CAGE_ASSERT(mesh->normals().size() == mesh->verticesCount());
 	CAGE_ASSERT(mesh->uvs().size() == mesh->verticesCount());
-	MeshExportObjConfig cfg;
-	cfg.objectName = pathExtractFilenameNoExtension(path);
-	cfg.materialLibraryName = cfg.objectName + ".mtl";
-	cfg.materialName = cfg.objectName;
+	MeshExportGltfConfig cfg;
+	cfg.name = pathExtractFilenameNoExtension(path);
 	cfg.mesh = +mesh;
+	cfg.albedo.filename = Stringizer() + cfg.name + "-albedo.png";
+	cfg.pbr.filename = Stringizer() + cfg.name + "-pbr.png";
+	cfg.normal.filename = Stringizer() + cfg.name + "-normal.png";
 	meshExportFiles(path, cfg);
-
-	const String directory = pathExtractDirectory(path);
-	const String cpmName = cfg.objectName + ".cpm";
-
-	{ // write mtl file with link to albedo texture
-		Holder<File> f = writeFile(pathJoin(directory, cfg.materialLibraryName));
-		f->writeLine(Stringizer() + "newmtl " + cfg.materialName);
-		f->writeLine(Stringizer() + "map_Kd " + cfg.objectName + "-albedo.png");
-		
-		if (transparency)
-			f->writeLine(Stringizer() + "map_d " + cfg.objectName + "-albedo.png");
-	}
-
-	{ // write cpm material file
-		Holder<File> f = newFile(pathJoin(directory, cpmName), FileMode(false, true));
-		f->writeLine("[textures]");
-		f->writeLine(Stringizer() + "albedo = " + cfg.objectName + "-albedo.png");
-		f->writeLine(Stringizer() + "special = " + cfg.objectName + "-special.png");
-		f->writeLine(Stringizer() + "normal = " + cfg.objectName + "-height.png");
-		if (transparency)
-		{
-			f->writeLine("[flags]");
-			//f->writeLine("noShadowCast");
-			f->writeLine("translucent");
-		}
-	}
 }
 
 void meshSaveNavigation(const String &path, const Holder<Mesh> &mesh, const std::vector<Tile> &tiles)
@@ -71,8 +46,8 @@ void meshSaveNavigation(const String &path, const Holder<Mesh> &mesh, const std:
 	}
 	m->uvs(uvs);
 
-	MeshExportObjConfig cfg;
-	cfg.objectName = "navigation";
+	MeshExportGltfConfig cfg;
+	cfg.name = "navigation";
 	cfg.mesh = +m;
 	meshExportFiles(path, cfg);
 }
@@ -84,8 +59,8 @@ void meshSaveCollider(const String &path, const Holder<Mesh> &mesh)
 	Holder<Mesh> m = mesh->copy();
 	m->normals({});
 	m->uvs({});
-	MeshExportObjConfig cfg;
-	cfg.objectName = "collider";
+	MeshExportGltfConfig cfg;
+	cfg.name = "collider";
 	cfg.mesh = +m;
 	meshExportFiles(path, cfg);
 }

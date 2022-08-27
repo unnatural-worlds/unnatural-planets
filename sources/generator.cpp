@@ -68,8 +68,7 @@ namespace
 	struct Chunk
 	{
 		String mesh;
-		String material;
-		String albedo, special, heightmap;
+		String albedo, pbr, normal;
 		bool transparency = false;
 	};
 	std::vector<Chunk> chunks;
@@ -99,8 +98,8 @@ namespace
 			f->writeLine("unnatural-planets procedural generator https://github.com/unnatural-worlds/unnatural-planets");
 			f->writeLine("[assets]");
 			f->writeLine("pack = planet.pack");
-			f->writeLine("navigation = navmesh.obj");
-			f->writeLine("collider = collider.obj");
+			f->writeLine("navigation = navmesh.glb");
+			f->writeLine("collider = collider.glb");
 			f->writeLine("[packages]");
 			f->writeLine("unnatural/base/base.pack");
 			for (const String &s : assetPackages)
@@ -140,30 +139,27 @@ namespace
 					f->writeLine(c.albedo);
 			f->writeLine("[]");
 			f->writeLine("scheme = texture");
+			f->writeLine("convert = gltfToSpecial");
 			for (const Chunk &c : chunks)
-				if (!c.special.empty())
-					f->writeLine(c.special);
+				if (!c.pbr.empty())
+					f->writeLine(c.pbr);
 			f->writeLine("[]");
 			f->writeLine("scheme = texture");
-			f->writeLine("convert = heightToNormal");
 			f->writeLine("normal = true");
 			for (const Chunk &c : chunks)
-				if (!c.heightmap.empty())
-					f->writeLine(c.heightmap);
-			for (const Chunk &c : chunks)
-			{
-				f->writeLine("[]");
-				f->writeLine("scheme = model");
-				f->writeLine("tangents = true");
-				f->writeLine(Stringizer() + "material = " + c.material);
-				f->writeLine(c.mesh);
-			}
+				if (!c.normal.empty())
+					f->writeLine(c.normal);
 			f->writeLine("[]");
 			f->writeLine("scheme = model");
-			f->writeLine("navmesh.obj");
+			f->writeLine("tangents = true");
+			for (const Chunk &c : chunks)
+				f->writeLine(c.mesh);
+			f->writeLine("[]");
+			f->writeLine("scheme = model");
+			f->writeLine("navmesh.glb");
 			f->writeLine("[]");
 			f->writeLine("scheme = collider");
-			f->writeLine("collider.obj");
+			f->writeLine("collider.glb");
 			f->writeLine("[]");
 			f->writeLine("scheme = object");
 			f->writeLine("planet.object");
@@ -179,43 +175,12 @@ namespace
 import os
 import bpy
 
-def loadChunk(meshname, objname, albedoname, specialname, heightname, transparency):
-	bpy.ops.import_scene.obj(filepath = meshname)
-	bpy.ops.image.open(filepath = os.getcwd() + '/' + albedoname)
-	bpy.ops.image.open(filepath = os.getcwd() + '/' + specialname)
-	bpy.ops.image.open(filepath = os.getcwd() + '/' + heightname)
-	mat = bpy.data.materials[objname]
-	nodes = mat.node_tree.nodes
-	links = mat.node_tree.links
-	shader = nodes[0]
-	shader.inputs['Specular'].default_value = 0.1
-	albedoMap = nodes.new('ShaderNodeTexImage')
-	albedoMap.image = bpy.data.images[albedoname]
-	links.new(albedoMap.outputs['Color'], shader.inputs['Base Color'])
-	if transparency:
-		links.new(albedoMap.outputs['Alpha'], shader.inputs['Alpha'])
-		mat.blend_method = 'BLEND'
-	specialMap = nodes.new('ShaderNodeTexImage')
-	specialMap.image = bpy.data.images[specialname]
-	specialMap.image.colorspace_settings.name = 'Non-Color'
-	links.new(specialMap.outputs['Color'], shader.inputs['Roughness'])
-	links.new(specialMap.outputs['Alpha'], shader.inputs['Metallic'])
-	heightMap = nodes.new('ShaderNodeTexImage')
-	heightMap.image = bpy.data.images[heightname]
-	heightMap.image.colorspace_settings.name = 'Non-Color'
-	bump = nodes.new('ShaderNodeBump')
-	bump.inputs['Strength'].default_value = 2
-	bump.inputs['Distance'].default_value = 5
-	links.new(heightMap.outputs['Color'], bump.inputs['Height'])
-	links.new(bump.outputs['Normal'], shader.inputs['Normal'])
-	bpy.data.objects[objname].material_slots[0].material = mat
+def loadChunk(meshname):
+	bpy.ops.import_scene.gltf(filepath = meshname)
 
 )Python");
 			for (const Chunk &c : chunks)
-			{
-				f->writeLine(Stringizer() + "loadChunk('" + c.mesh + "', '" + replace(c.mesh, ".obj", "") + "', '"
-					+ c.albedo + "', '" + c.special + "', '" + c.heightmap + "', " + (c.transparency ? "True" : "False") + ")");
-			}
+				f->writeLine(Stringizer() + "loadChunk('" + c.mesh + "')");
 			f->write(R"Python(
 for a in bpy.data.window_managers[0].windows[0].screen.areas:
 	if a.type == 'VIEW_3D':
@@ -242,7 +207,7 @@ bpy.ops.object.select_all(action='DESELECT')
 			CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "navmesh tiles: " + navmesh->verticesCount());
 			std::vector<Tile> tiles;
 			generateTileProperties(navmesh, tiles, pathJoin(baseDirectory, "tileStats.log"));
-			meshSaveNavigation(pathJoin(assetsDirectory, "navmesh.obj"), navmesh, tiles);
+			meshSaveNavigation(pathJoin(assetsDirectory, "navmesh.glb"), navmesh, tiles);
 			generateDoodads(navmesh, tiles, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
 			generateStartingPositions(navmesh, tiles, pathJoin(baseDirectory, "starts.ini"));
 		}
@@ -251,14 +216,14 @@ bpy.ops.object.select_all(action='DESELECT')
 		{
 			Holder<Mesh> collider = base->copy();
 			meshSimplifyCollider(collider);
-			meshSaveCollider(pathJoin(assetsDirectory, "collider.obj"), collider);
+			meshSaveCollider(pathJoin(assetsDirectory, "collider.glb"), collider);
 		}
 
 		void processEntry(uint32)
 		{
 			base = meshGenerateBaseNavigation();
 			if (configDebugSaveIntermediate)
-				meshSaveDebug(pathJoin(debugDirectory, "navMeshBase.obj"), base);
+				meshSaveDebug(pathJoin(debugDirectory, "navMeshBase.glb"), base);
 			Holder<AsyncTask> tn = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskNavmesh>(this), 1, tasksCurrentPriority());
 			Holder<AsyncTask> tc = tasksRunAsync("collider", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskCollider>(this), 1, tasksCurrentPriority());
 			tn->wait();
@@ -285,19 +250,20 @@ bpy.ops.object.select_all(action='DESELECT')
 		void chunkEntry(uint32 index)
 		{
 			Chunk c;
-			c.mesh = Stringizer() + "land-" + index + ".obj";
-			c.material = Stringizer() + "land-" + index + ".cpm";
+			c.mesh = Stringizer() + "land-" + index + ".glb";
 			c.albedo = Stringizer() + "land-" + index + "-albedo.png";
-			c.special = Stringizer() + "land-" + index + "-special.png";
-			c.heightmap = Stringizer() + "land-" + index + "-height.png";
+			c.pbr = Stringizer() + "land-" + index + "-pbr.png";
+			c.normal = Stringizer() + "land-" + index + "-normal.png";
 			const auto &msh = split[index];
 			const uint32 resolution = meshUnwrap(msh);
 			meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh, c.transparency);
 			Holder<Image> albedo, special, heightMap;
 			generateTexturesLand(msh, resolution, resolution, albedo, special, heightMap);
 			albedo->exportFile(pathJoin(assetsDirectory, c.albedo));
-			special->exportFile(pathJoin(assetsDirectory, c.special));
-			heightMap->exportFile(pathJoin(assetsDirectory, c.heightmap));
+			imageConvertSpecialToGltfPbr(+special);
+			special->exportFile(pathJoin(assetsDirectory, c.pbr));
+			imageConvertHeigthToNormal(+heightMap, 1);
+			heightMap->exportFile(pathJoin(assetsDirectory, c.normal));
 			{
 				ScopeLock lock(chunksMutex);
 				chunks.push_back(c);
@@ -309,10 +275,10 @@ bpy.ops.object.select_all(action='DESELECT')
 			{
 				Holder<Mesh> mesh = meshGenerateBaseLand();
 				if (configDebugSaveIntermediate)
-					meshSaveDebug(pathJoin(debugDirectory, "landMeshBase.obj"), mesh);
+					meshSaveDebug(pathJoin(debugDirectory, "landMeshBase.glb"), mesh);
 				meshSimplifyRender(mesh);
 				if (configDebugSaveIntermediate)
-					meshSaveDebug(pathJoin(debugDirectory, "landMeshSimplified.obj"), mesh);
+					meshSaveDebug(pathJoin(debugDirectory, "landMeshSimplified.glb"), mesh);
 				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "land mesh split into " + split.size() + " chunks");
 			}
@@ -339,11 +305,10 @@ bpy.ops.object.select_all(action='DESELECT')
 		void chunkEntry(uint32 index)
 		{
 			Chunk c;
-			c.mesh = Stringizer() + "water-" + index + ".obj";
-			c.material = Stringizer() + "water-" + index + ".cpm";
+			c.mesh = Stringizer() + "water-" + index + ".glb";
 			c.albedo = Stringizer() + "water-" + index + "-albedo.png";
-			c.special = Stringizer() + "water-" + index + "-special.png";
-			c.heightmap = Stringizer() + "water-" + index + "-height.png";
+			c.pbr = Stringizer() + "water-" + index + "-pbr.png";
+			c.normal = Stringizer() + "water-" + index + "-normal.png";
 			c.transparency = true;
 			const auto &msh = split[index];
 			const uint32 resolution = meshUnwrap(msh);
@@ -351,8 +316,10 @@ bpy.ops.object.select_all(action='DESELECT')
 			Holder<Image> albedo, special, heightMap;
 			generateTexturesWater(msh, resolution, resolution, albedo, special, heightMap);
 			albedo->exportFile(pathJoin(assetsDirectory, c.albedo));
-			special->exportFile(pathJoin(assetsDirectory, c.special));
-			heightMap->exportFile(pathJoin(assetsDirectory, c.heightmap));
+			imageConvertSpecialToGltfPbr(+special);
+			special->exportFile(pathJoin(assetsDirectory, c.pbr));
+			imageConvertHeigthToNormal(+heightMap, 1);
+			heightMap->exportFile(pathJoin(assetsDirectory, c.normal));
 			{
 				ScopeLock lock(chunksMutex);
 				chunks.push_back(c);
@@ -369,10 +336,10 @@ bpy.ops.object.select_all(action='DESELECT')
 					return;
 				}
 				if (configDebugSaveIntermediate)
-					meshSaveDebug(pathJoin(debugDirectory, "waterMeshBase.obj"), mesh);
+					meshSaveDebug(pathJoin(debugDirectory, "waterMeshBase.glb"), mesh);
 				meshSimplifyRender(mesh);
 				if (configDebugSaveIntermediate)
-					meshSaveDebug(pathJoin(debugDirectory, "waterMeshSimplified.obj"), mesh);
+					meshSaveDebug(pathJoin(debugDirectory, "waterMeshSimplified.glb"), mesh);
 				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "water mesh split into " + split.size() + " chunks");
 			}
