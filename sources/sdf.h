@@ -25,5 +25,6 @@ Real sdfH2O(const Vec3 &pos);
 Real sdfH3O(const Vec3 &pos);
 Real sdfH4O(const Vec3 &pos);
 Real sdfGear(const Vec3 &pos);
+Real sdfMandelbulb(const Vec3 &pos);
 
 #endif

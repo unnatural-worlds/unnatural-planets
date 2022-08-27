@@ -80,7 +80,7 @@ Real sdfTorus(const Vec3 &pos)
 
 Real sdfKnot(const Vec3 &pos)
 {
-	constexpr Vec3 scale = Vec3(1, 1, 0.3);
+	static constexpr Vec3 scale = Vec3(1, 1, 0.3);
 	return sdfKnot(pos * scale, 1600, 1.5) / length(scale);
 }
 
@@ -121,7 +121,7 @@ Real sdfFibers(const Vec3 &pos)
 		return abs(dot(a, b) + bias) / scale - thickness;
 	};
 
-	constexpr Real scale = 0.0007;
+	static constexpr Real scale = 0.0007;
 	static const Vec3 offset = randomRange3(-100, 100);
 	const Vec3 p = pos * scale + offset;
 	const Real g = sdGyroid(p, 3.23, 0.2, 1.6);
@@ -132,7 +132,7 @@ Real sdfFibers(const Vec3 &pos)
 
 Real sdfH2O(const Vec3 &pos_)
 {
-	constexpr Real scale = 0.75;
+	static constexpr Real scale = 0.75;
 	const Vec3 pos = pos_ * scale;
 	const Real h1 = sdfSphere(pos - Vec3(-550, 300, 0), 450);
 	const Real h2 = sdfSphere(pos - Vec3(+550, 300, 0), 450);
@@ -142,7 +142,7 @@ Real sdfH2O(const Vec3 &pos_)
 
 Real sdfH3O(const Vec3 &pos_)
 {
-	constexpr Real scale = 0.75;
+	static constexpr Real scale = 0.75;
 	const Vec3 pos = pos_ * scale;
 	const Real hs[] = {
 		sdfSphere(pos - Quat({}, {}, Degs(  0)) * Vec3(680, 0, 0), 450),
@@ -156,7 +156,7 @@ Real sdfH3O(const Vec3 &pos_)
 
 Real sdfH4O(const Vec3 &pos_)
 {
-	constexpr Real scale = 0.75;
+	static constexpr Real scale = 0.75;
 	const Vec3 pos = pos_ * scale;
 	const Real hs[] = {
 		sdfSphere(pos - Vec3(-550, +400, 0), 450),
@@ -184,7 +184,7 @@ Real sdfGear(const Vec3 &pos)
 	};
 
 	const Vec2 p = Vec2(pos[0], pos[2]);
-	constexpr uint32 teeths = 9;
+	static constexpr uint32 teeths = 9;
 	const Rads angle = Rads::Full() / teeths;
 	const uint32 sector = numeric_cast<uint32>((atan2(p[0], p[1]) / angle).value + teeths + 0.5) % teeths;
 	const Vec2 q = rotate(p, sector * -angle);
@@ -192,4 +192,33 @@ Real sdfGear(const Vec3 &pos)
 	const Real c = abs(length(p) - 450) - 150;
 	const Real h = abs(pos[1]) - 30;
 	return smoothMax(min(b, c), h, 50) - 50;
+}
+
+Real sdfMandelbulb(const Vec3 &pos_)
+{
+	if (lengthSquared(pos_) < 1e-3)
+		return 0;
+	const Vec3 pos = pos_ * 0.0004;
+	// taken from https://www.shadertoy.com/view/wstcDN and modified
+	static constexpr Real Power = 3.0;
+	Vec3 z = pos;
+	Real dr = 1.0;
+	Real r = 0.0;
+	for (uint32 i = 0; i < 20; i++) {
+		r = length(z);
+		if (r > 4.0)
+			break;
+		Rads theta = acos(z[2] / r);
+		Rads phi = atan2(z[1], z[0]);
+		dr = pow(r, Power - 1.0) * Power * dr + 1.0;
+		Real zr = pow(r, Power);
+		theta = theta * Power;
+		phi = phi * Power;
+		z = zr * Vec3(sin(theta) * cos(phi), sin(phi) * sin(theta), cos(theta));
+		z += pos;
+	}
+	const Real value = 0.5 * log(r) * r / dr;
+	//if (randomChance() < 0.0001)
+	//	CAGE_LOG(SeverityEnum::Info, "sdf", Stringizer() + value);
+	return (value + 0.1) * 150;
 }

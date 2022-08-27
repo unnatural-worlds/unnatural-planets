@@ -94,7 +94,7 @@ void generateStartingPositions(const Holder<Mesh> &navMesh, const std::vector<Ti
 			const Vec3 a = tiles[p].position;
 			msh->addLine(makeSegment(a, a + tiles[p].normal * 100));
 		}
-		msh->exportObjFile(startsPath + "-preview.obj");
+		msh->exportFile(startsPath + "-preview.obj");
 	}
 
 	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "generated " + bestSolution.size() + " starting positions");

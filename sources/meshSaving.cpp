@@ -1,5 +1,6 @@
 #include <cage-core/files.h>
 #include <cage-core/mesh.h>
+#include <cage-core/meshExport.h>
 
 #include "terrain.h"
 #include "mesh.h"
@@ -10,7 +11,8 @@ void meshSaveDebug(const String &path, const Holder<Mesh> &mesh)
 
 	MeshExportObjConfig cfg;
 	cfg.objectName = pathExtractFilenameNoExtension(path);
-	mesh->exportObjFile(path, cfg);
+	cfg.mesh = +mesh;
+	meshExportFiles(path, cfg);
 }
 
 void meshSaveRender(const String &path, const Holder<Mesh> &mesh, bool transparency)
@@ -23,7 +25,8 @@ void meshSaveRender(const String &path, const Holder<Mesh> &mesh, bool transpare
 	cfg.objectName = pathExtractFilenameNoExtension(path);
 	cfg.materialLibraryName = cfg.objectName + ".mtl";
 	cfg.materialName = cfg.objectName;
-	mesh->exportObjFile(path, cfg);
+	cfg.mesh = +mesh;
+	meshExportFiles(path, cfg);
 
 	const String directory = pathExtractDirectory(path);
 	const String cpmName = cfg.objectName + ".cpm";
@@ -70,7 +73,8 @@ void meshSaveNavigation(const String &path, const Holder<Mesh> &mesh, const std:
 
 	MeshExportObjConfig cfg;
 	cfg.objectName = "navigation";
-	m->exportObjFile(path, cfg);
+	cfg.mesh = +m;
+	meshExportFiles(path, cfg);
 }
 
 void meshSaveCollider(const String &path, const Holder<Mesh> &mesh)
@@ -82,5 +86,6 @@ void meshSaveCollider(const String &path, const Holder<Mesh> &mesh)
 	m->uvs({});
 	MeshExportObjConfig cfg;
 	cfg.objectName = "collider";
-	m->exportObjFile(path, cfg);
+	cfg.mesh = +m;
+	meshExportFiles(path, cfg);
 }

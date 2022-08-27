@@ -75,10 +75,6 @@ namespace
 			imageConvert(+albedo, ImageFormatEnum::U8);
 			imageConvert(+special, ImageFormatEnum::U8);
 			imageConvert(+heightMap, ImageFormatEnum::U8);
-
-			imageVerticalFlip(+albedo);
-			imageVerticalFlip(+special);
-			imageVerticalFlip(+heightMap);
 		}
 	};
 }
