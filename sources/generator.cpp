@@ -65,11 +65,28 @@ namespace
 	ConfigBool configDebugSaveIntermediate("unnatural-planets/debug/saveIntermediate");
 	ConfigBool configPreviewEnable("unnatural-planets/preview/enable");
 	std::vector<String> assetPackages;
+
 	struct Chunk
 	{
 		String mesh;
 		String albedo, pbr, normal;
 		bool transparency = false;
+
+		void makeCpm() const
+		{
+			Holder<File> f = writeFile(pathJoin(assetsDirectory, mesh + "_" + pathExtractFilenameNoExtension(mesh) + ".cpm"));
+			f->writeLine("[textures]");
+			if (!albedo.empty())
+				f->writeLine(Stringizer() + "albedo = " + albedo);
+			if (!pbr.empty())
+				f->writeLine(Stringizer() + "special = " + pbr);
+			if (!normal.empty())
+				f->writeLine(Stringizer() + "normal = " + normal);
+			f->writeLine("[flags]");
+			if (transparency)
+				f->writeLine("translucent");
+			f->close();
+		}
 	};
 	std::vector<Chunk> chunks;
 	Holder<Mutex> chunksMutex = newMutex();
@@ -98,7 +115,7 @@ namespace
 			f->writeLine("unnatural-planets procedural generator https://github.com/unnatural-worlds/unnatural-planets");
 			f->writeLine("[assets]");
 			f->writeLine("pack = planet.pack");
-			f->writeLine("navigation = navmesh.glb");
+			f->writeLine("navigation = navmesh.obj");
 			f->writeLine("collider = collider.glb");
 			f->writeLine("[packages]");
 			f->writeLine("unnatural/base/base.pack");
@@ -156,7 +173,7 @@ namespace
 				f->writeLine(c.mesh);
 			f->writeLine("[]");
 			f->writeLine("scheme = model");
-			f->writeLine("navmesh.glb");
+			f->writeLine("navmesh.obj");
 			f->writeLine("[]");
 			f->writeLine("scheme = collider");
 			f->writeLine("collider.glb");
@@ -207,7 +224,7 @@ bpy.ops.object.select_all(action='DESELECT')
 			CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "navmesh tiles: " + navmesh->verticesCount());
 			std::vector<Tile> tiles;
 			generateTileProperties(navmesh, tiles, pathJoin(baseDirectory, "tileStats.log"));
-			meshSaveNavigation(pathJoin(assetsDirectory, "navmesh.glb"), navmesh, tiles);
+			meshSaveNavigation(pathJoin(assetsDirectory, "navmesh.obj"), navmesh, tiles);
 			generateDoodads(navmesh, tiles, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
 			generateStartingPositions(navmesh, tiles, pathJoin(baseDirectory, "starts.ini"));
 		}
@@ -224,8 +241,8 @@ bpy.ops.object.select_all(action='DESELECT')
 			base = meshGenerateBaseNavigation();
 			if (configDebugSaveIntermediate)
 				meshSaveDebug(pathJoin(debugDirectory, "navMeshBase.glb"), base);
-			Holder<AsyncTask> tn = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskNavmesh>(this), 1, tasksCurrentPriority());
-			Holder<AsyncTask> tc = tasksRunAsync("collider", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskCollider>(this), 1, tasksCurrentPriority());
+			Holder<AsyncTask> tn = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskNavmesh>(this), 1);
+			Holder<AsyncTask> tc = tasksRunAsync("collider", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskCollider>(this), 1);
 			tn->wait();
 			tc->wait();
 		}
@@ -264,6 +281,7 @@ bpy.ops.object.select_all(action='DESELECT')
 			special->exportFile(pathJoin(assetsDirectory, c.pbr));
 			imageConvertHeigthToNormal(+heightMap, 1);
 			heightMap->exportFile(pathJoin(assetsDirectory, c.normal));
+			c.makeCpm();
 			{
 				ScopeLock lock(chunksMutex);
 				chunks.push_back(c);
@@ -282,7 +300,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "land mesh split into " + split.size() + " chunks");
 			}
-			tasksRunBlocking("land chunk", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()), tasksCurrentPriority());
+			tasksRunBlocking("land chunk", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 		}
 
 		LandProcessor()
@@ -320,6 +338,7 @@ bpy.ops.object.select_all(action='DESELECT')
 			special->exportFile(pathJoin(assetsDirectory, c.pbr));
 			imageConvertHeigthToNormal(+heightMap, 1);
 			heightMap->exportFile(pathJoin(assetsDirectory, c.normal));
+			c.makeCpm();
 			{
 				ScopeLock lock(chunksMutex);
 				chunks.push_back(c);
@@ -343,7 +362,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				split = meshSplit(mesh);
 				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "water mesh split into " + split.size() + " chunks");
 			}
-			tasksRunBlocking("water chunk", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()), tasksCurrentPriority());
+			tasksRunBlocking("water chunk", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 		}
 
 		WaterProcessor()

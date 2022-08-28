@@ -46,8 +46,8 @@ void meshSaveNavigation(const String &path, const Holder<Mesh> &mesh, const std:
 	}
 	m->uvs(uvs);
 
-	MeshExportGltfConfig cfg;
-	cfg.name = "navigation";
+	MeshExportObjConfig cfg;
+	cfg.objectName = "navigation";
 	cfg.mesh = +m;
 	meshExportFiles(path, cfg);
 }
