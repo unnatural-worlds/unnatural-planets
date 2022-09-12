@@ -5,6 +5,12 @@
 
 #include <vector>
 
+namespace cage
+{
+	class Mesh;
+	class Image;
+}
+
 using namespace cage;
 
 struct Tile;
