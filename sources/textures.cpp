@@ -1,5 +1,5 @@
-#include <cage-core/image.h>
-#include <cage-core/mesh.h>
+#include <cage-core/imageAlgorithms.h>
+#include <cage-core/meshAlgorithms.h>
 
 #include "terrain.h"
 #include "generator.h"

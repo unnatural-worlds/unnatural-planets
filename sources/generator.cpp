@@ -3,8 +3,8 @@
 #include <cage-core/files.h>
 #include <cage-core/config.h>
 #include <cage-core/random.h>
-#include <cage-core/image.h>
-#include <cage-core/mesh.h>
+#include <cage-core/imageAlgorithms.h>
+#include <cage-core/meshAlgorithms.h>
 #include <cage-core/process.h>
 #include <cage-core/debug.h>
 #include <cage-core/string.h>

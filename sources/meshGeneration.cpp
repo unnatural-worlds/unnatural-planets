@@ -1,6 +1,6 @@
 #include <cage-core/geometry.h>
 #include <cage-core/config.h>
-#include <cage-core/mesh.h>
+#include <cage-core/meshAlgorithms.h>
 #include <cage-core/marchingCubes.h>
 #include <unnatural-navmesh/navmesh.h>
 
@@ -33,7 +33,7 @@ namespace
 		Holder<MarchingCubes> cubes = newMarchingCubes(cfg);
 		cubes->updateByPosition(Delegate<Real(const Vec3 &)>().bind<FNC>());
 		Holder<Mesh> poly = cubes->makeMesh();
-		meshDiscardDisconnected(+poly);
+		meshRemoveDisconnected(+poly);
 		meshFlipNormals(+poly);
 		return poly;
 	}
@@ -85,7 +85,7 @@ Holder<Mesh> meshGenerateBaseWater()
 					p = Vec3::Nan();
 		}
 
-		meshDiscardInvalid(+poly);
+		meshRemoveInvalid(+poly);
 	}
 
 	return poly;
