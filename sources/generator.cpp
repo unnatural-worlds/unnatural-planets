@@ -84,7 +84,7 @@ namespace
 				f->writeLine(Stringizer() + "normal = " + normal);
 			f->writeLine("[flags]");
 			if (transparency)
-				f->writeLine("translucent");
+				f->writeLine("transparent");
 			f->close();
 		}
 	};
