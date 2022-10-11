@@ -61,7 +61,9 @@ namespace
 	const String baseDirectory = findTmpDirectory();
 	const String assetsDirectory = pathJoin(baseDirectory, "data");
 	const String debugDirectory = pathJoin(baseDirectory, "intermediate");
-	ConfigString configShapeMode("unnatural-planets/shape/mode");
+	const ConfigString configShapeMode("unnatural-planets/shape/mode");
+	const ConfigString configElevationMode("unnatural-planets/elevation/mode");
+	const ConfigBool configPolesEnable("unnatural-planets/poles/enable");
 	ConfigBool configDebugSaveIntermediate("unnatural-planets/debug/saveIntermediate");
 	ConfigBool configPreviewEnable("unnatural-planets/preview/enable");
 	std::vector<String> assetPackages;
@@ -101,7 +103,9 @@ namespace
 			f->writeLine(Stringizer() + "name = " + planetName);
 			f->writeLine("version = 0");
 			f->writeLine("[description]");
-			f->writeLine(configShapeMode);
+			f->writeLine(Stringizer() + "shape: " + (String)configShapeMode);
+			f->writeLine(Stringizer() + "elevations: " + (String)configElevationMode);
+			f->writeLine(Stringizer() + "poles: " + (bool)configPolesEnable);
 			{
 				const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 				char buffer[50];
