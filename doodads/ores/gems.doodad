@@ -1,7 +1,0 @@
-[doodad]
-package = unnatural/base/ores/ores.pack
-prototype = unnatural/base/ores/gems.proto
-
-[requirements]
-buildable = true
-probability = 0.0001

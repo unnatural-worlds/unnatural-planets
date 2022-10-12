@@ -4,4 +4,4 @@ prototype = unnatural/base/ores/iron.proto
 
 [requirements]
 buildable = true
-probability = 0.0005
+probability = 0.002
