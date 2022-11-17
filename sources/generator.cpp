@@ -102,6 +102,7 @@ namespace
 			f->writeLine("[map]");
 			f->writeLine(Stringizer() + "name = " + planetName);
 			f->writeLine("version = 0");
+
 			f->writeLine("[description]");
 			f->writeLine(Stringizer() + "shape: " + (String)configShapeMode);
 			f->writeLine(Stringizer() + "elevations: " + (String)configElevationMode);
@@ -115,16 +116,27 @@ namespace
 #ifdef CAGE_DEBUG
 			f->writeLine("generated with DEBUG build");
 #endif // CAGE_DEBUG
+
 			f->writeLine("[authors]");
 			f->writeLine("unnatural-planets procedural generator https://github.com/unnatural-worlds/unnatural-planets");
+
 			f->writeLine("[assets]");
 			f->writeLine("pack = planet.pack");
 			f->writeLine("navigation = navmesh.obj");
 			f->writeLine("collider = collider.glb");
+
 			f->writeLine("[packages]");
 			f->writeLine("unnatural/base/base.pack");
 			for (const String &s : assetPackages)
 				f->writeLine(s);
+
+			f->writeLine("[terrainTypes]");
+			f->writeLine("road");
+			f->writeLine("flat");
+			f->writeLine("rough");
+			f->writeLine("steepSlope");
+			f->writeLine("shallowWater");
+			f->writeLine("deepWater");
 			f->close();
 		}
 
