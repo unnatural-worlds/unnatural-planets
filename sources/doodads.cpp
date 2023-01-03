@@ -55,20 +55,17 @@ namespace
 
 	std::vector<Doodad> loadDoodads(const String &root, const String &path)
 	{
-		Holder<DirectoryList> dl = newDirectoryList(path);
 		std::vector<Doodad> result;
-		while (dl->valid())
+		Holder<PointerRange<String>> list = pathListDirectory(path);
+		for (const String &p : list)
 		{
-			if (dl->isDirectory())
+			if (pathIsDirectory(p))
 			{
-				auto ds = loadDoodads(root, pathJoin(path, dl->name()));
+				auto ds = loadDoodads(root, p);
 				result.insert(result.end(), ds.begin(), ds.end());
 			}
-			else if (isPattern(dl->name(), "", "", ".doodad"))
-			{
-				result.push_back(loadDoodad(root, pathJoin(path, dl->name())));
-			}
-			dl->next();
+			else if (isPattern(p, "", "", ".doodad"))
+				result.push_back(loadDoodad(root, p));
 		}
 		return result;
 	}

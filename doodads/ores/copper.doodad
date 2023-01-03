@@ -4,4 +4,4 @@ prototype = unnatural/base/ores/copper.proto
 
 [requirements]
 buildable = true
-probability = 0.001
+probability = 0.003
