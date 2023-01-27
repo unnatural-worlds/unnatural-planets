@@ -222,3 +222,12 @@ Real sdfMandelbulb(const Vec3 &pos_)
 	//	CAGE_LOG(SeverityEnum::Info, "sdf", Stringizer() + value);
 	return (value + 0.1) * 150;
 }
+
+Real sdfTwistedHexagonalPrism(const Vec3 &pos)
+{
+	const Rads angle = Rads(pos[1] * 0.001);
+	Vec3 p = Vec3(pos[0], pos[2], 0);
+	p = Quat(Rads(), Rads(), angle) * p;
+	p = Vec3(p[0], p[1], pos[1]);
+	return sdfHexagonalPrism(p);
+}

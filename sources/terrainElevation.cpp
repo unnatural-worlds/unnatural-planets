@@ -202,7 +202,7 @@ namespace
 
 	void chooseShapeFunction()
 	{
-		constexpr TerrainFunctor shapeModeFunctions[] = {
+		static constexpr TerrainFunctor shapeModeFunctions[] = {
 			&sdfHexagon,
 			&sdfSquare,
 			&sdfSphere,
@@ -224,11 +224,12 @@ namespace
 			&sdfHexagonalPrism,
 			&sdfGear,
 			&sdfMandelbulb,
+			&sdfTwistedHexagonalPrism,
 		};
 
-		constexpr uint32 shapeModesCount = sizeof(shapeModeFunctions) / sizeof(shapeModeFunctions[0]);
+		static constexpr uint32 shapeModesCount = sizeof(shapeModeFunctions) / sizeof(shapeModeFunctions[0]);
 
-		constexpr const char *const shapeModeNames[] = {
+		static constexpr const char *const shapeModeNames[] = {
 			"hexagon",
 			"square",
 			"sphere",
@@ -250,6 +251,7 @@ namespace
 			"hexagonalprism",
 			"gear",
 			"mandelbulb",
+			"twistedhexagonalprism",
 		};
 
 		static_assert(shapeModesCount == sizeof(shapeModeNames) / sizeof(shapeModeNames[0]), "number of functions and names must match");
