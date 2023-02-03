@@ -56,8 +56,8 @@ namespace
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.0005;
+			cfg.octaves = 2;
+			cfg.frequency = 0.001;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -65,11 +65,11 @@ namespace
 		p = saturate(p);
 		p = smootherstep(p);
 		p = smootherstep(p);
-		p = smootherstep(p);
-		p = pow(p, 1.5);
-		p += max(120 - abs(tile.elevation), 0) * 0.002; // more water close to oceans
-		p = max(p - 0.02, 0);
-		tile.precipitation = p * 400;
+		p = pow(max(p + 0.2, 0), 3) * 0.6;
+		p *= 400;
+		p += max(120 - abs(tile.elevation), 0) * 0.2; // more water close to oceans
+		p = max(p, 0);
+		tile.precipitation = p;
 	}
 
 	void generateTemperature(Tile &tile)
@@ -78,9 +78,9 @@ namespace
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Simplex;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 5;
+			cfg.octaves = 2;
 			cfg.gain = 0.4;
-			cfg.frequency = 0.0002;
+			cfg.frequency = 0.0003;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -88,7 +88,7 @@ namespace
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
+			cfg.octaves = 3;
 			cfg.frequency = 0.007;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
@@ -116,29 +116,17 @@ namespace
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
+			cfg.octaves = 3;
 			cfg.frequency = 0.01;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> xNoise = []() {
+		static const Holder<NoiseFunction> waveNoise = []() {
 			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.frequency = 0.001;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> yNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.frequency = 0.001;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> zNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.frequency = 0.001;
+			cfg.type = NoiseTypeEnum::Simplex;
+			cfg.fractalType = NoiseFractalTypeEnum::Ridged;
+			cfg.octaves = 2;
+			cfg.frequency = 0.15;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -153,17 +141,12 @@ namespace
 		tile.metallic = 0;
 
 		{ // waves
-			Real x = xNoise->evaluate(tile.position);
-			Real y = yNoise->evaluate(tile.position);
-			Real z = zNoise->evaluate(tile.position);
-			Vec3 dir = normalize(Vec3(x, y, z));
-			CAGE_ASSERT(isUnit(dir));
-			Real dist = dot(dir, tile.position) * length(tile.position);
-			Rads a = Rads(dist * 0.002);
-			Rads b = Rads(sin(a + sin(a) * 0.5));
-			Real c = sin(b + sin(b) * 0.5);
-			Real wave = c * (1 - shallow * 0.9) * 0.1 + 0.5;
-			tile.height = wave;
+			Real w = waveNoise->evaluate(tile.position);
+			w = pow(abs(w), 3);
+			w = saturate(w);
+			w *= 1 - shallow * 0.9;
+			tile.height = w * 0.1 + 0.5;
+			tile.albedo = interpolate(tile.albedo, Vec3(1), w * 0.5 * randomChance());
 		}
 
 		{
@@ -178,6 +161,13 @@ namespace
 
 	void generateIce(Tile &tile)
 	{
+		static const Holder<NoiseFunction> temperatureOffsetNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.frequency = 0.05;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
 		static const Holder<NoiseFunction> scaleNoise = []() {
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
@@ -199,7 +189,8 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		Real bf = sharpEdge(rangeMask(tile.temperature, 0, -3));
+		Real tempOff = temperatureOffsetNoise->evaluate(tile.position) * 1.5;
+		Real bf = sharpEdge(rangeMask(tile.temperature + tempOff, 0, -3));
 		if (bf < 1e-7)
 			return;
 
@@ -297,7 +288,7 @@ namespace
 
 	void generateType(Tile &tile)
 	{
-		if (tile.elevation < -20)
+		if (tile.elevation < -10)
 			tile.type = TerrainTypeEnum::DeepWater;
 		else if (tile.elevation < 0)
 			tile.type = TerrainTypeEnum::ShallowWater;
@@ -305,23 +296,13 @@ namespace
 			tile.type = TerrainTypeEnum::SteepSlope;
 		else switch (tile.biome)
 		{
-		case TerrainBiomeEnum::Shrubland:
-		case TerrainBiomeEnum::Grassland:
-		case TerrainBiomeEnum::Savanna:
-		case TerrainBiomeEnum::TemperateSeasonalForest:
-		case TerrainBiomeEnum::TropicalSeasonalForest:
-			tile.type = TerrainTypeEnum::Flat;
-			break;
 		case TerrainBiomeEnum::Bare:
 		case TerrainBiomeEnum::Tundra:
-		case TerrainBiomeEnum::Taiga:
-		case TerrainBiomeEnum::Desert:
-		case TerrainBiomeEnum::TemperateRainForest:
-		case TerrainBiomeEnum::TropicalRainForest:
 			tile.type = TerrainTypeEnum::Rough;
 			break;
 		default:
-			CAGE_THROW_CRITICAL(Exception, "invalid biome enum");
+			tile.type = TerrainTypeEnum::Flat;
+			break;
 		}
 	}
 
@@ -958,6 +939,37 @@ namespace
 		generateSnow(tile);
 	}
 
+	void generateVisualization(Tile &tile)
+	{
+		generateElevation(tile);
+		generatePrecipitation(tile);
+		generateTemperature(tile);
+		generateSlope(tile);
+		generateBiome(tile);
+		generateType(tile);
+
+		tile.albedo = [&]() {
+			switch (tile.biome)
+			{
+			case TerrainBiomeEnum::Bare: return Vec3(187) / 255;
+			case TerrainBiomeEnum::Tundra: return Vec3(175, 226, 255) / 255;
+			case TerrainBiomeEnum::Taiga: return Vec3(193, 225, 221) / 255;
+			case TerrainBiomeEnum::Shrubland: return Vec3(200, 110, 62) / 255;
+			case TerrainBiomeEnum::Grassland: return Vec3(239, 252, 143) / 255;
+			case TerrainBiomeEnum::TemperateSeasonalForest: return Vec3(151, 183, 102) / 255;
+			case TerrainBiomeEnum::TemperateRainForest: return Vec3(118, 169, 92) / 255;
+			case TerrainBiomeEnum::Desert: return Vec3(221, 187, 76) / 255;
+			case TerrainBiomeEnum::Savanna: return Vec3(253, 213, 120) / 255;
+			case TerrainBiomeEnum::TropicalSeasonalForest: return Vec3(161, 151, 0) / 255;
+			case TerrainBiomeEnum::TropicalRainForest: return Vec3(50, 122, 30) / 255;
+			case TerrainBiomeEnum::Water: return Vec3(0, 0, 255) / 255;
+			default: return Vec3::Nan();
+			};
+		}();
+
+		tile.roughness = 0.7;
+	}
+
 	void generateFinalization(Tile &tile)
 	{
 		tile.albedo = saturate(tile.albedo);
@@ -968,11 +980,16 @@ namespace
 	}
 }
 
+constexpr bool EnableVisualization = false;
+
 void terrainTileLand(Tile &tile)
 {
 	CAGE_ASSERT(isUnit(tile.normal));
 	tile.elevation = terrainSdfElevation(tile.position);
-	generateLand(tile);
+	if (EnableVisualization)
+		generateVisualization(tile);
+	else
+		generateLand(tile);
 	generateFinalization(tile);
 }
 
@@ -980,10 +997,18 @@ void terrainTileWater(Tile &tile)
 {
 	CAGE_ASSERT(isUnit(tile.normal));
 	tile.elevation = terrainSdfElevationRaw(tile.position);
-	generateTemperature(tile);
-	generateWater(tile);
-	generateFlowers<true>(tile);
-	generateIce(tile);
+	if (EnableVisualization)
+	{
+		generateVisualization(tile);
+		tile.opacity = 0.5;
+	}
+	else
+	{
+		generateTemperature(tile);
+		generateWater(tile);
+		generateFlowers<true>(tile);
+		generateIce(tile);
+	}
 	generateFinalization(tile);
 }
 

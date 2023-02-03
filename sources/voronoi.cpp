@@ -27,23 +27,29 @@ public:
 		return Vec3(s % 65536) / 65535;
 	}
 
-	void genCell(Vec3 *&out, const Vec3i &cell)
+	struct Point
+	{
+		Vec3 p; // point
+		Real d; // distance
+	};
+
+	void genCell(Point *&out, const Vec3i &cell)
 	{
 		Vec3i s = mix(cell);
 		for (uint32 i = 0; i < cfg.pointsPerCell; i++)
 		{
 			s = mix(s);
-			*out++ = (genPoint(s) + Vec3(cell)) * cfg.cellSize;
+			(out++)->p = (genPoint(s) + Vec3(cell)) * cfg.cellSize;
 		}
 	}
 
 	VoronoiResult evaluate(const Vec3 &position, const Vec3 &normal)
 	{
 		const uint32 totalPoints = cfg.pointsPerCell * 27;
-		Vec3 *const pointsMem = (Vec3 *)CAGE_ALLOCA(totalPoints * sizeof(Vec3));
+		Point *const pointsMem = (Point *)CAGE_ALLOCA(totalPoints * sizeof(Point));
 		
 		{ // generate all points (including neighboring cells)
-			Vec3 *gen = pointsMem;
+			Point *gen = pointsMem;
 			const Vec3i cell = Vec3i(position * frequency);
 			for (sint32 z = -1; z < 2; z++)
 				for (sint32 y = -1; y < 2; y++)
@@ -52,24 +58,26 @@ public:
 			CAGE_ASSERT(gen == pointsMem + totalPoints);
 		}
 
-		const PointerRange<Vec3> points = { pointsMem, pointsMem + totalPoints };
+		const PointerRange<Point> points = { pointsMem, pointsMem + totalPoints };
 
 		{ // project all points into the plane
 			const Plane pln = Plane(position, normal);
-			for (Vec3 &p : points)
-				p = closestPoint(pln, p);
+			for (Point &p : points)
+				p.p = closestPoint(pln, p.p);
 		}
 
 		{ // sort all points by distance
-			std::sort(points.begin(), points.end(), [&](const Vec3 &a, const Vec3 &b) {
-				return distanceSquared(a, position) < distanceSquared(b, position);
+			for (Point &p : points)
+				p.d = distanceSquared(p.p, position);
+			std::partial_sort(points.begin(), points.begin() + VoronoiResult::MaxPoints, points.end(), [&](const Point &a, const Point &b) {
+				return a.d < b.d;
 			});
 		}
 
 		VoronoiResult res;
 		CAGE_ASSERT(VoronoiResult::MaxPoints <= points.size());
 		for (uint32 i = 0; i < VoronoiResult::MaxPoints; i++)
-			res.points[i] = points[i];
+			res.points[i] = points[i].p;
 		return res;
 	}
 };
