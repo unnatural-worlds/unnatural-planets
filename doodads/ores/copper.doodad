@@ -1,6 +1,6 @@
 [doodad]
 package = unnatural/base/ores/ores.pack
-prototype = unnatural/base/ores/copper.proto
+prototype = unnatural/base/ores/copper-deposit.proto
 
 [requirements]
 buildable = true

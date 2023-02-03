@@ -1,6 +1,6 @@
 [doodad]
 package = unnatural/base/ores/ores.pack
-prototype = unnatural/base/ores/crude-oil.proto
+prototype = unnatural/base/ores/crude-oil-well.proto
 
 [requirements]
 buildable = true

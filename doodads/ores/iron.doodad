@@ -1,6 +1,6 @@
 [doodad]
 package = unnatural/base/ores/ores.pack
-prototype = unnatural/base/ores/iron.proto
+prototype = unnatural/base/ores/iron-deposit.proto
 
 [requirements]
 buildable = true
