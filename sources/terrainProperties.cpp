@@ -18,36 +18,12 @@ namespace
 	Real steepnessMask(Degs slope, Degs threshold, Degs smoothing = Degs(10))
 	{
 		Degs r = (threshold + smoothing - slope) / (2 * smoothing);
-		return sharpEdge(saturate(r.value));
+		return saturate(r.value);
 	}
 
 	Real rangeMask(Real value, Real zeroAt, Real oneAt)
 	{
 		return saturate((value - zeroAt) / (oneAt - zeroAt));
-	}
-
-	void generateElevation(Tile &tile)
-	{
-		static const Holder<NoiseFunction> elevNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.fractalType = NoiseFractalTypeEnum::None;
-			cfg.frequency = 0.1;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> maskNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.fractalType = NoiseFractalTypeEnum::None;
-			cfg.frequency = 0.005;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		Real p = elevNoise->evaluate(tile.position);
-		Real m = maskNoise->evaluate(tile.position);
-		m = 1 - smootherstep(abs(m));
-		tile.elevation += p * m * 30;
 	}
 
 	void generatePrecipitation(Tile &tile)
@@ -125,36 +101,37 @@ namespace
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Simplex;
 			cfg.fractalType = NoiseFractalTypeEnum::Ridged;
-			cfg.octaves = 2;
-			cfg.frequency = 0.15;
+			cfg.octaves = 3;
+			cfg.frequency = 0.05;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
 
-		Real shallow = rangeMask(tile.elevation, -20, 3);
-		shallow = smoothstep(shallow);
-		Real hueShift = hueNoise->evaluate(tile.position) * 0.06;
-		Vec3 color = colorHueShift(interpolate(Vec3(54, 54, 97), Vec3(26, 102, 125), shallow) / 255, hueShift);
+		const Real shallow = smoothstep(rangeMask(tile.elevation, -30, 3));
 
-		tile.albedo = color;
-		tile.roughness = 0.3;
-		tile.metallic = 0;
-
-		{ // waves
-			Real w = waveNoise->evaluate(tile.position);
-			w = pow(abs(w), 3);
-			w = saturate(w);
-			w *= 1 - shallow * 0.9;
-			tile.height = w * 0.1 + 0.5;
-			tile.albedo = interpolate(tile.albedo, Vec3(1), w * 0.5 * randomChance());
+		{
+			const Real hueShift = hueNoise->evaluate(tile.position) * 0.06;
+			tile.albedo = colorHueShift(interpolate(Vec3(54, 54, 97), Vec3(26, 102, 125), shallow) / 255, hueShift);
 		}
 
 		{
-			Real d1 = 1 - sqr(rangeMask(tile.elevation, -10, 3));
-			Real d2 = rescale(rangeMask(tile.elevation, 0, -200), 0, 1, 0.7, 0.95);
+			const Real d1 = 1 - sqr(rangeMask(tile.elevation, -25, 3));
+			const Real d2 = rescale(rangeMask(tile.elevation, 0, -100), 0, 1, 0.7, 1);
 			tile.opacity = d1 * d2;
 		}
 
+		{ // waves
+			Real w = waveNoise->evaluate(tile.position);
+			w = saturate(abs(w));
+			w *= 1 - shallow * 0.9;
+			tile.height = interpolate(0.1, 0.4, w);
+			w *= w;
+			tile.albedo = interpolate(tile.albedo, Vec3(0.3), w * randomChance());
+			tile.roughness = interpolate(0.2, 0.6, w);
+			tile.opacity = interpolate(tile.opacity, 1, w);
+		}
+
+		tile.metallic = 0;
 		tile.biome = TerrainBiomeEnum::Water;
 		tile.type = shallow > 0.5 ? TerrainTypeEnum::ShallowWater : TerrainTypeEnum::DeepWater;
 	}
@@ -210,7 +187,7 @@ namespace
 
 		if (bf > 0.1)
 		{
-			tile.biome = TerrainBiomeEnum::Bare;
+			tile.biome = TerrainBiomeEnum::Tundra;
 			if (tile.type != TerrainTypeEnum::SteepSlope)
 				tile.type = TerrainTypeEnum::Rough;
 		}
@@ -288,7 +265,7 @@ namespace
 
 	void generateType(Tile &tile)
 	{
-		if (tile.elevation < -10)
+		if (tile.elevation < -20)
 			tile.type = TerrainTypeEnum::DeepWater;
 		else if (tile.elevation < 0)
 			tile.type = TerrainTypeEnum::ShallowWater;
@@ -372,8 +349,8 @@ namespace
 
 	void generateCliffs(Tile &tile)
 	{
-		Real bf = saturate((Degs(tile.slope).value - 20) * 0.05);
-		if (bf < 1e-7)
+		Real bf = steepnessMask(tile.slope, Degs(30), Degs(6));
+		if (bf > 0.99999)
 			return;
 
 		Vec3 &color = tile.albedo;
@@ -895,7 +872,7 @@ namespace
 		if (tile.biome == TerrainBiomeEnum::Water)
 			return;
 
-		Real bf = rangeMask(tile.temperature, 0, -2) * rangeMask(tile.precipitation, 50, 60) * steepnessMask(tile.slope, Degs(18));
+		Real bf = rangeMask(tile.temperature, 0, -2) * rangeMask(tile.precipitation, 5, 15) * steepnessMask(tile.slope, Degs(20), Degs(3));
 		if (bf < 1e-7)
 			return;
 		Real factor = (thresholdNoise->evaluate(tile.position) * 0.5 + 0.5) * 0.5 + 0.7;
@@ -920,7 +897,6 @@ namespace
 
 	void generateLand(Tile &tile)
 	{
-		generateElevation(tile);
 		generatePrecipitation(tile);
 		generateTemperature(tile);
 		generateSlope(tile);
@@ -941,7 +917,6 @@ namespace
 
 	void generateVisualization(Tile &tile)
 	{
-		generateElevation(tile);
 		generatePrecipitation(tile);
 		generateTemperature(tile);
 		generateSlope(tile);
@@ -1015,11 +990,7 @@ void terrainTileWater(Tile &tile)
 void terrainTileNavigation(Tile &tile)
 {
 	CAGE_ASSERT(isUnit(tile.normal));
-	{
-		const Real l = terrainSdfElevation(tile.position);
-		const Real w = terrainSdfElevationRaw(tile.position);
-		tile.elevation = interpolate(w, l, rangeMask(l, 5, 10));
-	}
+	tile.elevation = terrainSdfElevationRaw(tile.position);
 	generateLand(tile);
 	generateFinalization(tile);
 }

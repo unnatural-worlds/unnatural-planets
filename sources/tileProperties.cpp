@@ -29,22 +29,29 @@ namespace
 		uint32 counts[Bins] = {};
 		uint32 total = 0;
 		uint32 maxc = 0;
-		Real a = 0;
-		Real b = 1;
+		const Real a = 0;
+		const Real b = 1;
 		uint32 minIndex = m;
 		uint32 maxIndex = 0;
 
-		PropertyCounters(Real a, Real b) : a(a), b(b)
+		constexpr PropertyCounters(Real a, Real b) : a(a), b(b)
 		{}
 
-		void insert(Real value)
+		constexpr void insert(uint32 index)
 		{
-			const uint32 index = numeric_cast<uint32>(clamp((Bins - 1) * (value - a) / (b - a) + 0.5, 0, Bins - 1));
+			CAGE_ASSERT(index < Bins);
 			counts[index]++;
 			total++;
 			maxc = max(maxc, counts[index]);
 			minIndex = min(minIndex, index);
 			maxIndex = max(maxIndex, index);
+		}
+
+		constexpr void insert(Real value)
+		{
+			const Real idx = Bins * (value - a) / (b - a);
+			const uint32 index = min(numeric_cast<uint32>(max(idx, 0)), Bins - 1);
+			insert(index);
 		}
 
 		void print() const
@@ -65,6 +72,16 @@ namespace
 			CAGE_LOG(SeverityEnum::Info, "tileStats", "");
 		}
 	};
+
+	constexpr bool testPropertyCounters()
+	{
+		PropertyCounters<12> cnt(0, 12);
+		cnt.insert(Real(0));
+		cnt.insert(Real(11));
+		return cnt.counts[0] == 1 && cnt.counts[11] == 1;
+	}
+
+	static_assert(testPropertyCounters());
 
 	bool logFilterSameThread(const detail::LoggerInfo &info)
 	{
@@ -225,6 +242,7 @@ void generateTileProperties(const Holder<Mesh> &navMesh, std::vector<Tile> &tile
 	tiles.reserve(cnt);
 
 	PropertyCounters elevations(-200, 600);
+	PropertyCounters slopes(0, 90);
 	PropertyCounters temperatures(-50, 100);
 	PropertyCounters precipitations(0, 500);
 	PropertyCounters<(uint32)TerrainBiomeEnum::_Total> biomesCounts(0, (uint32)TerrainBiomeEnum::_Total);
@@ -239,14 +257,18 @@ void generateTileProperties(const Holder<Mesh> &navMesh, std::vector<Tile> &tile
 		tiles.push_back(tile);
 
 		elevations.insert(tile.elevation);
+		slopes.insert(Degs(tile.slope).value);
 		temperatures.insert(tile.temperature);
 		precipitations.insert(tile.precipitation);
-		biomesCounts.insert((uint8)tile.biome);
-		typesCounts.insert((uint8)tile.type);
+		biomesCounts.insert((uint32)tile.biome);
+		typesCounts.insert((uint32)tile.type);
 	}
 
 	CAGE_LOG(SeverityEnum::Info, "tileStats", "elevations (m):");
 	elevations.print();
+
+	CAGE_LOG(SeverityEnum::Info, "tileStats", "slopes (°):");
+	slopes.print();
 
 	CAGE_LOG(SeverityEnum::Info, "tileStats", "temperatures (°C):");
 	temperatures.print();

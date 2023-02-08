@@ -168,7 +168,14 @@ namespace
 			f->writeLine("scheme = texture");
 			f->writeLine("srgb = true");
 			for (const Chunk &c : chunks)
-				if (!c.albedo.empty())
+				if (!c.albedo.empty() && !c.transparency)
+					f->writeLine(c.albedo);
+			f->writeLine("[]");
+			f->writeLine("scheme = texture");
+			f->writeLine("srgb = true");
+			f->writeLine("premultiplyAlpha = true");
+			for (const Chunk &c : chunks)
+				if (!c.albedo.empty() && c.transparency)
 					f->writeLine(c.albedo);
 			f->writeLine("[]");
 			f->writeLine("scheme = texture");

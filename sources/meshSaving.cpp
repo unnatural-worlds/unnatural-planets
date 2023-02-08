@@ -27,6 +27,8 @@ void meshSaveRender(const String &path, const Holder<Mesh> &mesh, bool transpare
 	cfg.albedo.filename = Stringizer() + cfg.name + "-albedo.png";
 	cfg.pbr.filename = Stringizer() + cfg.name + "-pbr.png";
 	cfg.normal.filename = Stringizer() + cfg.name + "-normal.png";
+	if (transparency)
+		cfg.renderFlags |= MeshRenderFlags::Transparent;
 	meshExportFiles(path, cfg);
 }
 
