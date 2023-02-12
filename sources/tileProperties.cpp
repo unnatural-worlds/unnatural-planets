@@ -242,7 +242,7 @@ void generateTileProperties(const Holder<Mesh> &navMesh, std::vector<Tile> &tile
 	tiles.reserve(cnt);
 
 	PropertyCounters elevations(-200, 600);
-	PropertyCounters slopes(0, 90);
+	PropertyCounters<8> slopes(10, 45);
 	PropertyCounters temperatures(-50, 100);
 	PropertyCounters precipitations(0, 500);
 	PropertyCounters<(uint32)TerrainBiomeEnum::_Total> biomesCounts(0, (uint32)TerrainBiomeEnum::_Total);
