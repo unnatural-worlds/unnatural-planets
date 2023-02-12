@@ -355,7 +355,7 @@ namespace
 		const Real cracks = saturate(pow(cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5, 0.8));
 		const Real value = valueNoise->evaluate(tile.position * freq) * 0.5 + 0.5;
 		const Real saturation = saturationNoise->evaluate(tile.position) * 0.5 + 0.5;
-		const Vec3 hsv = Vec3(0.07, saturate(sharpEdge(saturation, 0.2)), (value * 0.6 + 0.2) * cracks);
+		const Vec3 hsv = Vec3(0.07, saturate(sharpEdge(saturation, 0.2)), (value * 0.4 + 0.2) * cracks);
 		tile.albedo = colorHsvToRgb(hsv);
 		tile.roughness = interpolate(0.9, value * 0.2 + 0.7, cracks);
 		tile.height = cracks * scale;
@@ -455,6 +455,8 @@ namespace
 			Real saturation = rangeMask(tile.precipitation, 0, 50);
 			Vec3 hsv = colorRgbToHsv(color);
 			hsv[1] *= saturation;
+			hsv[1] *= 0.7;
+			hsv[2] *= 0.8;
 			color = colorHsvToRgb(hsv);
 		}
 		Real roughness = randomChance() * 0.1 + 0.7;
@@ -522,7 +524,10 @@ namespace
 		const Real hueShift = hueNoise->evaluate(tile.position) * 0.1;
 		const Vec3 color1 = colorHueShift(Vec3(172, 159, 139) / 255, hueShift);
 		const Real colorShift = smootherstep(smootherstep(colorNoise->evaluate(tile.position) * 0.5 + 0.5));
-		const Vec3 color = colorDeviation(interpolateColor(color1, Vec3(170, 95, 46) / 255, colorShift), 0.08);
+		const Vec3 color2 = colorDeviation(interpolateColor(color1, Vec3(170, 95, 46) / 255, colorShift), 0.08);
+		Vec3 hsv = colorRgbToHsv(color2);
+		hsv *= Vec3(1, 0.7, 0.8);
+		const Vec3 color = colorHsvToRgb(hsv);
 		const Real roughness = randomChance() * 0.3 + 0.6;
 		const Real metallic = sqr(sqr(randomChance()));
 
@@ -558,19 +563,16 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> fertilityNoise = []() {
+		static const Holder<NoiseFunction> saturationNoise = []() {
 			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Simplex;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
+			cfg.type = NoiseTypeEnum::Value;
 			cfg.frequency = 0.03;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
 
-		const Real fertility = smootherstep(saturate(fertilityNoise->evaluate(tile.position) * 0.5 + 0.5));
-		const Real threshold = rangeMask(tile.temperature, 35, 25) * rangeMask(tile.precipitation, 15, 35) * steepnessMask(tile.slope, Degs(25));
-		Real bf = rangeMask(threshold, fertility - 0.1, fertility + 0.1) * beachMask(tile);
+		const Real threshold = rangeMask(tile.temperature, 35, 25) * rangeMask(tile.precipitation, 15, 35) * steepnessMask(tile.slope, Degs(24), Degs(5));
+		Real bf = rangeMask(threshold, 0.45, 0.55) * beachMask(tile);
 		if (bf < 1e-7)
 			return;
 
@@ -588,7 +590,12 @@ namespace
 		const Real height = tile.height + bladesMask * 0.05;
 		const Real ratio = clamp(tile.temperature - (tile.precipitation + 100) * 30 / 400, 0, 5);
 		const Real hueShift = hueNoise->evaluate(tile.position) * 0.09 - ratio * 0.02;
-		const Vec3 color = colorHueShift(Vec3(79, 114, 55) / 255, hueShift);
+		const Real saturation = saturate(rescale(saturationNoise->evaluate(tile.position), -1, 1, 0.4, 0.7));
+		Vec3 hsv = colorRgbToHsv(Vec3(79, 114, 55) / 255);
+		hsv[0] = (hsv[0] + hueShift + 1) % 1;
+		hsv[1] *= saturation;
+		hsv[2] *= 0.8;
+		const Vec3 color = colorHsvToRgb(hsv);
 		const Real roughness = 0.7 + min(ratio, 0) * 0.02 + randomChance() * 0.2;
 		const Real metallic = rangeMask(tile.precipitation, 230, 270) * 0.1;
 
@@ -851,7 +858,7 @@ namespace
 		const Real factor = (opacityNoise->evaluate(tile.position) * 0.5 + 0.5) * 0.5 + 0.7;
 		bf *= saturate(factor);
 
-		const Vec3 color = Vec3(248) / 255;
+		const Vec3 color = Vec3(230) / 255;
 		const Real roughness = randomChance() * 0.3 + 0.2;
 		const Real metallic = 0;
 		const Real height = tile.height * 0.1 + factor * 0.2 + 0.7;

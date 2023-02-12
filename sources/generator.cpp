@@ -164,19 +164,29 @@ namespace
 
 		{ // generate asset configuration
 			Holder<File> f = writeFile(pathJoin(assetsDirectory, "planet.assets"));
-			f->writeLine("[]");
-			f->writeLine("scheme = texture");
-			f->writeLine("srgb = true");
+			uint32 textureChunks[2] = {};
 			for (const Chunk &c : chunks)
-				if (!c.albedo.empty() && !c.transparency)
-					f->writeLine(c.albedo);
-			f->writeLine("[]");
-			f->writeLine("scheme = texture");
-			f->writeLine("srgb = true");
-			f->writeLine("premultiplyAlpha = true");
-			for (const Chunk &c : chunks)
-				if (!c.albedo.empty() && c.transparency)
-					f->writeLine(c.albedo);
+				if (!c.albedo.empty())
+					textureChunks[c.transparency]++;
+			if (textureChunks[0])
+			{
+				f->writeLine("[]");
+				f->writeLine("scheme = texture");
+				f->writeLine("srgb = true");
+				for (const Chunk &c : chunks)
+					if (!c.albedo.empty() && !c.transparency)
+						f->writeLine(c.albedo);
+			}
+			if (textureChunks[1])
+			{
+				f->writeLine("[]");
+				f->writeLine("scheme = texture");
+				f->writeLine("srgb = true");
+				f->writeLine("premultiplyAlpha = true");
+				for (const Chunk &c : chunks)
+					if (!c.albedo.empty() && c.transparency)
+						f->writeLine(c.albedo);
+			}
 			f->writeLine("[]");
 			f->writeLine("scheme = texture");
 			f->writeLine("convert = gltfToSpecial");
@@ -229,6 +239,7 @@ for a in bpy.data.window_managers[0].windows[0].screen.areas:
 				s.clip_start = 2
 				s.clip_end = 200000
 				s.shading.type = 'MATERIAL'
+				s.region_3d.view_distance = 8000
 
 bpy.ops.object.select_all(action='DESELECT')
 )Python");
