@@ -27,5 +27,7 @@ Real sdfH4O(const Vec3 &pos);
 Real sdfGear(const Vec3 &pos);
 Real sdfMandelbulb(const Vec3 &pos);
 Real sdfTwistedHexagonalPrism(const Vec3 &pos);
+Real sdfBunny(const Vec3 &p);
+Real sdfMonkeyHead(const Vec3 &p);
 
 #endif

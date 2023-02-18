@@ -225,6 +225,8 @@ namespace
 			&sdfGear,
 			&sdfMandelbulb,
 			&sdfTwistedHexagonalPrism,
+			&sdfBunny,
+			&sdfMonkeyHead,
 		};
 
 		static constexpr uint32 shapeModesCount = sizeof(shapeModeFunctions) / sizeof(shapeModeFunctions[0]);
@@ -252,6 +254,8 @@ namespace
 			"gear",
 			"mandelbulb",
 			"twistedhexagonalprism",
+			"bunny",
+			"monkeyhead",
 		};
 
 		static_assert(shapeModesCount == sizeof(shapeModeNames) / sizeof(shapeModeNames[0]), "number of functions and names must match");
