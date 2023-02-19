@@ -27,55 +27,58 @@ Real sdfCapsule(const Vec3 &pos)
 
 Real sdfTube(const Vec3 &pos)
 {
-	return sdfCylinder(pos, 10000, 500) - 100;
+	return sdfCylinder(pos, 10000, 500);
 }
 
 Real sdfDisk(const Vec3 &pos)
 {
-	return sdfCylinder(pos, 250, 1100) - 100;
+	return sdfCylinder(pos, 250, 1100) - 200;
 }
 
 Real sdfBox(const Vec3 &pos)
 {
-	return sdfBox(pos, Vec3(1000, 550, 550)) - 100;
+	return sdfBox(pos, Vec3(1000, 550, 550)) - 200;
 }
 
 Real sdfCube(const Vec3 &pos)
 {
-	return sdfBox(pos, Vec3(650)) - 100;
+	return sdfBox(pos, Vec3(650)) - 200;
 }
 
 Real sdfTetrahedron(const Vec3 &pos)
 {
-	return sdfTetrahedron(pos, 1000) - 100;
+	return sdfTetrahedron(pos, 1000) - 200;
 }
 
 Real sdfOctahedron(const Vec3 &pos)
 {
-	return sdfOctahedron(pos, 1400) - 100;
+	return sdfOctahedron(pos, 1400) - 200;
 }
 
-Real sdfTriangularPrism(const Vec3 &pos, Real height, Real radius)
+namespace
 {
-	const Triangle t = Triangle(Vec3(0, radius, 0), Vec3(0, radius, 0) * Quat(Degs(), Degs(), Degs(120)), Vec3(0, radius, 0) * Quat(Degs(), Degs(), Degs(-120)));
-	Vec3 p = pos;
-	p[2] = max(abs(p[2]) - height * 0.5, 0);
-	return distance(p, t);
+	Real sdfTriangularPrismImpl(const Vec3 &pos, Real height, Real radius)
+	{
+		const Triangle t = Triangle(Vec3(0, radius, 0), Vec3(0, radius, 0) * Quat(Degs(), Degs(), Degs(120)), Vec3(0, radius, 0) * Quat(Degs(), Degs(), Degs(-120)));
+		Vec3 p = pos;
+		p[2] = max(abs(p[2]) - height * 0.5, 0);
+		return distance(p, t);
+	}
 }
 
 Real sdfTriangularPrism(const Vec3 &pos)
 {
-	return sdfTriangularPrism(pos, 1700, 1000) - 100;
+	return sdfTriangularPrismImpl(pos, 1700, 1000) - 200;
 }
 
 Real sdfHexagonalPrism(const Vec3 &pos)
 {
-	return sdfHexagonalPrism(pos, 900, 650) - 100;
+	return sdfHexagonalPrism(pos, 900, 650) - 200;
 }
 
 Real sdfTorus(const Vec3 &pos)
 {
-	return sdfTorus(pos, 900, 530);
+	return sdfTorus(pos, 950, 530);
 }
 
 Real sdfKnot(const Vec3 &pos)
@@ -84,31 +87,34 @@ Real sdfKnot(const Vec3 &pos)
 	return sdfKnot(pos * scale, 1600, 1.5) / length(scale);
 }
 
-Real sdfMobiusStrip(const Vec3 &pos, Real radius, Real majorAxis, Real minorAxis)
+namespace
 {
-	const auto &sdAlignedRect = [](const Vec2 &point, const Vec2 &halfSizes) -> Real
+	Real sdfMobiusStripImpl(const Vec3 &pos, Real radius, Real majorAxis, Real minorAxis)
 	{
-		Vec2 d = abs(point) - halfSizes;
-		return length(max(d, 0)) + min(max(d[0], d[1]), 0);
-	};
+		const auto &sdAlignedRect = [](const Vec2 &point, const Vec2 &halfSizes) -> Real
+		{
+			Vec2 d = abs(point) - halfSizes;
+			return length(max(d, 0)) + min(max(d[0], d[1]), 0);
+		};
 
-	const auto &sdRotatedRect = [&](const Vec2 &point, const Vec2 &halfSizes, Rads rotation) -> Real
-	{
-		// rotate the point instead of the rectangle
-		Rads a = atan2(point[0], point[1]);
-		a += rotation;
-		Vec2 p = Vec2(cos(a), sin(a)) * length(point);
-		return sdAlignedRect(p, halfSizes);
-	};
+		const auto &sdRotatedRect = [&](const Vec2 &point, const Vec2 &halfSizes, Rads rotation) -> Real
+		{
+			// rotate the point instead of the rectangle
+			Rads a = atan2(point[0], point[1]);
+			a += rotation;
+			Vec2 p = Vec2(cos(a), sin(a)) * length(point);
+			return sdAlignedRect(p, halfSizes);
+		};
 
-	const Rads planeRotation = atan2(pos[0], pos[2]);
-	const Vec2 proj = Vec2(dot(Vec2(pos[0], pos[2]), normalize(Vec2(pos[0], pos[2]))), pos[1]);
-	return sdRotatedRect(proj + Vec2(-radius, 0), Vec2(majorAxis, minorAxis), planeRotation / 2);
+		const Rads planeRotation = atan2(pos[0], pos[2]);
+		const Vec2 proj = Vec2(dot(Vec2(pos[0], pos[2]), normalize(Vec2(pos[0], pos[2]))), pos[1]);
+		return sdRotatedRect(proj + Vec2(-radius, 0), Vec2(majorAxis, minorAxis), planeRotation / 2);
+	}
 }
 
 Real sdfMobiusStrip(const Vec3 &pos)
 {
-	return sdfMobiusStrip(pos, 1000, 400, 40) - 100;
+	return sdfMobiusStripImpl(pos, 1000, 400, 40) - 200;
 }
 
 Real sdfFibers(const Vec3 &pos)
@@ -137,7 +143,7 @@ Real sdfH2O(const Vec3 &pos_)
 	const Real h1 = sdfSphere(pos - Vec3(-550, 300, 0), 450);
 	const Real h2 = sdfSphere(pos - Vec3(+550, 300, 0), 450);
 	const Real o = sdfSphere(pos - Vec3(0, -100, 0), 650);
-	return smoothMin(o, min(h1, h2), 100) / scale;
+	return smoothMin(o, min(h1, h2), 150) / scale;
 }
 
 Real sdfH3O(const Vec3 &pos_)
@@ -151,7 +157,7 @@ Real sdfH3O(const Vec3 &pos_)
 	};
 	const Real o = sdfSphere(pos, 650);
 	const Real h = min(min(hs[0], hs[1]), hs[2]);
-	return smoothMin(o, h, 100) / scale;
+	return smoothMin(o, h, 150) / scale;
 }
 
 Real sdfH4O(const Vec3 &pos_)
@@ -166,7 +172,7 @@ Real sdfH4O(const Vec3 &pos_)
 	};
 	const Real o = sdfSphere(pos, 650);
 	const Real h = min(min(hs[0], hs[1]), min(hs[2], hs[3]));
-	return smoothMin(o, h, 100) / scale;
+	return smoothMin(o, h, 150) / scale;
 }
 
 Real sdfGear(const Vec3 &pos)
@@ -218,8 +224,6 @@ Real sdfMandelbulb(const Vec3 &pos_)
 		z += pos;
 	}
 	const Real value = 0.5 * log(r) * r / dr;
-	//if (randomChance() < 0.0001)
-	//	CAGE_LOG(SeverityEnum::Info, "sdf", Stringizer() + value);
 	return (value + 0.1) * 150;
 }
 
@@ -368,4 +372,22 @@ Real sdfMonkeyHead(const Vec3 &p)
 {
 	static constexpr Real scale = 0.0005;
 	return sdfMonkeyHeadImpl(Vec3(p[0], p[2], p[1]) * scale) / scale;
+}
+
+Real sdfDoubleTorus(const Vec3 &p)
+{
+	static constexpr Real ma = 1400;
+	static constexpr Real mi = 500;
+	const Vec3 p1 = Vec3(p[1], p[2], p[0]);
+	const Vec3 p2 = Vec3(p[1], p[0], p[2]);
+	return smoothMin(sdfTorus(p1, ma, mi), sdfTorus(p2, ma, mi), 200);
+}
+
+Real sdfTorusCross(const Vec3 &p)
+{
+	static constexpr Real ma = 750;
+	static constexpr Real mi = 400;
+	const Vec3 p1 = Vec3(p[1] - ma, p[2], p[0]);
+	const Vec3 p2 = Vec3(p[1] + ma, p[0], p[2]);
+	return smoothMin(sdfTorus(p1, ma, mi), sdfTorus(p2, ma, mi), 200);
 }
