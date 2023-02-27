@@ -201,7 +201,6 @@ namespace
 					f->writeLine(c.normal);
 			f->writeLine("[]");
 			f->writeLine("scheme = model");
-			f->writeLine("tangents = true");
 			for (const Chunk &c : chunks)
 				f->writeLine(c.mesh);
 			f->writeLine("[]");
