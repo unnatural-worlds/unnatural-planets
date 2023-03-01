@@ -26,12 +26,14 @@ namespace
 			tile.normal = mesh->normalAt(indices, weights);
 			if (Water)
 			{
-				terrainTileWater(tile);
+				tile.meshPurpose = MeshPurposeEnum::Water;
+				terrainTile(tile);
 				albedo->set(xy, Vec4(tile.albedo, tile.opacity));
 			}
 			else
 			{
-				terrainTileLand(tile);
+				tile.meshPurpose = MeshPurposeEnum::Land;
+				terrainTile(tile);
 				albedo->set(xy, tile.albedo);
 			}
 			special->set(xy, Vec2(tile.roughness, tile.metallic));

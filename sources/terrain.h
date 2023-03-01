@@ -36,6 +36,14 @@ enum class TerrainTypeEnum : uint8
 	_Total
 };
 
+enum class MeshPurposeEnum : uint8
+{
+	Undefined = 0,
+	Land,
+	Water,
+	Navigation,
+};
+
 Stringizer &operator + (Stringizer &str, const TerrainBiomeEnum &other);
 Stringizer &operator + (Stringizer &str, const TerrainTypeEnum &other);
 
@@ -55,6 +63,7 @@ struct Tile
 	Real flatRadius;
 	TerrainBiomeEnum biome = TerrainBiomeEnum::_Total;
 	TerrainTypeEnum type = TerrainTypeEnum::_Total;
+	MeshPurposeEnum meshPurpose = MeshPurposeEnum::Undefined;
 	bool buildable = false;
 };
 
@@ -63,9 +72,7 @@ Real terrainSdfElevationRaw(const Vec3 &pos);
 Real terrainSdfLand(const Vec3 &pos);
 Real terrainSdfWater(const Vec3 &pos);
 Real terrainSdfNavigation(const Vec3 &pos);
-void terrainTileLand(Tile &tile);
-void terrainTileWater(Tile &tile);
-void terrainTileNavigation(Tile &tile);
+void terrainTile(Tile &tile);
 void terrainPreseed();
 void terrainApplyConfig();
 

@@ -253,7 +253,8 @@ void generateTileProperties(const Holder<Mesh> &navMesh, std::vector<Tile> &tile
 		Tile tile;
 		tile.position = navMesh->position(i);
 		tile.normal = navMesh->normal(i);
-		terrainTileNavigation(tile);
+		tile.meshPurpose = MeshPurposeEnum::Navigation;
+		terrainTile(tile);
 		tiles.push_back(tile);
 
 		elevations.insert(tile.elevation);

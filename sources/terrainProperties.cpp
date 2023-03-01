@@ -42,6 +42,14 @@ namespace
 		return rangeMask(tile.elevation + beachNoise->evaluate(tile.elevation) * 20, 15, 20);
 	}
 
+	void generateElevation(Tile &tile)
+	{
+		if (tile.meshPurpose == MeshPurposeEnum::Land)
+			tile.elevation = terrainSdfElevation(tile.position);
+		else
+			tile.elevation = terrainSdfElevationRaw(tile.position);
+	}
+
 	void generatePrecipitation(Tile &tile)
 	{
 		static const Holder<NoiseFunction> precpNoise = []() {
@@ -100,113 +108,6 @@ namespace
 		}
 
 		tile.temperature = 15 + t * 30 - max(tile.elevation, 0) * 0.02;
-	}
-
-	void generateWater(Tile &tile)
-	{
-		static const Holder<NoiseFunction> hueNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 3;
-			cfg.frequency = 0.01;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> waveNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Simplex;
-			cfg.fractalType = NoiseFractalTypeEnum::Ridged;
-			cfg.octaves = 3;
-			cfg.frequency = 0.05;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-
-		const Real shallow = smoothstep(rangeMask(tile.elevation, -30, 3));
-
-		{
-			const Real hueShift = hueNoise->evaluate(tile.position) * 0.06;
-			tile.albedo = colorHueShift(interpolate(Vec3(54, 54, 97), Vec3(26, 102, 125), shallow) / 255, hueShift);
-		}
-
-		{
-			const Real d1 = 1 - sqr(rangeMask(tile.elevation, -25, 3));
-			const Real d2 = rescale(rangeMask(tile.elevation, 0, -100), 0, 1, 0.7, 1);
-			tile.opacity = d1 * d2;
-		}
-
-		{ // waves
-			Real w = waveNoise->evaluate(tile.position);
-			w = saturate(abs(w));
-			w *= 1 - shallow * 0.9;
-			tile.height = interpolate(0.1, 0.4, w);
-			w *= w;
-			tile.albedo = interpolate(tile.albedo, Vec3(0.3), w * randomChance());
-			tile.roughness = interpolate(0.2, 0.6, w);
-			tile.opacity = interpolate(tile.opacity, 1, w);
-		}
-
-		tile.metallic = 0;
-		tile.biome = TerrainBiomeEnum::Water;
-		tile.type = shallow > 0.5 ? TerrainTypeEnum::ShallowWater : TerrainTypeEnum::DeepWater;
-	}
-
-	void generateIce(Tile &tile)
-	{
-		static const Holder<NoiseFunction> temperatureOffsetNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.frequency = 0.035;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> scaleNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.03;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> cracksNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cellular;
-			cfg.distance = NoiseDistanceEnum::Hybrid;
-			cfg.operation = NoiseOperationEnum::Subtract;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 3;
-			cfg.frequency = 0.1;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-
-		const Real tempOff = temperatureOffsetNoise->evaluate(tile.position) * 1.5;
-		const Real bf = sharpEdge(rangeMask(tile.temperature + tempOff, 0, -3));
-		if (bf < 1e-7)
-			return;
-
-		Real scale = scaleNoise->evaluate(tile.position) * 0.02 + 0.5;
-		Real crack = cracksNoise->evaluate(tile.position * scale) * 0.5 + 0.5;
-		crack = pow(crack, 0.3);
-		Vec3 color = Vec3(61, 81, 82) / 255 + crack * 0.3;
-		Real roughness = (1 - crack) * 0.6 + 0.15;
-		Real metallic = 0;
-		Real height = crack * 0.2 + 0.4;
-
-		tile.albedo = interpolate(tile.albedo, color, bf);
-		tile.roughness = interpolate(tile.roughness, roughness, bf);
-		tile.metallic = interpolate(tile.metallic, metallic, bf);
-		tile.height = interpolate(tile.height, height, bf);
-		tile.opacity = interpolate(tile.opacity, tile.opacity + 0.1, bf);
-
-		if (bf > 0.1)
-		{
-			tile.biome = TerrainBiomeEnum::Tundra;
-			if (tile.type != TerrainTypeEnum::SteepSlope)
-				tile.type = TerrainTypeEnum::Rough;
-		}
 	}
 
 	void generateSlope(Tile &tile)
@@ -605,84 +506,6 @@ namespace
 		tile.height = interpolate(tile.height, height, bf);
 	}
 
-	template<bool Waterlily>
-	void generateFlowers(Tile &tile)
-	{
-		static const Holder<Voronoi> clusterVoronoi = []() {
-			VoronoiCreateConfig cfg;
-			cfg.cellSize = 150;
-			cfg.seed = noiseSeed();
-			return newVoronoi(cfg);
-		}();
-		static const Holder<Voronoi> centerVoronoi = []() {
-			VoronoiCreateConfig cfg;
-			cfg.cellSize = 15;
-			cfg.seed = noiseSeed();
-			return newVoronoi(cfg);
-		}();
-		static const Holder<NoiseFunction> sizeNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.7;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> colorNoise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 1;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> hue1Noise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.01;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> hue2Noise = []() {
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.8;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-
-		if ((tile.biome == TerrainBiomeEnum::Water) != Waterlily)
-			return;
-
-		if (rangeMask(abs(tile.temperature - 18), 12, 7) < 1e-5)
-			return;
-
-		if (!Waterlily && rangeMask(abs(tile.precipitation - 200), 100, 70) < 1e-5)
-			return;
-
-		const Vec3 center = centerVoronoi->evaluate(tile.position, tile.normal).points[0];
-		if (distanceSquared(center, tile.position) > sqr(2))
-			return;
-		const Vec3 cluster = clusterVoronoi->evaluate(tile.position, tile.normal).points[0];
-		if (distanceSquared(center, cluster) > sqr(10))
-			return;
-		const Real dist = distance(center, tile.position);
-		const Real size = smootherstep(smootherstep(saturate(sizeNoise->evaluate(tile.position) * 0.5 + 0.5))) + 0.5;
-
-		const Real bf = rangeMask(size - dist, 0, 0.1);
-		if (bf < 1e-7)
-			return;
-
-		const Vec3 baseColor = Waterlily ? Vec3(0.1, 0.7, 0) : colorNoise->evaluate(cluster) < 0.1 ? Vec3(1, 0, 0.7) : Vec3(1, 0.8, 0);
-		const Vec3 color = colorHueShift(baseColor, hue1Noise->evaluate(tile.position) * 0.1 + hue2Noise->evaluate(tile.position) * 0.1);
-		const Real roughness = 0.5;
-		const Real metallic = 0;
-		const Real height = 0.7 + sqr(dist / size) * 0.2;
-
-		tile.albedo = interpolate(tile.albedo, color, bf);
-		tile.roughness = interpolate(tile.roughness, roughness, bf);
-		tile.metallic = interpolate(tile.metallic, metallic, bf);
-		tile.height = interpolate(tile.height, height, bf);
-	}
-
 	void generateBoulders(Tile &tile)
 	{
 		static const Holder<NoiseFunction> thresholdNoise = []() {
@@ -826,6 +649,168 @@ namespace
 		tile.height = interpolate(tile.height, height, bf);
 	}
 
+	void generateWater(Tile &tile)
+	{
+		static const Holder<NoiseFunction> hueNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cubic;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 3;
+			cfg.frequency = 0.004;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		{
+			const Real shallow = smoothstep(rangeMask(tile.elevation, -30, 3));
+			const Real hueShift = hueNoise->evaluate(tile.position) * 0.09;
+			tile.albedo = colorHueShift(interpolate(Vec3(54, 54, 97), Vec3(26, 102, 125), shallow) / 255, hueShift);
+		}
+
+		{
+			const Real d1 = 1 - sqr(rangeMask(tile.elevation, -25, 3));
+			const Real d2 = rescale(rangeMask(tile.elevation, 0, -100), 0, 1, 0.7, 1);
+			tile.opacity = d1 * d2;
+		}
+
+		tile.metallic = 1; // signal to apply dynamic waves in the shader
+	}
+
+	void generateFlowers(Tile &tile)
+	{
+		static const Holder<Voronoi> clusterVoronoi = []() {
+			VoronoiCreateConfig cfg;
+			cfg.cellSize = 150;
+			cfg.seed = noiseSeed();
+			return newVoronoi(cfg);
+		}();
+		static const Holder<Voronoi> centerVoronoi = []() {
+			VoronoiCreateConfig cfg;
+			cfg.cellSize = 15;
+			cfg.seed = noiseSeed();
+			return newVoronoi(cfg);
+		}();
+		static const Holder<NoiseFunction> sizeNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.7;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> colorNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 1;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> hue1Noise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.01;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> hue2Noise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.frequency = 0.8;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		const bool waterlily = tile.meshPurpose != MeshPurposeEnum::Land;
+		if ((tile.biome == TerrainBiomeEnum::Water) != waterlily)
+			return;
+
+		if (rangeMask(abs(tile.temperature - 18), 12, 7) < 1e-5)
+			return;
+
+		if (!waterlily && rangeMask(abs(tile.precipitation - 200), 100, 70) < 1e-5)
+			return;
+
+		const Vec3 center = centerVoronoi->evaluate(tile.position, tile.normal).points[0];
+		if (distanceSquared(center, tile.position) > sqr(2))
+			return;
+		const Vec3 cluster = clusterVoronoi->evaluate(tile.position, tile.normal).points[0];
+		if (distanceSquared(center, cluster) > sqr(10))
+			return;
+		const Real dist = distance(center, tile.position);
+		const Real size = smootherstep(smootherstep(saturate(sizeNoise->evaluate(tile.position) * 0.5 + 0.5))) + 0.5;
+
+		const Real bf = rangeMask(size - dist, 0, 0.1);
+		if (bf < 1e-7)
+			return;
+
+		const Vec3 baseColor = waterlily ? Vec3(0.1, 0.7, 0) : colorNoise->evaluate(cluster) < 0.1 ? Vec3(1, 0, 0.7) : Vec3(1, 0.8, 0);
+		const Vec3 color = colorHueShift(baseColor, hue1Noise->evaluate(tile.position) * 0.1 + hue2Noise->evaluate(tile.position) * 0.1);
+		const Real roughness = 0.5;
+		const Real metallic = waterlily ? 0.3 : 0; // signal to apply dynamic waves in the shader
+		const Real height = 0.7 + sqr(dist / size) * 0.2;
+
+		tile.albedo = interpolate(tile.albedo, color, bf);
+		tile.roughness = interpolate(tile.roughness, roughness, bf);
+		tile.metallic = interpolate(tile.metallic, metallic, bf);
+		tile.height = interpolate(tile.height, height, bf);
+	}
+
+	void generateIce(Tile &tile)
+	{
+		static const Holder<NoiseFunction> temperatureOffsetNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.frequency = 0.035;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> scaleNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Value;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 4;
+			cfg.frequency = 0.03;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> cracksNoise = []() {
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
+			cfg.operation = NoiseOperationEnum::Subtract;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 3;
+			cfg.frequency = 0.1;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+
+		const Real tempOff = temperatureOffsetNoise->evaluate(tile.position) * 1.5;
+		const Real bf = sharpEdge(rangeMask(tile.temperature + tempOff, 0, -3));
+		if (bf < 1e-7)
+			return;
+
+		if (bf > 0.1)
+		{
+			if (tile.type != TerrainTypeEnum::SteepSlope)
+				tile.type = TerrainTypeEnum::Rough;
+		}
+
+		if (tile.meshPurpose == MeshPurposeEnum::Land)
+			return;
+
+		const Real scale = scaleNoise->evaluate(tile.position) * 0.02 + 0.5;
+		const Real crack = pow(cracksNoise->evaluate(tile.position * scale) * 0.5 + 0.5, 0.3);
+		const Vec3 color = Vec3(61, 81, 82) / 255 + crack * 0.3;
+		const Real roughness = (1 - crack) * 0.6 + 0.15;
+		const Real height = crack * 0.2 + 0.4;
+
+		tile.albedo = interpolate(tile.albedo, color, bf);
+		tile.roughness = interpolate(tile.roughness, roughness, bf);
+		tile.metallic = interpolate(tile.metallic, 0, bf);
+		tile.height = interpolate(tile.height, height, bf);
+		tile.opacity = interpolate(tile.opacity, tile.opacity + 0.1, bf);
+	}
+
 	void generateSnow(Tile &tile)
 	{
 		static const Holder<NoiseFunction> tempOffsetNoise = []() {
@@ -858,6 +843,15 @@ namespace
 		const Real factor = (opacityNoise->evaluate(tile.position) * 0.5 + 0.5) * 0.5 + 0.7;
 		bf *= saturate(factor);
 
+		if (bf > 0.2)
+		{
+			if (tile.type != TerrainTypeEnum::SteepSlope)
+				tile.type = TerrainTypeEnum::Rough;
+		}
+
+		if (tile.meshPurpose == MeshPurposeEnum::Water)
+			return;
+
 		const Vec3 color = Vec3(230) / 255;
 		const Real roughness = randomChance() * 0.3 + 0.2;
 		const Real metallic = 0;
@@ -867,41 +861,10 @@ namespace
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
 		tile.metallic = interpolate(tile.metallic, metallic, bf);
 		tile.height = interpolate(tile.height, height, bf);
-
-		if (bf > 0.2)
-		{
-			if (tile.type != TerrainTypeEnum::SteepSlope)
-				tile.type = TerrainTypeEnum::Rough;
-		}
-	}
-
-	void generateLand(Tile &tile)
-	{
-		generatePrecipitation(tile);
-		generateTemperature(tile);
-		generateSlope(tile);
-		generateBiome(tile);
-		generateType(tile);
-		generateBedrock(tile);
-		generateCliffs(tile);
-		generateMica(tile);
-		generateDirt(tile);
-		generateSand(tile);
-		generateGrass(tile);
-		generateFlowers<false>(tile);
-		generateBoulders(tile);
-		generateTreeStumps(tile);
-		generateSnow(tile);
 	}
 
 	void generateVisualization(Tile &tile)
 	{
-		generatePrecipitation(tile);
-		generateTemperature(tile);
-		generateSlope(tile);
-		generateBiome(tile);
-		generateType(tile);
-
 		tile.albedo = [&]() {
 			switch (tile.biome)
 			{
@@ -934,43 +897,40 @@ namespace
 	}
 }
 
-constexpr bool EnableVisualization = false;
-
-void terrainTileLand(Tile &tile)
+void terrainTile(Tile &tile)
 {
 	CAGE_ASSERT(isUnit(tile.normal));
-	tile.elevation = terrainSdfElevation(tile.position);
-	if (EnableVisualization)
-		generateVisualization(tile);
-	else
-		generateLand(tile);
-	generateFinalization(tile);
-}
-
-void terrainTileWater(Tile &tile)
-{
-	CAGE_ASSERT(isUnit(tile.normal));
-	tile.elevation = terrainSdfElevationRaw(tile.position);
+	generateElevation(tile);
+	generatePrecipitation(tile);
+	generateTemperature(tile);
+	generateSlope(tile);
+	generateBiome(tile);
+	generateType(tile);
+	static constexpr bool EnableVisualization = false;
 	if (EnableVisualization)
 	{
 		generateVisualization(tile);
-		tile.opacity = 0.5;
+		if (tile.meshPurpose == MeshPurposeEnum::Water)
+			tile.opacity = 0.5;
+		generateFinalization(tile);
+		return;
+	}
+	if (tile.meshPurpose == MeshPurposeEnum::Land)
+	{
+		generateBedrock(tile);
+		generateCliffs(tile);
+		generateMica(tile);
+		generateDirt(tile);
+		generateSand(tile);
+		generateGrass(tile);
+		generateBoulders(tile);
+		generateTreeStumps(tile);
 	}
 	else
-	{
-		generateTemperature(tile);
 		generateWater(tile);
-		generateFlowers<true>(tile);
-		generateIce(tile);
-	}
-	generateFinalization(tile);
-}
-
-void terrainTileNavigation(Tile &tile)
-{
-	CAGE_ASSERT(isUnit(tile.normal));
-	tile.elevation = terrainSdfElevationRaw(tile.position);
-	generateLand(tile);
+	generateFlowers(tile);
+	generateIce(tile);
+	generateSnow(tile);
 	generateFinalization(tile);
 }
 
@@ -981,13 +941,15 @@ void terrainPreseed()
 		Tile tile;
 		tile.position = Vec3(0, 1, 0);
 		tile.normal = Vec3(0, 1, 0);
-		terrainTileLand(tile);
+		tile.meshPurpose = MeshPurposeEnum::Land;
+		terrainTile(tile);
 	}
 	{
 		terrainSdfWater(Vec3());
 		Tile tile;
 		tile.position = Vec3(0, 1, 0);
 		tile.normal = Vec3(0, 1, 0);
-		terrainTileWater(tile);
+		tile.meshPurpose = MeshPurposeEnum::Water;
+		terrainTile(tile);
 	}
 }

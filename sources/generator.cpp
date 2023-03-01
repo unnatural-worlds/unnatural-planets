@@ -84,9 +84,13 @@ namespace
 				f->writeLine(Stringizer() + "special = " + pbr);
 			if (!normal.empty())
 				f->writeLine(Stringizer() + "normal = " + normal);
-			f->writeLine("[flags]");
 			if (transparency)
+			{
+				f->writeLine("[render]");
+				f->writeLine("shader = /unnatural/core/shaders/water.glsl");
+				f->writeLine("[flags]");
 				f->writeLine("transparent");
+			}
 			f->close();
 		}
 	};
@@ -164,11 +168,17 @@ namespace
 
 		{ // generate asset configuration
 			Holder<File> f = writeFile(pathJoin(assetsDirectory, "planet.assets"));
-			uint32 textureChunks[2] = {};
+			uint32 textureCounts[4] = {}; // opaque albedo, transparent albedo, special, normal
 			for (const Chunk &c : chunks)
+			{
 				if (!c.albedo.empty())
-					textureChunks[c.transparency]++;
-			if (textureChunks[0])
+					textureCounts[c.transparency]++;
+				if (!c.pbr.empty())
+					textureCounts[2]++;
+				if (!c.normal.empty())
+					textureCounts[3]++;
+			}
+			if (textureCounts[0])
 			{
 				f->writeLine("[]");
 				f->writeLine("scheme = texture");
@@ -177,7 +187,7 @@ namespace
 					if (!c.albedo.empty() && !c.transparency)
 						f->writeLine(c.albedo);
 			}
-			if (textureChunks[1])
+			if (textureCounts[1])
 			{
 				f->writeLine("[]");
 				f->writeLine("scheme = texture");
@@ -187,18 +197,24 @@ namespace
 					if (!c.albedo.empty() && c.transparency)
 						f->writeLine(c.albedo);
 			}
-			f->writeLine("[]");
-			f->writeLine("scheme = texture");
-			f->writeLine("convert = gltfToSpecial");
-			for (const Chunk &c : chunks)
-				if (!c.pbr.empty())
-					f->writeLine(c.pbr);
-			f->writeLine("[]");
-			f->writeLine("scheme = texture");
-			f->writeLine("normal = true");
-			for (const Chunk &c : chunks)
-				if (!c.normal.empty())
-					f->writeLine(c.normal);
+			if (textureCounts[2])
+			{
+				f->writeLine("[]");
+				f->writeLine("scheme = texture");
+				f->writeLine("convert = gltfToSpecial");
+				for (const Chunk &c : chunks)
+					if (!c.pbr.empty())
+						f->writeLine(c.pbr);
+			}
+			if (textureCounts[3])
+			{
+				f->writeLine("[]");
+				f->writeLine("scheme = texture");
+				f->writeLine("normal = true");
+				for (const Chunk &c : chunks)
+					if (!c.normal.empty())
+						f->writeLine(c.normal);
+			}
 			f->writeLine("[]");
 			f->writeLine("scheme = model");
 			for (const Chunk &c : chunks)

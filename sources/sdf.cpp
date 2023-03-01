@@ -27,7 +27,7 @@ Real sdfCapsule(const Vec3 &pos)
 
 Real sdfTube(const Vec3 &pos)
 {
-	return sdfCylinder(pos, 10000, 500);
+	return sdfCylinder(Vec3(pos[0], pos[2], pos[1]), 10000, 800);
 }
 
 Real sdfDisk(const Vec3 &pos)
@@ -37,7 +37,7 @@ Real sdfDisk(const Vec3 &pos)
 
 Real sdfBox(const Vec3 &pos)
 {
-	return sdfBox(pos, Vec3(1000, 550, 550)) - 200;
+	return sdfBox(pos, Vec3(550, 1000, 550)) - 200;
 }
 
 Real sdfCube(const Vec3 &pos)
@@ -175,7 +175,7 @@ Real sdfH4O(const Vec3 &pos_)
 	return smoothMin(o, h, 150) / scale;
 }
 
-Real sdfGear(const Vec3 &pos)
+Real sdfGear(const Vec3 &pos_)
 {
 	const auto &rotate = [](const Vec2 &p, const Rads a) -> Vec2 {
 		const Real s = sin(a);
@@ -189,6 +189,8 @@ Real sdfGear(const Vec3 &pos)
 		return length(max(abs(p) - r, 0));
 	};
 
+	static constexpr Real scale = 2;
+	const Vec3 pos = pos_ / scale;
 	const Vec2 p = Vec2(pos[0], pos[2]);
 	static constexpr uint32 teeths = 9;
 	const Rads angle = Rads::Full() / teeths;
@@ -197,7 +199,7 @@ Real sdfGear(const Vec3 &pos)
 	const Real b = sdBox(q - Vec2(700, 0), Vec2(150, 70));
 	const Real c = abs(length(p) - 450) - 150;
 	const Real h = abs(pos[1]) - 30;
-	return smoothMax(min(b, c), h, 50) - 50;
+	return (smoothMax(min(b, c), h, 50) - 50) * scale;
 }
 
 Real sdfMandelbulb(const Vec3 &pos_)
@@ -376,8 +378,8 @@ Real sdfMonkeyHead(const Vec3 &p)
 
 Real sdfDoubleTorus(const Vec3 &p)
 {
-	static constexpr Real ma = 1400;
-	static constexpr Real mi = 500;
+	static constexpr Real ma = 900;
+	static constexpr Real mi = 400;
 	const Vec3 p1 = Vec3(p[1], p[2], p[0]);
 	const Vec3 p2 = Vec3(p[1], p[0], p[2]);
 	return smoothMin(sdfTorus(p1, ma, mi), sdfTorus(p2, ma, mi), 200);
