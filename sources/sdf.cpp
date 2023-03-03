@@ -7,12 +7,12 @@
 
 Real sdfHexagon(const Vec3 &pos)
 {
-	return sdfPlane(pos, Plane(Vec3(), normalize(Vec3(1))));
+	return sdfPlane(pos, Plane(Vec3(), normalize(Vec3(1, 1, -1))));
 }
 
 Real sdfSquare(const Vec3 &pos)
 {
-	return sdfPlane(pos, Plane(Vec3(), Vec3(0, 1, 0)));
+	return sdfPlane(pos, Plane(Vec3(), Vec3(0, 0, -1)));
 }
 
 Real sdfSphere(const Vec3 &pos)
@@ -22,7 +22,7 @@ Real sdfSphere(const Vec3 &pos)
 
 Real sdfCapsule(const Vec3 &pos)
 {
-	return sdfCapsule(pos, 2500, 600);
+	return sdfCapsule(Vec3(pos[0], pos[2], pos[1]), 2500, 600);
 }
 
 Real sdfTube(const Vec3 &pos)
@@ -68,12 +68,12 @@ namespace
 
 Real sdfTriangularPrism(const Vec3 &pos)
 {
-	return sdfTriangularPrismImpl(pos, 1700, 1000) - 200;
+	return sdfTriangularPrismImpl(Vec3(pos[0], pos[2], pos[1]), 1700, 1000) - 200;
 }
 
 Real sdfHexagonalPrism(const Vec3 &pos)
 {
-	return sdfHexagonalPrism(pos, 900, 650) - 200;
+	return sdfHexagonalPrism(Vec3(pos[0], pos[2], pos[1]), 900, 650) - 200;
 }
 
 Real sdfTorus(const Vec3 &pos)
@@ -114,7 +114,7 @@ namespace
 
 Real sdfMobiusStrip(const Vec3 &pos)
 {
-	return sdfMobiusStripImpl(pos, 1000, 400, 40) - 200;
+	return sdfMobiusStripImpl(Vec3(pos[0], pos[2], pos[1]), 1000, 400, 40) - 200;
 }
 
 Real sdfFibers(const Vec3 &pos)
@@ -190,7 +190,7 @@ Real sdfGear(const Vec3 &pos_)
 	};
 
 	static constexpr Real scale = 2;
-	const Vec3 pos = pos_ / scale;
+	const Vec3 pos = Vec3(pos_[0], pos_[2], pos_[1]) / scale;
 	const Vec2 p = Vec2(pos[0], pos[2]);
 	static constexpr uint32 teeths = 9;
 	const Rads angle = Rads::Full() / teeths;
@@ -234,7 +234,7 @@ Real sdfTwistedHexagonalPrism(const Vec3 &pos)
 	const Rads angle = Rads(pos[1] * 0.001);
 	Vec3 p = Vec3(pos[0], pos[2], 0);
 	p = Quat(Rads(), Rads(), angle) * p;
-	p = Vec3(p[0], p[1], pos[1]);
+	p = Vec3(p[0], pos[1], p[1]);
 	return sdfHexagonalPrism(p);
 }
 

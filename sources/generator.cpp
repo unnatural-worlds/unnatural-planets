@@ -134,6 +134,9 @@ namespace
 			for (const String &s : assetPackages)
 				f->writeLine(s);
 
+			f->writeLine("[camera]");
+			f->writeLine("position = 1000, 0, -2500");
+
 			f->writeLine("[terrainTypes]");
 			f->writeLine("road");
 			f->writeLine("flat");
