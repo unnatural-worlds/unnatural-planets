@@ -6,22 +6,16 @@ using namespace cage;
 namespace
 {
 	constexpr const char *Prefixes[] = {
-		"bel", "nar", "xan", "bell", "natr", "ev",
+		"aq", "bel", "bell", "bich", "byw", "cit", "civ", "dehr", "ev", "fur", "han", "jux", "kol", "lip", "lis", "lok", "mar", "mus", "nar", "natr", "nis", "pos", "rap", "res", "sag", "saof", "ss", "wep", "xan", "zug",
 	};
 	constexpr const char *Stems[] = {
-		"adur", "aes", "anim", "apoll", "imac",
-		"educ", "equis", "extr", "guius", "hann",
-		"equi", "amora", "hum", "iace", "ille",
-		"inept", "iuv", "obe", "ocul", "orbis",
+		"a", "ab", "abe", "ad", "adur", "aes", "al", "ali", "amo", "amora", "anim", "ante", "ape", "apoll", "aster", "atque", "e", "educ", "eius", "emo", "empu", "equi", "equis", "erbe", "erra", "erti", "et", "eu", "ex", "extr", "guius", "hann", "hum", "i", "iace", "ibu", "igre", "ijka", "ille", "illud", "imac", "imnu", "imu", "inept", "iris", "iste", "ita", "iuv", "jim", "o", "obe", "ocul", "ofe", "oi", "orbis", "ordi", "osse", "u", "ud", "udire", "uli", "urb", "ursu", "usu", "uzi", "y", "yre",
 	};
 	constexpr const char *Suffixes[] = {
-		"us", "ix", "ox", "ith", "ath", "um",
-		"ator", "or", "axia", "imus", "ais",
-		"itur", "orex", "o", "y",
+		"ais", "at", "ath", "ator", "axia", "eka", "el", "emus", "er", "es", "imus", "ith", "itur", "ix", "o", "or", "orex", "ox", "uh", "ul", "um", "us", "y", "yi",
 	};
 	constexpr const char *Appendixes[] = {
-		" I", " II", " III", " IV", " V",
-		" VI", " VII", " VIII", " IX", " X",
+		"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
 	};
 #define PICK(NAMES) NAMES[randomRange(std::size_t(0), sizeof(NAMES)/sizeof(NAMES[0]))]
 
@@ -40,10 +34,24 @@ namespace
 			return generateNameImpl();
 		if (randomChance() < 0.1)
 			name = Stringizer() + reverse(String(name));
-		if (randomChance() < 0.4)
-			name + PICK(Appendixes);
+		if (randomChance() < 0.25)
+			name + " " + PICK(Appendixes);
+		if (randomChance() < 0.15)
+			name + "-" + PICK(Appendixes);
 		return name;
 	}
+
+#if 0
+	struct NamesPrinter
+	{
+		NamesPrinter()
+		{
+			for (uint32 i = 0; i < 100; i++)
+				CAGE_LOG(SeverityEnum::Info, "NamesPrinter", generateNameImpl());
+			CAGE_THROW_CRITICAL(Exception, "names printed, stopping the execution now");
+		}
+	} namesPrinter;
+#endif
 }
 
 String generateName()

@@ -64,8 +64,8 @@ namespace
 	const ConfigString configShapeMode("unnatural-planets/shape/mode");
 	const ConfigString configElevationMode("unnatural-planets/elevation/mode");
 	const ConfigBool configPolesEnable("unnatural-planets/poles/enable");
-	ConfigBool configDebugSaveIntermediate("unnatural-planets/debug/saveIntermediate");
-	ConfigBool configPreviewEnable("unnatural-planets/preview/enable");
+	const ConfigBool configDebugSaveIntermediate("unnatural-planets/debug/saveIntermediate");
+	const ConfigBool configPreviewEnable("unnatural-planets/preview/enable");
 	std::vector<String> assetPackages;
 
 	struct Chunk
@@ -135,7 +135,7 @@ namespace
 				f->writeLine(s);
 
 			f->writeLine("[camera]");
-			f->writeLine("position = 1000, 0, -2500");
+			f->writeLine("position = 1300, 0, -2800");
 
 			f->writeLine("[terrainTypes]");
 			f->writeLine("road");
@@ -312,7 +312,7 @@ bpy.ops.object.select_all(action='DESELECT')
 
 	struct LandProcessor
 	{
-		std::vector<Holder<Mesh>> split;
+		Holder<PointerRange<Holder<Mesh>>> split;
 
 		Holder<AsyncTask> taskRef;
 
@@ -368,7 +368,7 @@ bpy.ops.object.select_all(action='DESELECT')
 
 	struct WaterProcessor
 	{
-		std::vector<Holder<Mesh>> split;
+		Holder<PointerRange<Holder<Mesh>>> split;
 
 		Holder<AsyncTask> taskRef;
 

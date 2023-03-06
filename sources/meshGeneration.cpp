@@ -158,16 +158,11 @@ void meshSimplifyRender(Holder<Mesh> &mesh)
 		CAGE_LOG(SeverityEnum::Warning, "generator", Stringizer() + "the simplified render mesh has more triangles than the original");
 }
 
-std::vector<Holder<Mesh>> meshSplit(const Holder<Mesh> &mesh)
+Holder<PointerRange<Holder<Mesh>>> meshSplit(const Holder<Mesh> &mesh)
 {
 	MeshChunkingConfig cfg;
 	cfg.maxSurfaceArea = 250000;
-	auto res = meshChunking(+mesh, cfg);
-	std::vector<Holder<Mesh>> out;
-	out.reserve(res.size());
-	for (auto &it : res)
-		out.push_back(std::move(it));
-	return out;
+	return meshChunking(+mesh, cfg);
 }
 
 uint32 meshUnwrap(const Holder<Mesh> &mesh)

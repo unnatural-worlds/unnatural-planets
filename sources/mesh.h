@@ -12,7 +12,7 @@ struct Tile;
 Holder<Mesh> meshGenerateBaseLand();
 Holder<Mesh> meshGenerateBaseWater();
 Holder<Mesh> meshGenerateBaseNavigation();
-std::vector<Holder<Mesh>> meshSplit(const Holder<Mesh> &mesh);
+Holder<PointerRange<Holder<Mesh>>> meshSplit(const Holder<Mesh> &mesh);
 void meshSimplifyNavmesh(Holder<Mesh> &mesh);
 void meshSimplifyCollider(Holder<Mesh> &mesh);
 void meshSimplifyRender(Holder<Mesh> &mesh);
