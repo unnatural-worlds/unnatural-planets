@@ -122,7 +122,8 @@ namespace
 #endif // CAGE_DEBUG
 
 			f->writeLine("[authors]");
-			f->writeLine("unnatural-planets procedural generator https://github.com/unnatural-worlds/unnatural-planets");
+			f->writeLine("unnatural-planets procedural generator");
+			f->writeLine("https://github.com/unnatural-worlds/unnatural-planets");
 
 			f->writeLine("[assets]");
 			f->writeLine("pack = planet.pack");
