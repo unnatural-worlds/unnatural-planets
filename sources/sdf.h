@@ -31,5 +31,6 @@ Real sdfBunny(const Vec3 &p);
 Real sdfMonkeyHead(const Vec3 &p);
 Real sdfDoubleTorus(const Vec3 &p);
 Real sdfTorusCross(const Vec3 &p);
+Real sdfBowl(const Vec3 &p);
 
 #endif

@@ -393,3 +393,8 @@ Real sdfTorusCross(const Vec3 &p)
 	const Vec3 p2 = Vec3(p[1] + ma, p[0], p[2]);
 	return smoothMin(sdfTorus(p1, ma, mi), sdfTorus(p2, ma, mi), 200);
 }
+
+Real sdfBowl(const Vec3 &p)
+{
+	return 2000 - distance(p, Vec3(0, 0, -3000));
+}
