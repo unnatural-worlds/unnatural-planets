@@ -398,3 +398,8 @@ Real sdfBowl(const Vec3 &p)
 {
 	return 2000 - distance(p, Vec3(0, 0, -3000));
 }
+
+Real sdfInsideCube(const Vec3 &p)
+{
+	return -sdfCube(p);
+}

@@ -230,6 +230,7 @@ namespace
 			&sdfDoubleTorus,
 			&sdfTorusCross,
 			&sdfBowl,
+			&sdfInsideCube,
 		};
 
 		static constexpr uint32 shapeModesCount = sizeof(shapeModeFunctions) / sizeof(shapeModeFunctions[0]);
@@ -262,6 +263,7 @@ namespace
 			"doubletorus",
 			"toruscross",
 			"bowl",
+			"insidecube",
 		};
 
 		static_assert(shapeModesCount == sizeof(shapeModeNames) / sizeof(shapeModeNames[0]), "number of functions and names must match");
