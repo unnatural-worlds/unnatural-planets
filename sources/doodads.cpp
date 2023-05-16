@@ -41,7 +41,7 @@ namespace
 			d.temperature = Vec2::parse(ini->getString("requirements", "temperature"));
 		if (ini->itemExists("requirements", "precipitation"))
 			d.precipitation = Vec2::parse(ini->getString("requirements", "precipitation"));
-		d.probability = ini->getFloat("requirements", "probability", 0.15f);
+		d.probability = ini->getFloat("requirements", "probability", 0.05f);
 		d.ocean = ini->getBool("requirements", "ocean", false);
 		d.slope = ini->getBool("requirements", "slope", false);
 		d.buildable = ini->getBool("requirements", "buildable", false);
