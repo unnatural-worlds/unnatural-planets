@@ -1,10 +1,10 @@
-#include <cage-core/logger.h>
-#include <cage-core/ini.h>
 #include <cage-core/config.h>
+#include <cage-core/ini.h>
+#include <cage-core/logger.h>
 #include <cage-core/string.h>
 
-#include "terrain.h"
 #include "generator.h"
+#include "terrain.h"
 
 namespace
 {
@@ -32,7 +32,7 @@ namespace
 		ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize", navmeshOptimizeInit);
 		configNavmeshOptimize = cmd->cmdBool('o', "optimize", configNavmeshOptimize);
 		CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "enable navmesh optimizations: " + !!configNavmeshOptimize);
-		
+
 		ConfigBool configDebugSaveIntermediate("unnatural-planets/debug/saveIntermediate", false);
 		configDebugSaveIntermediate = cmd->cmdBool('d', "debug", configDebugSaveIntermediate);
 		CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "enable saving intermediates for debug: " + !!configDebugSaveIntermediate);

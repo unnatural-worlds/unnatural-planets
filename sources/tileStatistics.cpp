@@ -1,17 +1,17 @@
-#include <cage-core/logger.h>
-#include <cage-core/string.h>
-#include <cage-core/mesh.h>
-#include <cage-core/flatSet.h>
-#include <cage-core/files.h>
 #include <cage-core/config.h>
-#include <cage-core/spatialStructure.h>
+#include <cage-core/files.h>
+#include <cage-core/flatSet.h>
 #include <cage-core/geometry.h>
+#include <cage-core/logger.h>
+#include <cage-core/mesh.h>
+#include <cage-core/spatialStructure.h>
+#include <cage-core/string.h>
 
-#include "terrain.h"
 #include "generator.h"
+#include "terrain.h"
 
-#include <vector>
 #include <queue>
+#include <vector>
 
 namespace
 {
@@ -34,8 +34,7 @@ namespace
 		uint32 minIndex = m;
 		uint32 maxIndex = 0;
 
-		constexpr PropertyCounters(Real a, Real b) : a(a), b(b)
-		{}
+		constexpr PropertyCounters(Real a, Real b) : a(a), b(b) {}
 
 		constexpr void insert(uint32 index)
 		{
@@ -96,37 +95,39 @@ namespace
 		ns.resize(cnt);
 		switch (navMesh->type())
 		{
-		case MeshTypeEnum::Triangles:
-		{
-			const uint32 tris = navMesh->facesCount();
-			const auto inds = navMesh->indices();
-			for (uint32 t = 0; t < tris; t++)
+			case MeshTypeEnum::Triangles:
 			{
-				const uint32 a = inds[t * 3 + 0];
-				const uint32 b = inds[t * 3 + 1];
-				const uint32 c = inds[t * 3 + 2];
-				ns[a].insert(b);
-				ns[a].insert(c);
-				ns[b].insert(a);
-				ns[b].insert(c);
-				ns[c].insert(a);
-				ns[c].insert(b);
+				const uint32 tris = navMesh->facesCount();
+				const auto inds = navMesh->indices();
+				for (uint32 t = 0; t < tris; t++)
+				{
+					const uint32 a = inds[t * 3 + 0];
+					const uint32 b = inds[t * 3 + 1];
+					const uint32 c = inds[t * 3 + 2];
+					ns[a].insert(b);
+					ns[a].insert(c);
+					ns[b].insert(a);
+					ns[b].insert(c);
+					ns[c].insert(a);
+					ns[c].insert(b);
+				}
 			}
-		} break;
-		case MeshTypeEnum::Lines:
-		{
-			const uint32 lines = navMesh->facesCount();
-			const auto inds = navMesh->indices();
-			for (uint32 t = 0; t < lines; t++)
+			break;
+			case MeshTypeEnum::Lines:
 			{
-				const uint32 a = inds[t * 2 + 0];
-				const uint32 b = inds[t * 2 + 1];
-				ns[a].insert(b);
-				ns[b].insert(a);
+				const uint32 lines = navMesh->facesCount();
+				const auto inds = navMesh->indices();
+				for (uint32 t = 0; t < lines; t++)
+				{
+					const uint32 a = inds[t * 2 + 0];
+					const uint32 b = inds[t * 2 + 1];
+					ns[a].insert(b);
+					ns[b].insert(a);
+				}
 			}
-		} break;
-		default:
-			CAGE_THROW_CRITICAL(Exception, "invalid navmesh type");
+			break;
+			default:
+				CAGE_THROW_CRITICAL(Exception, "invalid navmesh type");
 		}
 
 		// flat areas
@@ -137,10 +138,7 @@ namespace
 				Real dist;
 				uint32 id = m;
 
-				bool operator < (const Node &other) const
-				{
-					return dist > other.dist;
-				}
+				bool operator<(const Node &other) const { return dist > other.dist; }
 			};
 			std::priority_queue<Node> open;
 			FlatSet<uint32> closed;

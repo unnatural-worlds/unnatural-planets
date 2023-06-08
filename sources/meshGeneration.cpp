@@ -1,11 +1,11 @@
-#include <cage-core/geometry.h>
 #include <cage-core/config.h>
-#include <cage-core/meshAlgorithms.h>
+#include <cage-core/geometry.h>
 #include <cage-core/marchingCubes.h>
+#include <cage-core/meshAlgorithms.h>
 #include <unnatural-navmesh/navmesh.h>
 
-#include "terrain.h"
 #include "mesh.h"
+#include "terrain.h"
 
 #include <initializer_list>
 
@@ -24,7 +24,7 @@ namespace
 
 	const ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize");
 
-	template<Real(*FNC)(const Vec3 &)>
+	template<Real (*FNC)(const Vec3 &)>
 	Holder<Mesh> meshGenerateGeneric()
 	{
 		MarchingCubesCreateConfig cfg;

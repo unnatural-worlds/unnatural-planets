@@ -2,8 +2,8 @@
 #include <cage-core/mesh.h>
 #include <cage-core/meshExport.h>
 
-#include "terrain.h"
 #include "mesh.h"
+#include "terrain.h"
 
 void meshSaveDebug(const String &path, const Holder<Mesh> &mesh)
 {

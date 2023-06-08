@@ -1,13 +1,13 @@
-#include <cage-core/noiseFunction.h>
 #include <cage-core/color.h>
-#include <cage-core/random.h>
-#include <cage-core/geometry.h>
 #include <cage-core/config.h>
+#include <cage-core/geometry.h>
+#include <cage-core/noiseFunction.h>
+#include <cage-core/random.h>
 
-#include "voronoi.h"
-#include "terrain.h"
 #include "generator.h"
 #include "math.h"
+#include "terrain.h"
+#include "voronoi.h"
 
 namespace
 {
@@ -28,7 +28,8 @@ namespace
 
 	Real beachMask(const Tile &tile)
 	{
-		static const Holder<NoiseFunction> beachNoise = []() {
+		static const Holder<NoiseFunction> beachNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.frequency = 0.035;
@@ -52,7 +53,8 @@ namespace
 
 	void generatePrecipitation(Tile &tile)
 	{
-		static const Holder<NoiseFunction> precpNoise = []() {
+		static const Holder<NoiseFunction> precpNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -74,7 +76,8 @@ namespace
 
 	void generateTemperature(Tile &tile)
 	{
-		static const Holder<NoiseFunction> tempNoise = []() {
+		static const Holder<NoiseFunction> tempNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Simplex;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -84,7 +87,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> polarNoise = []() {
+		static const Holder<NoiseFunction> polarNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -188,22 +192,24 @@ namespace
 			tile.type = TerrainTypeEnum::ShallowWater;
 		else if (tile.slope > Degs(20))
 			tile.type = TerrainTypeEnum::SteepSlope;
-		else switch (tile.biome)
-		{
-		case TerrainBiomeEnum::Bare:
-		case TerrainBiomeEnum::Tundra:
-			tile.type = TerrainTypeEnum::Rough;
-			break;
-		default:
-			tile.type = TerrainTypeEnum::Flat;
-			break;
-		}
+		else
+			switch (tile.biome)
+			{
+				case TerrainBiomeEnum::Bare:
+				case TerrainBiomeEnum::Tundra:
+					tile.type = TerrainTypeEnum::Rough;
+					break;
+				default:
+					tile.type = TerrainTypeEnum::Flat;
+					break;
+			}
 	}
 
 	void generateBedrock(Tile &tile)
 	{
 		static const uint32 seed = noiseSeed();
-		static const Holder<NoiseFunction> scaleNoise = []() {
+		static const Holder<NoiseFunction> scaleNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -212,7 +218,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> freqNoise = []() {
+		static const Holder<NoiseFunction> freqNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -221,7 +228,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> cracksNoise = []() {
+		static const Holder<NoiseFunction> cracksNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cellular;
 			cfg.distance = NoiseDistanceEnum::Hybrid;
@@ -231,7 +239,8 @@ namespace
 			cfg.seed = seed;
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> valueNoise = []() {
+		static const Holder<NoiseFunction> valueNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cellular;
 			cfg.distance = NoiseDistanceEnum::Hybrid;
@@ -241,7 +250,8 @@ namespace
 			cfg.seed = seed;
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> saturationNoise = []() {
+		static const Holder<NoiseFunction> saturationNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -276,7 +286,8 @@ namespace
 
 	void generateMica(Tile &tile)
 	{
-		static const Holder<NoiseFunction> maskNoise = []() {
+		static const Holder<NoiseFunction> maskNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cellular;
 			cfg.distance = NoiseDistanceEnum::Hybrid;
@@ -287,7 +298,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> cracksNoise = []() {
+		static const Holder<NoiseFunction> cracksNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cellular;
 			cfg.distance = NoiseDistanceEnum::Manhattan;
@@ -316,7 +328,8 @@ namespace
 
 	void generateDirt(Tile &tile)
 	{
-		static const Holder<NoiseFunction> heightNoise = []() {
+		static const Holder<NoiseFunction> heightNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -327,7 +340,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> cracksNoise = []() {
+		static const Holder<NoiseFunction> cracksNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::SimplexReduced;
 			cfg.fractalType = NoiseFractalTypeEnum::Ridged;
@@ -336,7 +350,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> cracksMaskNoise = []() {
+		static const Holder<NoiseFunction> cracksMaskNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -380,7 +395,8 @@ namespace
 
 	void generateSand(Tile &tile)
 	{
-		static const Holder<NoiseFunction> heightScaleNoise = []() {
+		static const Holder<NoiseFunction> heightScaleNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Simplex;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -389,7 +405,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> heightNoise = []() {
+		static const Holder<NoiseFunction> heightNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Simplex;
 			cfg.fractalType = NoiseFractalTypeEnum::Ridged;
@@ -399,14 +416,16 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> colorNoise = []() {
+		static const Holder<NoiseFunction> colorNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.0008;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> hueNoise = []() {
+		static const Holder<NoiseFunction> hueNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -440,7 +459,8 @@ namespace
 
 	void generateGrass(Tile &tile)
 	{
-		constexpr const auto bladesNoiseGen = []() {
+		constexpr const auto bladesNoiseGen = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cellular;
 			cfg.fractalType = NoiseFractalTypeEnum::None;
@@ -455,7 +475,8 @@ namespace
 			bladesNoiseGen(),
 			bladesNoiseGen(),
 		};
-		static const Holder<NoiseFunction> hueNoise = []() {
+		static const Holder<NoiseFunction> hueNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -464,7 +485,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> saturationNoise = []() {
+		static const Holder<NoiseFunction> saturationNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.frequency = 0.03;
@@ -508,42 +530,48 @@ namespace
 
 	void generateBoulders(Tile &tile)
 	{
-		static const Holder<NoiseFunction> thresholdNoise = []() {
+		static const Holder<NoiseFunction> thresholdNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.01;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<Voronoi> centerVoronoi = []() {
+		static const Holder<Voronoi> centerVoronoi = []()
+		{
 			VoronoiCreateConfig cfg;
 			cfg.cellSize = 150;
 			cfg.pointsPerCell = 2;
 			cfg.seed = noiseSeed();
 			return newVoronoi(cfg);
 		}();
-		static const Holder<NoiseFunction> sizeNoise = []() {
+		static const Holder<NoiseFunction> sizeNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.3;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> hueNoise = []() {
+		static const Holder<NoiseFunction> hueNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> valueNoise = []() {
+		static const Holder<NoiseFunction> valueNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.8;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> scratchesNoise = []() {
+		static const Holder<NoiseFunction> scratchesNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 2;
@@ -581,27 +609,31 @@ namespace
 
 	void generateTreeStumps(Tile &tile)
 	{
-		static const Holder<NoiseFunction> thresholdNoise = []() {
+		static const Holder<NoiseFunction> thresholdNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.02;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<Voronoi> centerVoronoi = []() {
+		static const Holder<Voronoi> centerVoronoi = []()
+		{
 			VoronoiCreateConfig cfg;
 			cfg.cellSize = 40;
 			cfg.seed = noiseSeed();
 			return newVoronoi(cfg);
 		}();
-		static const Holder<NoiseFunction> sizeNoise = []() {
+		static const Holder<NoiseFunction> sizeNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 1.5;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> hueNoise = []() {
+		static const Holder<NoiseFunction> hueNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.2;
@@ -614,14 +646,14 @@ namespace
 
 		switch (tile.biome)
 		{
-		case TerrainBiomeEnum::Taiga:
-		case TerrainBiomeEnum::TemperateRainForest:
-		case TerrainBiomeEnum::TemperateSeasonalForest:
-		case TerrainBiomeEnum::TropicalRainForest:
-		case TerrainBiomeEnum::TropicalSeasonalForest:
-			break;
-		default:
-			return; // no trees here
+			case TerrainBiomeEnum::Taiga:
+			case TerrainBiomeEnum::TemperateRainForest:
+			case TerrainBiomeEnum::TemperateSeasonalForest:
+			case TerrainBiomeEnum::TropicalRainForest:
+			case TerrainBiomeEnum::TropicalSeasonalForest:
+				break;
+			default:
+				return; // no trees here
 		}
 
 		if (thresholdNoise->evaluate(tile.position) < 0.1)
@@ -651,7 +683,8 @@ namespace
 
 	void generateWater(Tile &tile)
 	{
-		static const Holder<NoiseFunction> hueNoise = []() {
+		static const Holder<NoiseFunction> hueNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -678,40 +711,46 @@ namespace
 
 	void generateFlowers(Tile &tile)
 	{
-		static const Holder<Voronoi> clusterVoronoi = []() {
+		static const Holder<Voronoi> clusterVoronoi = []()
+		{
 			VoronoiCreateConfig cfg;
 			cfg.cellSize = 150;
 			cfg.seed = noiseSeed();
 			return newVoronoi(cfg);
 		}();
-		static const Holder<Voronoi> centerVoronoi = []() {
+		static const Holder<Voronoi> centerVoronoi = []()
+		{
 			VoronoiCreateConfig cfg;
 			cfg.cellSize = 15;
 			cfg.seed = noiseSeed();
 			return newVoronoi(cfg);
 		}();
-		static const Holder<NoiseFunction> sizeNoise = []() {
+		static const Holder<NoiseFunction> sizeNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.7;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> colorNoise = []() {
+		static const Holder<NoiseFunction> colorNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 1;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> hue1Noise = []() {
+		static const Holder<NoiseFunction> hue1Noise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.01;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> hue2Noise = []() {
+		static const Holder<NoiseFunction> hue2Noise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.8;
@@ -756,14 +795,16 @@ namespace
 
 	void generateIce(Tile &tile)
 	{
-		static const Holder<NoiseFunction> temperatureOffsetNoise = []() {
+		static const Holder<NoiseFunction> temperatureOffsetNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.frequency = 0.035;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> scaleNoise = []() {
+		static const Holder<NoiseFunction> scaleNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -772,7 +813,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> cracksNoise = []() {
+		static const Holder<NoiseFunction> cracksNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cellular;
 			cfg.distance = NoiseDistanceEnum::Hybrid;
@@ -813,21 +855,24 @@ namespace
 
 	void generateSnow(Tile &tile)
 	{
-		static const Holder<NoiseFunction> tempOffsetNoise = []() {
+		static const Holder<NoiseFunction> tempOffsetNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.frequency = 0.015;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> slopeOffsetNoise = []() {
+		static const Holder<NoiseFunction> slopeOffsetNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.frequency = 0.11;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> opacityNoise = []() {
+		static const Holder<NoiseFunction> opacityNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -865,22 +910,36 @@ namespace
 
 	void generateVisualization(Tile &tile)
 	{
-		tile.albedo = [&]() {
+		tile.albedo = [&]()
+		{
 			switch (tile.biome)
 			{
-			case TerrainBiomeEnum::Bare: return Vec3(187) / 255;
-			case TerrainBiomeEnum::Tundra: return Vec3(175, 226, 255) / 255;
-			case TerrainBiomeEnum::Taiga: return Vec3(193, 225, 221) / 255;
-			case TerrainBiomeEnum::Shrubland: return Vec3(200, 110, 62) / 255;
-			case TerrainBiomeEnum::Grassland: return Vec3(239, 252, 143) / 255;
-			case TerrainBiomeEnum::TemperateSeasonalForest: return Vec3(151, 183, 102) / 255;
-			case TerrainBiomeEnum::TemperateRainForest: return Vec3(118, 169, 92) / 255;
-			case TerrainBiomeEnum::Desert: return Vec3(221, 187, 76) / 255;
-			case TerrainBiomeEnum::Savanna: return Vec3(253, 213, 120) / 255;
-			case TerrainBiomeEnum::TropicalSeasonalForest: return Vec3(161, 151, 0) / 255;
-			case TerrainBiomeEnum::TropicalRainForest: return Vec3(50, 122, 30) / 255;
-			case TerrainBiomeEnum::Water: return Vec3(0, 0, 255) / 255;
-			default: return Vec3::Nan();
+				case TerrainBiomeEnum::Bare:
+					return Vec3(187) / 255;
+				case TerrainBiomeEnum::Tundra:
+					return Vec3(175, 226, 255) / 255;
+				case TerrainBiomeEnum::Taiga:
+					return Vec3(193, 225, 221) / 255;
+				case TerrainBiomeEnum::Shrubland:
+					return Vec3(200, 110, 62) / 255;
+				case TerrainBiomeEnum::Grassland:
+					return Vec3(239, 252, 143) / 255;
+				case TerrainBiomeEnum::TemperateSeasonalForest:
+					return Vec3(151, 183, 102) / 255;
+				case TerrainBiomeEnum::TemperateRainForest:
+					return Vec3(118, 169, 92) / 255;
+				case TerrainBiomeEnum::Desert:
+					return Vec3(221, 187, 76) / 255;
+				case TerrainBiomeEnum::Savanna:
+					return Vec3(253, 213, 120) / 255;
+				case TerrainBiomeEnum::TropicalSeasonalForest:
+					return Vec3(161, 151, 0) / 255;
+				case TerrainBiomeEnum::TropicalRainForest:
+					return Vec3(50, 122, 30) / 255;
+				case TerrainBiomeEnum::Water:
+					return Vec3(0, 0, 255) / 255;
+				default:
+					return Vec3::Nan();
 			};
 		}();
 

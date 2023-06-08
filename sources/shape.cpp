@@ -1,9 +1,9 @@
-#include <cage-core/noiseFunction.h>
 #include <cage-core/config.h>
+#include <cage-core/noiseFunction.h>
 
-#include "terrain.h"
-#include "sdf.h"
 #include "math.h"
+#include "sdf.h"
+#include "terrain.h"
 
 namespace
 {
@@ -21,7 +21,8 @@ namespace
 
 	Real elevationSimple(const Vec3 &pos)
 	{
-		static const Holder<NoiseFunction> elevNoise = []() {
+		static const Holder<NoiseFunction> elevNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Simplex;
 			cfg.fractalType = NoiseFractalTypeEnum::Ridged;
@@ -32,7 +33,7 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		Real a = elevNoise->evaluate(pos); 
+		Real a = elevNoise->evaluate(pos);
 		a = -a + 0.3; // min: -0.7, mean: 0.02, max: 1.1
 		a = pow(a * 1.3 - 0.35, 3) + 0.1;
 		return 100 - a * 1000;
@@ -40,7 +41,8 @@ namespace
 
 	Real elevationLegacy(const Vec3 &pos)
 	{
-		static const Holder<NoiseFunction> scaleNoise = []() {
+		static const Holder<NoiseFunction> scaleNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -49,7 +51,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> elevNoise = []() {
+		static const Holder<NoiseFunction> elevNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -70,14 +73,16 @@ namespace
 
 	Real commonElevationMountains(const Vec3 &pos, Real land)
 	{
-		static const Holder<NoiseFunction> maskNoise = []() {
+		static const Holder<NoiseFunction> maskNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.frequency = 0.0015;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> ridgeNoise = []() {
+		static const Holder<NoiseFunction> ridgeNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Simplex;
 			cfg.fractalType = NoiseFractalTypeEnum::Ridged;
@@ -88,7 +93,8 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> terraceNoise = []() {
+		static const Holder<NoiseFunction> terraceNoise = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -99,7 +105,7 @@ namespace
 			return newNoiseFunction(cfg);
 		}();
 
-		Real cover = 1 - saturate(land * -0.1); 
+		Real cover = 1 - saturate(land * -0.1);
 		if (cover < 1e-7)
 			return land;
 
@@ -127,7 +133,8 @@ namespace
 
 	Real elevationLakes(const Vec3 &pos)
 	{
-		static const Holder<NoiseFunction> elevLand = []() {
+		static const Holder<NoiseFunction> elevLand = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
@@ -146,9 +153,10 @@ namespace
 		return commonElevationMountains(pos, land);
 	}
 
-	Real elevationIslands(const Vec3& pos)
+	Real elevationIslands(const Vec3 &pos)
 	{
-		static const Holder<NoiseFunction> elevLand = []() {
+		static const Holder<NoiseFunction> elevLand = []()
+		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;

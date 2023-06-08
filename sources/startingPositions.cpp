@@ -1,9 +1,9 @@
 #include <cage-core/files.h>
-#include <cage-core/mesh.h>
 #include <cage-core/geometry.h>
+#include <cage-core/mesh.h>
 
-#include "terrain.h"
 #include "generator.h"
+#include "terrain.h"
 
 #include <algorithm>
 #include <random>

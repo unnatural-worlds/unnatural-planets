@@ -1,12 +1,12 @@
+#include <cage-core/enumerate.h>
 #include <cage-core/files.h>
 #include <cage-core/ini.h>
-#include <cage-core/enumerate.h>
 #include <cage-core/logger.h>
-#include <cage-core/string.h>
 #include <cage-core/mesh.h>
+#include <cage-core/string.h>
 
-#include "terrain.h"
 #include "generator.h"
+#include "terrain.h"
 
 #include <algorithm>
 
@@ -113,11 +113,13 @@ namespace
 		if (eligible.empty())
 			return nullptr;
 
-		std::sort(eligible.begin(), eligible.end(), [](const Eligible &a, const Eligible &b) {
-			if (abs(a.prob - b.prob) < 1e-5)
-				return a.doodad->instances < b.doodad->instances;
-			return a.prob > b.prob;
-		});
+		std::sort(eligible.begin(), eligible.end(),
+			[](const Eligible &a, const Eligible &b)
+			{
+				if (abs(a.prob - b.prob) < 1e-5)
+					return a.doodad->instances < b.doodad->instances;
+				return a.prob > b.prob;
+			});
 
 		Real probSum = 0;
 		for (const Eligible &e : eligible)

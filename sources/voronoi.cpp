@@ -12,8 +12,7 @@ public:
 	const Vec3i seedHashes;
 	const Real frequency;
 
-	VoronoiImpl(const VoronoiCreateConfig &cfg) : cfg(cfg), seedHashes(hash(cfg.seed), hash(hash(cfg.seed)), hash(hash(hash(cfg.seed)))), frequency(1 / cfg.cellSize)
-	{}
+	VoronoiImpl(const VoronoiCreateConfig &cfg) : cfg(cfg), seedHashes(hash(cfg.seed), hash(hash(cfg.seed)), hash(hash(hash(cfg.seed)))), frequency(1 / cfg.cellSize) {}
 
 	Vec3i mix(const Vec3i &s)
 	{
@@ -22,10 +21,7 @@ public:
 		return seedHashes + s + a + b;
 	}
 
-	Vec3 genPoint(const Vec3i &s)
-	{
-		return Vec3(s % 65536) / 65535;
-	}
+	Vec3 genPoint(const Vec3i &s) { return Vec3(s % 65536) / 65535; }
 
 	struct Point
 	{
@@ -47,7 +43,7 @@ public:
 	{
 		const uint32 totalPoints = cfg.pointsPerCell * 27;
 		Point *const pointsMem = (Point *)CAGE_ALLOCA(totalPoints * sizeof(Point));
-		
+
 		{ // generate all points (including neighboring cells)
 			Point *gen = pointsMem;
 			const Vec3i cell = Vec3i(position * frequency);
@@ -69,9 +65,7 @@ public:
 		{ // sort all points by distance
 			for (Point &p : points)
 				p.d = distanceSquared(p.p, position);
-			std::partial_sort(points.begin(), points.begin() + VoronoiResult::MaxPoints, points.end(), [&](const Point &a, const Point &b) {
-				return a.d < b.d;
-			});
+			std::partial_sort(points.begin(), points.begin() + VoronoiResult::MaxPoints, points.end(), [&](const Point &a, const Point &b) { return a.d < b.d; });
 		}
 
 		VoronoiResult res;

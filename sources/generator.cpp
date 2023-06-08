@@ -1,17 +1,17 @@
 #include <cage-core/concurrent.h>
-#include <cage-core/tasks.h>
-#include <cage-core/files.h>
 #include <cage-core/config.h>
-#include <cage-core/random.h>
+#include <cage-core/debug.h>
+#include <cage-core/files.h>
 #include <cage-core/imageAlgorithms.h>
 #include <cage-core/meshAlgorithms.h>
 #include <cage-core/process.h>
-#include <cage-core/debug.h>
+#include <cage-core/random.h>
 #include <cage-core/string.h>
+#include <cage-core/tasks.h>
 
-#include "terrain.h"
 #include "generator.h"
 #include "mesh.h"
+#include "terrain.h"
 
 #include <atomic>
 #include <chrono>
@@ -300,15 +300,9 @@ bpy.ops.object.select_all(action='DESELECT')
 			tc->wait();
 		}
 
-		NavmeshProcessor()
-		{
-			taskRef = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::processEntry>(this), 1, 30);
-		}
+		NavmeshProcessor() { taskRef = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::processEntry>(this), 1, 30); }
 
-		void wait()
-		{
-			taskRef->wait();
-		}
+		void wait() { taskRef->wait(); }
 	};
 
 	struct LandProcessor
@@ -356,15 +350,9 @@ bpy.ops.object.select_all(action='DESELECT')
 			tasksRunBlocking("land chunk", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 		}
 
-		LandProcessor()
-		{
-			taskRef = tasksRunAsync("land", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::processEntry>(this), 1, 20);
-		}
+		LandProcessor() { taskRef = tasksRunAsync("land", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::processEntry>(this), 1, 20); }
 
-		void wait()
-		{
-			taskRef->wait();
-		}
+		void wait() { taskRef->wait(); }
 	};
 
 	struct WaterProcessor
@@ -418,15 +406,9 @@ bpy.ops.object.select_all(action='DESELECT')
 			tasksRunBlocking("water chunk", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 		}
 
-		WaterProcessor()
-		{
-			taskRef = tasksRunAsync("water", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::processEntry>(this), 1, 10);
-		}
+		WaterProcessor() { taskRef = tasksRunAsync("water", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::processEntry>(this), 1, 10); }
 
-		void wait()
-		{
-			taskRef->wait();
-		}
+		void wait() { taskRef->wait(); }
 	};
 }
 
