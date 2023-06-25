@@ -56,6 +56,7 @@ public:
 
 		const PointerRange<Point> points = { pointsMem, pointsMem + totalPoints };
 
+		if (valid(normal))
 		{ // project all points into the plane
 			const Plane pln = Plane(position, normal);
 			for (Point &p : points)

@@ -1,4 +1,4 @@
-#include "terrain.h"
+#include "tile.h"
 
 Stringizer &operator+(Stringizer &str, const TerrainBiomeEnum &other)
 {

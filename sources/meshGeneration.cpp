@@ -5,9 +5,13 @@
 #include <unnatural-navmesh/navmesh.h>
 
 #include "mesh.h"
-#include "terrain.h"
 
 #include <initializer_list>
+
+Real terrainSdfElevationRaw(const Vec3 &pos);
+Real terrainSdfLand(const Vec3 &pos);
+Real terrainSdfWater(const Vec3 &pos);
+Real terrainSdfNavigation(const Vec3 &pos);
 
 namespace
 {

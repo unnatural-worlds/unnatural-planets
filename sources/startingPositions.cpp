@@ -3,7 +3,7 @@
 #include <cage-core/mesh.h>
 
 #include "generator.h"
-#include "terrain.h"
+#include "tile.h"
 
 #include <algorithm>
 #include <random>

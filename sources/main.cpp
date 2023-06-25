@@ -4,7 +4,8 @@
 #include <cage-core/string.h>
 
 #include "generator.h"
-#include "terrain.h"
+
+void terrainApplyConfig();
 
 namespace
 {
@@ -18,18 +19,16 @@ namespace
 		configElevationMode = cmd->cmdString('e', "elevation", configElevationMode);
 		configElevationMode = toLower((String)configElevationMode);
 
+		ConfigString configColoringMode("unnatural-planets/coloring/mode", "default");
+		configColoringMode = cmd->cmdString('c', "colors", configColoringMode);
+		configColoringMode = toLower((String)configColoringMode);
+
+		ConfigBool configPolesEnable("unnatural-planets/poles/enable", false);
+		configPolesEnable = cmd->cmdBool('p', "poles", configPolesEnable);
+
 		terrainApplyConfig();
 
-		ConfigBool configPolesEnable("unnatural-planets/poles/enable", (String)configShapeMode == "sphere");
-		configPolesEnable = cmd->cmdBool('p', "poles", configPolesEnable);
-		CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "enable poles: " + !!configPolesEnable);
-
-#ifdef CAGE_DEBUG
-		constexpr bool navmeshOptimizeInit = false;
-#else
-		constexpr bool navmeshOptimizeInit = true;
-#endif // CAGE_DEBUG
-		ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize", navmeshOptimizeInit);
+		ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize", !CAGE_DEBUG_BOOL);
 		configNavmeshOptimize = cmd->cmdBool('o', "optimize", configNavmeshOptimize);
 		CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "enable navmesh optimizations: " + !!configNavmeshOptimize);
 

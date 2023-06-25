@@ -3,7 +3,7 @@
 #include <cage-core/meshExport.h>
 
 #include "mesh.h"
-#include "terrain.h"
+#include "tile.h"
 
 void meshSaveDebug(const String &path, const Holder<Mesh> &mesh)
 {

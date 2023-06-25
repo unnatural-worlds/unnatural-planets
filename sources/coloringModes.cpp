@@ -4,10 +4,12 @@
 #include <cage-core/noiseFunction.h>
 #include <cage-core/random.h>
 
-#include "generator.h"
 #include "math.h"
-#include "terrain.h"
+#include "tile.h"
 #include "voronoi.h"
+
+Real terrainSdfElevation(const Vec3 &pos);
+Real terrainSdfElevationRaw(const Vec3 &pos);
 
 namespace
 {
@@ -956,25 +958,17 @@ namespace
 	}
 }
 
-void terrainTile(Tile &tile)
+void coloringDefault(Tile &tile)
 {
-	CAGE_ASSERT(isUnit(tile.normal));
 	generateElevation(tile);
 	generatePrecipitation(tile);
 	generateTemperature(tile);
 	generateSlope(tile);
 	generateBiome(tile);
 	generateType(tile);
-	static constexpr bool EnableVisualization = false;
-	if (EnableVisualization)
-	{
-		generateVisualization(tile);
-		if (tile.meshPurpose == MeshPurposeEnum::Water)
-			tile.opacity = 0.5;
-		generateFinalization(tile);
-		return;
-	}
-	if (tile.meshPurpose == MeshPurposeEnum::Land)
+	if (tile.meshPurpose == MeshPurposeEnum::Water)
+		generateWater(tile);
+	else
 	{
 		generateBedrock(tile);
 		generateCliffs(tile);
@@ -985,30 +979,44 @@ void terrainTile(Tile &tile)
 		generateBoulders(tile);
 		generateTreeStumps(tile);
 	}
-	else
-		generateWater(tile);
 	generateFlowers(tile);
 	generateIce(tile);
 	generateSnow(tile);
 	generateFinalization(tile);
 }
 
-void terrainPreseed()
+void coloringBarren(Tile &tile)
 {
+	generateElevation(tile);
+	generateSlope(tile);
+	if (tile.meshPurpose == MeshPurposeEnum::Water)
 	{
-		terrainSdfLand(Vec3());
-		Tile tile;
-		tile.position = Vec3(0, 1, 0);
-		tile.normal = Vec3(0, 1, 0);
-		tile.meshPurpose = MeshPurposeEnum::Land;
-		terrainTile(tile);
+		tile.biome = TerrainBiomeEnum::Water;
+		tile.type = TerrainTypeEnum::ShallowWater;
+		generateWater(tile);
 	}
+	else
 	{
-		terrainSdfWater(Vec3());
-		Tile tile;
-		tile.position = Vec3(0, 1, 0);
-		tile.normal = Vec3(0, 1, 0);
-		tile.meshPurpose = MeshPurposeEnum::Water;
-		terrainTile(tile);
+		tile.biome = TerrainBiomeEnum::Bare;
+		tile.type = TerrainTypeEnum::Rough;
+		generateBedrock(tile);
+		generateCliffs(tile);
+		generateMica(tile);
+		generateBoulders(tile);
 	}
+	generateFinalization(tile);
+}
+
+void coloringDebug(Tile &tile)
+{
+	generateElevation(tile);
+	generatePrecipitation(tile);
+	generateTemperature(tile);
+	generateSlope(tile);
+	generateBiome(tile);
+	generateType(tile);
+	generateVisualization(tile);
+	if (tile.meshPurpose == MeshPurposeEnum::Water)
+		tile.opacity = 0.5;
+	generateFinalization(tile);
 }

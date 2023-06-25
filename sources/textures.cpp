@@ -2,7 +2,7 @@
 #include <cage-core/meshAlgorithms.h>
 
 #include "generator.h"
-#include "terrain.h"
+#include "tile.h"
 
 namespace
 {

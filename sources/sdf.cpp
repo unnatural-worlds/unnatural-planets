@@ -334,3 +334,25 @@ Real sdfInsideCube(const Vec3 &p)
 {
 	return -sdfCube(p);
 }
+
+Real sdfAsteroid(const Vec3 &p)
+{
+	static const Holder<NoiseFunction> shapeNoise = []()
+	{
+		NoiseFunctionCreateConfig cfg;
+		cfg.type = NoiseTypeEnum::Simplex;
+		cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+		cfg.octaves = 2;
+		cfg.gain = 0.3;
+		cfg.frequency = randomRange(0.65, 0.75);
+		cfg.seed = noiseSeed();
+		return newNoiseFunction(cfg);
+	}();
+
+	const Real l = length(p);
+	if (l < 1)
+		return -100;
+	const Vec3 d = p / l;
+	const Real n = shapeNoise->evaluate(d);
+	return l + n * 600 - 1300;
+}

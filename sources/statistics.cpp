@@ -8,7 +8,7 @@
 #include <cage-core/string.h>
 
 #include "generator.h"
-#include "terrain.h"
+#include "tile.h"
 
 #include <queue>
 #include <vector>

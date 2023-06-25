@@ -6,7 +6,7 @@
 #include <cage-core/string.h>
 
 #include "generator.h"
-#include "terrain.h"
+#include "tile.h"
 
 #include <algorithm>
 
@@ -142,11 +142,6 @@ namespace
 
 	void printStatistics(const std::vector<Doodad> &doodads, const uint32 verticesCount, const String &statsLogPath)
 	{
-		Holder<LoggerOutputFile> loggerFile = newLoggerOutputFile(statsLogPath, false); // the file must be destroyed after the logger
-		Holder<Logger> logger = newLogger();
-		logger->filter.bind<&logFilterSameThread>();
-		logger->output.bind<LoggerOutputFile, &LoggerOutputFile::output>(+loggerFile);
-
 		uint32 total = 0;
 		uint32 maxc = 0;
 		for (const Doodad &d : doodads)
@@ -154,6 +149,18 @@ namespace
 			total += d.instances;
 			maxc = max(maxc, d.instances);
 		}
+
+		if (total == 0)
+		{
+			CAGE_LOG(SeverityEnum::Warning, "doodadStats", Stringizer() + "placed no doodads");
+			return;
+		}
+
+		Holder<LoggerOutputFile> loggerFile = newLoggerOutputFile(statsLogPath, false); // the file must be destroyed after the logger
+		Holder<Logger> logger = newLogger();
+		logger->filter.bind<&logFilterSameThread>();
+		logger->output.bind<LoggerOutputFile, &LoggerOutputFile::output>(+loggerFile);
+
 		for (const Doodad &d : doodads)
 		{
 			const String c = Stringizer() + d.instances;
@@ -161,6 +168,7 @@ namespace
 			const String g = maxc > 0 ? fill(String(), 30 * d.instances / maxc, '#') : "";
 			CAGE_LOG_CONTINUE(SeverityEnum::Info, "doodadStats", Stringizer() + fill(d.name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 12)) + " % " + g);
 		}
+
 		CAGE_LOG(SeverityEnum::Info, "doodadStats", Stringizer() + "placed " + total + " doodads in total (covers " + (100.0f * total / verticesCount) + " % tiles)");
 	}
 }
