@@ -1,19 +1,34 @@
+#include <cage-core/enumerate.h>
 #include <cage-core/files.h>
 #include <cage-core/geometry.h>
 #include <cage-core/mesh.h>
 
+#include "doodads.h"
 #include "generator.h"
 #include "tile.h"
 
 #include <algorithm>
+#include <map>
 #include <random>
 
 namespace
 {
-	Real calculateScore(const std::vector<Tile> &tiles, PointerRange<const uint32> positions)
+	Real meanMinusDeviation(PointerRange<const Real> values)
 	{
-		Real totalDist, minDist = Real::Infinity(), maxDist = -Real::Infinity();
-		uint32 distCount = 0;
+		Real avg = 0;
+		for (Real s : values)
+			avg += s;
+		avg /= values.size();
+		Real dev = 0;
+		for (Real s : values)
+			dev += abs(s - avg);
+		dev /= values.size();
+		return avg - dev;
+	}
+
+	Real scoreEquidistantPositions(const std::vector<Tile> &tiles, PointerRange<const uint32> positions)
+	{
+		std::vector<Real> dists;
 		for (uint32 i : positions)
 		{
 			for (uint32 j : positions)
@@ -23,20 +38,62 @@ namespace
 					const Real d = distance(tiles[i].position, tiles[j].position);
 					if (d < 250)
 						return -Real::Infinity(); // starting positions too close to each other
-					totalDist += d;
-					minDist = min(minDist, d);
-					maxDist = max(maxDist, d);
-					distCount++;
+					dists.push_back(d);
 				}
 			}
 		}
-		const Real avgDist = totalDist / distCount;
-		Real devSum;
-		for (uint32 i : positions)
-			for (uint32 j : positions)
-				if (j > i)
-					devSum += abs(distance(tiles[i].position, tiles[j].position) - avgDist);
-		return minDist * positions.size() - devSum / positions.size();
+		return meanMinusDeviation(dists);
+	}
+
+	Real scoreStartingResources(const std::vector<Tile> &tiles, PointerRange<const uint32> positions)
+	{
+		struct Dd
+		{
+			std::vector<uint32> ps; // positions
+			std::vector<Real> ds; // distances
+		};
+		std::map<const Doodad *, Dd> dds;
+		for (auto it : enumerate(tiles))
+			if (it->doodad && it->doodad->starting > 0)
+				dds[it->doodad].ps.push_back(numeric_cast<uint32>(it.index));
+		uint32 totalDoodads = 0;
+		for (auto &it : dds)
+		{
+			if (it.second.ps.size() < it.first->starting)
+			{
+				CAGE_LOG_THROW(Stringizer() + "doodad: " + it.first->name);
+				CAGE_THROW_ERROR(Exception, "insufficient number of doodads to generate starting positions");
+			}
+			totalDoodads += it.first->starting;
+		}
+
+		std::vector<Real> dists;
+		for (uint32 start : positions)
+		{
+			Real score = 0;
+			for (auto &it : dds)
+			{
+				it.second.ds.clear();
+				for (uint32 d : it.second.ps)
+					it.second.ds.push_back(distance(tiles[d].position, tiles[start].position));
+				std::sort(it.second.ds.begin(), it.second.ds.end());
+				it.second.ds.resize(it.first->starting);
+				for (Real d : it.second.ds)
+					score += 500 - max(d - 500, 0);
+			}
+			dists.push_back(score);
+		}
+		return meanMinusDeviation(dists);
+	}
+
+	Real calculateScore(const std::vector<Tile> &tiles, PointerRange<const uint32> positions)
+	{
+		const Real edp = scoreEquidistantPositions(tiles, positions);
+		if (edp == -Real::Infinity())
+			return edp;
+		const Real sr = scoreStartingResources(tiles, positions);
+		CAGE_LOG_DEBUG(SeverityEnum::Info, "generator", Stringizer() + "score edp: " + edp + ", sr: " + sr + ", count: " + positions.size());
+		return edp + sr;
 	}
 
 	std::vector<uint32> pickRandomPositions(const std::vector<Tile> &tiles)
@@ -64,10 +121,10 @@ void generateStartingPositions(const Holder<Mesh> &navMesh, const std::vector<Ti
 	std::vector<uint32> bestSolution;
 	Real bestScore = -Real::Infinity();
 
-	for (uint32 attempt = 0; attempt < 200; attempt++)
+	for (uint32 attempt = 0; attempt < 1000; attempt++)
 	{
 		std::vector<uint32> current = pickRandomPositions(tiles);
-		Real score = calculateScore(tiles, current);
+		const Real score = calculateScore(tiles, current);
 		if (score > bestScore)
 		{
 			std::swap(bestSolution, current);
@@ -98,4 +155,5 @@ void generateStartingPositions(const Holder<Mesh> &navMesh, const std::vector<Ti
 	}
 
 	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "generated " + bestSolution.size() + " starting positions");
+	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "starting positions score: " + bestScore);
 }

@@ -276,7 +276,7 @@ bpy.ops.object.select_all(action='DESELECT')
 			std::vector<Tile> tiles;
 			generateTileProperties(navmesh, tiles, pathJoin(baseDirectory, "tileStats.log"));
 			meshSaveNavigation(pathJoin(assetsDirectory, "navmesh.obj"), navmesh, tiles);
-			generateDoodads(navmesh, tiles, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
+			const auto dds = generateDoodads(navmesh, tiles, assetPackages, pathJoin(baseDirectory, "doodads.ini"), pathJoin(baseDirectory, "doodadStats.log"));
 			generateStartingPositions(navmesh, tiles, pathJoin(baseDirectory, "starts.ini"));
 		}
 

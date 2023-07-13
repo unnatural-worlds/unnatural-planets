@@ -5,3 +5,4 @@ prototype = unnatural/base/ores/gold-deposit.proto
 [requirements]
 buildable = true
 probability = 0.0015
+starting = 1

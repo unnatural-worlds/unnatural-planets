@@ -49,6 +49,8 @@ enum class MeshPurposeEnum : uint8
 Stringizer &operator+(Stringizer &str, const TerrainBiomeEnum &other);
 Stringizer &operator+(Stringizer &str, const TerrainTypeEnum &other);
 
+struct Doodad;
+
 struct Tile
 {
 	Vec3 position;
@@ -63,6 +65,7 @@ struct Tile
 	Real precipitation;
 	Real opacity = 1;
 	Real flatRadius;
+	const Doodad *doodad = nullptr;
 	TerrainBiomeEnum biome = TerrainBiomeEnum::_Total;
 	TerrainTypeEnum type = TerrainTypeEnum::_Total;
 	MeshPurposeEnum meshPurpose = MeshPurposeEnum::Undefined;

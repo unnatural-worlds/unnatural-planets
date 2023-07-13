@@ -3,8 +3,10 @@
 #include <cage-core/ini.h>
 #include <cage-core/logger.h>
 #include <cage-core/mesh.h>
+#include <cage-core/pointerRangeHolder.h>
 #include <cage-core/string.h>
 
+#include "doodads.h"
 #include "generator.h"
 #include "tile.h"
 
@@ -12,23 +14,6 @@
 
 namespace
 {
-	struct Doodad
-	{
-		String name;
-		uint32 instances = 0;
-
-		String package;
-		String proto;
-
-		// requirements
-		Vec2 temperature = Vec2(-Real::Infinity(), Real::Infinity());
-		Vec2 precipitation = Vec2(-Real::Infinity(), Real::Infinity());
-		Real probability;
-		bool ocean = false;
-		bool slope = false;
-		bool buildable = false;
-	};
-
 	Doodad loadDoodad(const String &root, const String &path)
 	{
 		Holder<Ini> ini = newIni();
@@ -42,6 +27,7 @@ namespace
 		if (ini->itemExists("requirements", "precipitation"))
 			d.precipitation = Vec2::parse(ini->getString("requirements", "precipitation"));
 		d.probability = ini->getFloat("requirements", "probability", 0.05f);
+		d.starting = ini->getUint32("requirements", "starting", 0);
 		d.ocean = ini->getBool("requirements", "ocean", false);
 		d.slope = ini->getBool("requirements", "slope", false);
 		d.buildable = ini->getBool("requirements", "buildable", false);
@@ -53,9 +39,9 @@ namespace
 		return d;
 	}
 
-	std::vector<Doodad> loadDoodads(const String &root, const String &path)
+	Holder<PointerRange<Doodad>> loadDoodads(const String &root, const String &path)
 	{
-		std::vector<Doodad> result;
+		PointerRangeHolder<Doodad> result;
 		Holder<PointerRange<String>> list = pathListDirectory(path);
 		for (const String &p : list)
 		{
@@ -80,7 +66,7 @@ namespace
 		return max(0, v);
 	}
 
-	const Doodad *chooseDoodad(const std::vector<Doodad> &doodads, const Tile &tile)
+	const Doodad *chooseDoodad(PointerRange<const Doodad> doodads, const Tile &tile)
 	{
 		struct Eligible
 		{
@@ -140,7 +126,7 @@ namespace
 		return info.createThreadId == info.currentThreadId;
 	}
 
-	void printStatistics(const std::vector<Doodad> &doodads, const uint32 verticesCount, const String &statsLogPath)
+	void printStatistics(PointerRange<const Doodad> doodads, const uint32 verticesCount, const String &statsLogPath)
 	{
 		uint32 total = 0;
 		uint32 maxc = 0;
@@ -173,14 +159,14 @@ namespace
 	}
 }
 
-void generateDoodads(const Holder<Mesh> &navMesh, const std::vector<Tile> &tiles, std::vector<String> &assetPackages, const String &doodadsPath, const String &statsLogPath)
+Holder<PointerRange<Doodad>> generateDoodads(const Holder<Mesh> &navMesh, std::vector<Tile> &tiles, std::vector<String> &assetPackages, const String &doodadsPath, const String &statsLogPath)
 {
 	CAGE_LOG(SeverityEnum::Info, "generator", "generating doodads");
 
 	CAGE_ASSERT(navMesh->verticesCount() == tiles.size());
 
 	const String root = pathSearchTowardsRoot("doodads", PathTypeFlags::Directory);
-	const std::vector<Doodad> doodads = loadDoodads(root, root);
+	Holder<PointerRange<Doodad>> doodads = loadDoodads(root, root);
 	CAGE_LOG(SeverityEnum::Info, "doodads", Stringizer() + "found " + doodads.size() + " doodad prototypes");
 
 	Holder<File> f = writeFile(doodadsPath);
@@ -196,6 +182,7 @@ void generateDoodads(const Holder<Mesh> &navMesh, const std::vector<Tile> &tiles
 		f->writeLine(Stringizer() + "position = " + *it);
 		f->writeLine("");
 		const_cast<Doodad *>(doodad)->instances++;
+		tiles[i].doodad = doodad;
 	}
 	f->close();
 
@@ -203,4 +190,6 @@ void generateDoodads(const Holder<Mesh> &navMesh, const std::vector<Tile> &tiles
 
 	std::sort(assetPackages.begin(), assetPackages.end());
 	assetPackages.erase(std::unique(assetPackages.begin(), assetPackages.end()), assetPackages.end());
+
+	return doodads;
 }

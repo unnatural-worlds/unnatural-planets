@@ -5,3 +5,4 @@ prototype = unnatural/base/ores/copper-deposit.proto
 [requirements]
 buildable = true
 probability = 0.002
+starting = 1

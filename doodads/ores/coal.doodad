@@ -5,3 +5,4 @@ prototype = unnatural/base/ores/coal-deposit.proto
 [requirements]
 buildable = true
 probability = 0.0025
+starting = 2
