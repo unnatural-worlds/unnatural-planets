@@ -356,3 +356,16 @@ Real sdfAsteroid(const Vec3 &p)
 	const Real n = shapeNoise->evaluate(d);
 	return l + n * 600 - 1300;
 }
+
+Real sdfPipe(const Vec3 &p_)
+{
+	Vec3 p = p_;
+	if (p[0] < 0)
+	{
+		p[0] *= -1;
+		std::swap(p[1], p[2]);
+	}
+	p[1] = abs(p[1]) - 800;
+	std::swap(p[1], p[2]);
+	return sdfTorus(p, 800, 400);
+}

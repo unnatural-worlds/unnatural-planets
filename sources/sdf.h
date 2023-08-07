@@ -34,5 +34,6 @@ Real sdfTorusCross(const Vec3 &p);
 Real sdfBowl(const Vec3 &p);
 Real sdfInsideCube(const Vec3 &p);
 Real sdfAsteroid(const Vec3 &p);
+Real sdfPipe(const Vec3 &p);
 
 #endif

@@ -49,6 +49,7 @@ Holder<Mesh> meshGenerateBaseLand()
 	Holder<Mesh> poly = meshGenerateGeneric<&terrainSdfLand>();
 	if (poly->indicesCount() == 0)
 		CAGE_THROW_ERROR(Exception, "generated empty base land mesh");
+	CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "land mesh bounding box: " + poly->boundingBox());
 	return poly;
 }
 
