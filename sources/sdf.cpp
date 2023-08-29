@@ -369,3 +369,10 @@ Real sdfPipe(const Vec3 &p_)
 	std::swap(p[1], p[2]);
 	return sdfTorus(p, 800, 400);
 }
+
+Real sdfTwistedPlane(const Vec3 &p)
+{
+	const Real rot = 1 - sqr(1 - min(1, abs(p[2]) / 1000));
+	const Rads angle = Degs(sign(p[2]) * rot * 35);
+	return p[1] * cos(angle) + p[0] * sin(angle);
+}

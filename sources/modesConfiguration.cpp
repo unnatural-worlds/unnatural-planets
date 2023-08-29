@@ -64,6 +64,7 @@ namespace
 			&sdfInsideCube,
 			&sdfAsteroid,
 			&sdfPipe,
+			&sdfTwistedPlane,
 		};
 
 		static constexpr uint32 shapeModesCount = sizeof(shapeModeFunctions) / sizeof(shapeModeFunctions[0]);
@@ -99,6 +100,7 @@ namespace
 			"insidecube",
 			"asteroid",
 			"pipe",
+			"twistedplane",
 		};
 
 		static_assert(shapeModesCount == sizeof(shapeModeNames) / sizeof(shapeModeNames[0]), "number of functions and names must match");

@@ -35,5 +35,6 @@ Real sdfBowl(const Vec3 &p);
 Real sdfInsideCube(const Vec3 &p);
 Real sdfAsteroid(const Vec3 &p);
 Real sdfPipe(const Vec3 &p);
+Real sdfTwistedPlane(const Vec3 &p);
 
 #endif
