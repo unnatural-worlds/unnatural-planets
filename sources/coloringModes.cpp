@@ -214,8 +214,6 @@ namespace
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
 			cfg.frequency = 0.05;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
@@ -224,9 +222,7 @@ namespace
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.005;
+			cfg.frequency = 0.02;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -236,8 +232,7 @@ namespace
 			cfg.type = NoiseTypeEnum::Cellular;
 			cfg.distance = NoiseDistanceEnum::Hybrid;
 			cfg.operation = NoiseOperationEnum::Subtract;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 3;
+			cfg.frequency = 0.06;
 			cfg.seed = seed;
 			return newNoiseFunction(cfg);
 		}();
@@ -247,8 +242,7 @@ namespace
 			cfg.type = NoiseTypeEnum::Cellular;
 			cfg.distance = NoiseDistanceEnum::Hybrid;
 			cfg.operation = NoiseOperationEnum::Cell;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 3;
+			cfg.frequency = 0.06;
 			cfg.seed = seed;
 			return newNoiseFunction(cfg);
 		}();
@@ -257,18 +251,18 @@ namespace
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.003;
+			cfg.octaves = 2;
+			cfg.frequency = 0.007;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
 
 		const Real scale = sqr(scaleNoise->evaluate(tile.position) * 0.5 + 0.501) * 2;
-		const Real freq = freqNoise->evaluate(tile.position) * 0.05 + 0.15;
+		const Real freq = freqNoise->evaluate(tile.position) * 0.15 + 1;
 		const Real cracks = saturate(pow(cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5, 0.8));
-		const Real value = valueNoise->evaluate(tile.position * freq) * 0.5 + 0.5;
-		const Real saturation = saturationNoise->evaluate(tile.position) * 0.5 + 0.5;
-		const Vec3 hsv = Vec3(0.07, saturate(sharpEdge(saturation, 0.2)), (value * 0.4 + 0.2) * cracks);
+		const Real value = valueNoise->evaluate(tile.position * freq) * 0.5 + 0.6;
+		const Real saturation = saturationNoise->evaluate(tile.position) * 0.5 + 0.6;
+		const Vec3 hsv = Vec3(0.07, saturate(sharpEdge(saturation, 0.2)) * 0.7 + 0.1, (value * 0.4 + 0.1) * cracks);
 		tile.albedo = colorHsvToRgb(hsv);
 		tile.roughness = interpolate(0.9, value * 0.2 + 0.7, cracks);
 		tile.height = cracks * scale;
@@ -294,9 +288,7 @@ namespace
 			cfg.type = NoiseTypeEnum::Cellular;
 			cfg.distance = NoiseDistanceEnum::Hybrid;
 			cfg.operation = NoiseOperationEnum::Multiply;
-			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 3;
-			cfg.frequency = 0.1;
+			cfg.frequency = 0.02;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -307,20 +299,20 @@ namespace
 			cfg.distance = NoiseDistanceEnum::Manhattan;
 			cfg.operation = NoiseOperationEnum::Divide;
 			cfg.fractalType = NoiseFractalTypeEnum::None;
-			cfg.frequency = 0.3;
+			cfg.frequency = 0.05;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
 
-		const Real bf = saturate((maskNoise->evaluate(tile.position) - 1) * 10);
+		const Real bf = saturate((maskNoise->evaluate(tile.position) - 0.98) * 10);
 		if (bf < 1e-7)
 			return;
 
 		const Real cracks = sharpEdge(saturate((cracksNoise->evaluate(tile.position) + 0.6)));
 		const Vec3 color = interpolate(Vec3(122, 90, 88) / 255, Vec3(184, 209, 187) / 255, cracks);
-		const Real roughness = cracks * 0.3 + 0.5;
+		const Real roughness = cracks * 0.3 + 0.4;
 		const Real metallic = 1;
-		const Real height = tile.height - 0.05;
+		const Real height = tile.height * 0.5;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -372,12 +364,11 @@ namespace
 		{
 			Real saturation = rangeMask(tile.precipitation, 0, 50);
 			Vec3 hsv = colorRgbToHsv(color);
-			hsv[1] *= saturation;
-			hsv[1] *= 0.7;
+			hsv[1] *= saturation * 0.7;
 			hsv[2] *= 0.8;
 			color = colorHsvToRgb(hsv);
 		}
-		Real roughness = randomChance() * 0.1 + 0.7;
+		Real roughness = 0.8;
 		Real metallic = 0;
 
 		{ // cracks
@@ -443,15 +434,14 @@ namespace
 
 		const Real heightScale = heightScaleNoise->evaluate(tile.position) * 0.3 + 1;
 		const Real height = (heightNoise->evaluate(tile.position * heightScale) * 0.2) * (rangeMask(tile.precipitation, 100, 50) * 0.4 + 0.6) + 0.5;
-		const Real hueShift = hueNoise->evaluate(tile.position) * 0.1;
-		const Vec3 color1 = colorHueShift(Vec3(172, 159, 139) / 255, hueShift);
 		const Real colorShift = smootherstep(smootherstep(colorNoise->evaluate(tile.position) * 0.5 + 0.5));
-		const Vec3 color2 = colorDeviation(interpolateColor(color1, Vec3(170, 95, 46) / 255, colorShift), 0.08);
-		Vec3 hsv = colorRgbToHsv(color2);
-		hsv *= Vec3(1, 0.7, 0.8);
-		const Vec3 color = colorHsvToRgb(hsv);
-		const Real roughness = randomChance() * 0.3 + 0.6;
-		const Real metallic = sqr(sqr(randomChance()));
+		const Real hueShift = hueNoise->evaluate(tile.position) * 0.1;
+		Vec3 color = colorHueShift(Vec3(172, 159, 139) / 255, hueShift);
+		color = interpolateColor(color, Vec3(170, 95, 46) / 255, colorShift);
+		color = colorDeviation(color, 0.08);
+		color = colorHsvToRgb(colorRgbToHsv(color) * Vec3(1, 0.7, 0.8));
+		const Real roughness = (heightScale - 1) * 0.7 + 0.55 + hueShift;
+		const Real metallic = 0;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -461,22 +451,7 @@ namespace
 
 	void generateGrass(Tile &tile)
 	{
-		constexpr const auto bladesNoiseGen = []()
-		{
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Cellular;
-			cfg.fractalType = NoiseFractalTypeEnum::None;
-			cfg.distance = NoiseDistanceEnum::EuclideanSq;
-			cfg.operation = NoiseOperationEnum::Divide;
-			cfg.frequency = 1.4;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		};
-		static const Holder<NoiseFunction> bladesNoise[] = {
-			bladesNoiseGen(),
-			bladesNoiseGen(),
-			bladesNoiseGen(),
-		};
+		static const uint32 seed = noiseSeed();
 		static const Holder<NoiseFunction> hueNoise = []()
 		{
 			NoiseFunctionCreateConfig cfg;
@@ -487,11 +462,33 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> saturationNoise = []()
+		static const Holder<NoiseFunction> patchesCellsNoise = []()
 		{
 			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Value;
-			cfg.frequency = 0.03;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
+			cfg.operation = NoiseOperationEnum::Cell;
+			cfg.frequency = 0.1;
+			cfg.seed = seed;
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> patchesDistNoise = []()
+		{
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
+			cfg.operation = NoiseOperationEnum::Subtract;
+			cfg.frequency = 0.1;
+			cfg.seed = seed;
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> scratchesNoise = []()
+		{
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
+			cfg.operation = NoiseOperationEnum::Multiply;
+			cfg.frequency = 0.3;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -501,28 +498,19 @@ namespace
 		if (bf < 1e-7)
 			return;
 
-		Real bladesMask = 0;
-		for (uint32 i = 0; i < sizeof(bladesNoise) / sizeof(bladesNoise[0]); i++)
-		{
-			const Real bn = bladesNoise[i]->evaluate(tile.position);
-			bladesMask += sharpEdge(bf * 0.5 + 0.5 + bn);
-		}
-
-		bf *= saturate(bladesMask);
-		if (bf < 1e-7)
-			return;
-
-		const Real height = tile.height + bladesMask * 0.05;
-		const Real ratio = clamp(tile.temperature - (tile.precipitation + 100) * 30 / 400, 0, 5);
-		const Real hueShift = hueNoise->evaluate(tile.position) * 0.09 - ratio * 0.02;
-		const Real saturation = saturate(rescale(saturationNoise->evaluate(tile.position), -1, 1, 0.4, 0.7));
-		Vec3 hsv = colorRgbToHsv(Vec3(79, 114, 55) / 255);
-		hsv[0] = (hsv[0] + hueShift + 1) % 1;
-		hsv[1] *= saturation;
-		hsv[2] *= 0.8;
-		const Vec3 color = colorHsvToRgb(hsv);
-		const Real roughness = 0.7 + min(ratio, 0) * 0.02 + randomChance() * 0.2;
-		const Real metallic = rangeMask(tile.precipitation, 230, 270) * 0.1;
+		const Real dryness = clamp(tile.temperature - (tile.precipitation + 100) * 30 / 400, 0, 5) / 5; // 0 .. 1
+		const Real hueShiftBase = hueNoise->evaluate(tile.position);
+		const Real hueShift = hueShiftBase * 0.09 - dryness * 0.1;
+		Vec3 color = Vec3(82, 134, 55) / 255;
+		color = colorHueShift(color, hueShift);
+		const Real patchesMask = sharpEdge(patchesCellsNoise->evaluate(tile.position) * 0.5 + 0.2);
+		const Real patches = pow(patchesDistNoise->evaluate(tile.position) * 0.5 + 0.5, 0.5) * patchesMask * (1 - dryness * 0.8);
+		color *= 1 - patches * 0.12;
+		const Real scratches = saturate(scratchesNoise->evaluate(tile.position) - 0.2) * (1 - dryness * 0.5);
+		color *= 1 - scratches * 0.1;
+		const Real roughness = 0.6 + dryness * 0.1 + patches * 0.1 + scratches * 0.1 - hueShiftBase * 0.1;
+		const Real metallic = 0;
+		const Real height = interpolate(tile.height, 0.5, 0.7) + (0.5 - dryness) * 0.2 + patches * 0.05 - scratches * 0.02 + hueShiftBase * 0.1 + 0.1;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -543,7 +531,7 @@ namespace
 		static const Holder<Voronoi> centerVoronoi = []()
 		{
 			VoronoiCreateConfig cfg;
-			cfg.cellSize = 150;
+			cfg.cellSize = 200;
 			cfg.pointsPerCell = 2;
 			cfg.seed = noiseSeed();
 			return newVoronoi(cfg);
@@ -552,7 +540,7 @@ namespace
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.3;
+			cfg.frequency = 0.09;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -560,7 +548,7 @@ namespace
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.4;
+			cfg.frequency = 0.3;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -568,7 +556,7 @@ namespace
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.8;
+			cfg.frequency = 0.5;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -576,7 +564,7 @@ namespace
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 2;
+			cfg.frequency = 0.5;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -587,19 +575,19 @@ namespace
 		const auto centers = centerVoronoi->evaluate(tile.position, tile.normal);
 		const Vec3 center = centers.points[0];
 		const Real dist = distance(center, tile.position);
-		const Real size = smootherstep(smootherstep(saturate(sizeNoise->evaluate(tile.position) * 0.5 + 0.5))) * 2 + 0.5;
+		const Real size = smootherstep(smootherstep(saturate(sizeNoise->evaluate(tile.position) * 0.5 + 0.5))) * 3 + 3;
 
-		const Real bf = rangeMask(size - dist, 0, 0.1);
+		const Real bf = rangeMask(size - dist, 0, 0.5);
 		if (bf < 1e-7)
 			return;
 
-		const Real hueShift = hueNoise->evaluate(tile.position) * 0.07;
-		const Real valueShift = valueNoise->evaluate(tile.position) * 0.15;
+		const Real hueShift = hueNoise->evaluate(tile.position) * 0.12;
+		const Real valueShift = valueNoise->evaluate(tile.position) * 0.18;
 		Vec3 color = colorRgbToHsv(Vec3(0.6));
 		color[0] = (color[0] + hueShift + 1) % 1;
 		color[2] = saturate(color[2] + valueShift);
 		color = colorHsvToRgb(color);
-		const Real roughness = scratchesNoise->evaluate(tile.position) * 0.1 + 0.6;
+		const Real roughness = scratchesNoise->evaluate(tile.position) * 0.1 + 0.4;
 		const Real metallic = 0;
 		const Real height = 1 - sqr(dist / size) * 0.5;
 
@@ -609,83 +597,19 @@ namespace
 		tile.height = interpolate(tile.height, height, bf);
 	}
 
-	void generateTreeStumps(Tile &tile)
-	{
-		static const Holder<NoiseFunction> thresholdNoise = []()
-		{
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.02;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<Voronoi> centerVoronoi = []()
-		{
-			VoronoiCreateConfig cfg;
-			cfg.cellSize = 40;
-			cfg.seed = noiseSeed();
-			return newVoronoi(cfg);
-		}();
-		static const Holder<NoiseFunction> sizeNoise = []()
-		{
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 1.5;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-		static const Holder<NoiseFunction> hueNoise = []()
-		{
-			NoiseFunctionCreateConfig cfg;
-			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.2;
-			cfg.seed = noiseSeed();
-			return newNoiseFunction(cfg);
-		}();
-
-		if (tile.type == TerrainTypeEnum::SteepSlope)
-			return;
-
-		switch (tile.biome)
-		{
-			case TerrainBiomeEnum::Taiga:
-			case TerrainBiomeEnum::TemperateRainForest:
-			case TerrainBiomeEnum::TemperateSeasonalForest:
-			case TerrainBiomeEnum::TropicalRainForest:
-			case TerrainBiomeEnum::TropicalSeasonalForest:
-				break;
-			default:
-				return; // no trees here
-		}
-
-		if (thresholdNoise->evaluate(tile.position) < 0.1)
-			return;
-
-		const auto centers = centerVoronoi->evaluate(tile.position, tile.normal);
-		const Vec3 center = centers.points[0];
-		const Real dist = distance(center, tile.position);
-		const Real size = smootherstep(saturate(sizeNoise->evaluate(tile.position) * 0.5 + 0.5)) * 0.4 + 0.7;
-
-		const Real bf = rangeMask(size - dist, 0, 0.1);
-		if (bf < 1e-7)
-			return;
-
-		const Real hueShift = hueNoise->evaluate(tile.position) * 0.08;
-		const Vec3 baseColor = colorHueShift(Vec3(180, 146, 88) / 255, hueShift);
-		const Vec3 color = interpolate(Vec3(0.5), baseColor, rangeMask(size - dist, 0.2, 0.7));
-		const Real roughness = 0.8;
-		const Real metallic = 0;
-		const Real height = interpolate(height, 1, rangeMask(size - dist, 0, 0.3));
-
-		tile.albedo = interpolate(tile.albedo, color, bf);
-		tile.roughness = interpolate(tile.roughness, roughness, bf);
-		tile.metallic = interpolate(tile.metallic, metallic, bf);
-		tile.height = interpolate(tile.height, height, bf);
-	}
-
 	void generateWater(Tile &tile)
 	{
-		static const Holder<NoiseFunction> hueNoise = []()
+		static const Holder<NoiseFunction> colorSwitchNoise = []()
+		{
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Perlin;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 2;
+			cfg.frequency = 0.0015;
+			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> hueShiftNoise = []()
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
@@ -697,9 +621,9 @@ namespace
 		}();
 
 		{
-			const Real shallow = smoothstep(rangeMask(tile.elevation, -30, 3));
-			const Real hueShift = hueNoise->evaluate(tile.position) * 0.09;
-			tile.albedo = colorHueShift(interpolate(Vec3(54, 54, 97), Vec3(26, 102, 125), shallow) / 255, hueShift);
+			const Real colorSwitch = colorSwitchNoise->evaluate(tile.position) * 0.5 + 0.5;
+			const Real hueShift = hueShiftNoise->evaluate(tile.position) * 0.09;
+			tile.albedo = colorHueShift(interpolateColor(Vec3(54, 54, 97) / 255, Vec3(26, 102, 125) / 255, colorSwitch), hueShift);
 		}
 
 		{
@@ -708,7 +632,10 @@ namespace
 			tile.opacity = d1 * d2;
 		}
 
-		tile.metallic = 1; // signal to apply dynamic waves in the shader
+		{
+			const Real deep = smoothstep(rangeMask(tile.elevation, 3, -30));
+			tile.metallic = deep; // signal to apply dynamic waves in the shader
+		}
 	}
 
 	void generateFlowers(Tile &tile)
@@ -716,14 +643,14 @@ namespace
 		static const Holder<Voronoi> clusterVoronoi = []()
 		{
 			VoronoiCreateConfig cfg;
-			cfg.cellSize = 150;
+			cfg.cellSize = 200;
 			cfg.seed = noiseSeed();
 			return newVoronoi(cfg);
 		}();
 		static const Holder<Voronoi> centerVoronoi = []()
 		{
 			VoronoiCreateConfig cfg;
-			cfg.cellSize = 15;
+			cfg.cellSize = 35;
 			cfg.seed = noiseSeed();
 			return newVoronoi(cfg);
 		}();
@@ -731,7 +658,7 @@ namespace
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.7;
+			cfg.frequency = 0.35;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -739,7 +666,7 @@ namespace
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 1;
+			cfg.frequency = 0.02;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -747,7 +674,7 @@ namespace
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.01;
+			cfg.frequency = 0.005;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -755,7 +682,7 @@ namespace
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Perlin;
-			cfg.frequency = 0.8;
+			cfg.frequency = 0.4;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
@@ -771,32 +698,34 @@ namespace
 			return;
 
 		const Vec3 center = centerVoronoi->evaluate(tile.position, tile.normal).points[0];
-		if (distanceSquared(center, tile.position) > sqr(2))
+		if (distanceSquared(center, tile.position) > sqr(4))
 			return;
 		const Vec3 cluster = clusterVoronoi->evaluate(tile.position, tile.normal).points[0];
-		if (distanceSquared(center, cluster) > sqr(10))
+		if (distanceSquared(center, cluster) > sqr(20))
 			return;
 		const Real dist = distance(center, tile.position);
-		const Real size = smootherstep(smootherstep(saturate(sizeNoise->evaluate(tile.position) * 0.5 + 0.5))) + 0.5;
+		const Real size = smootherstep(smootherstep(saturate(sizeNoise->evaluate(tile.position) * 0.5 + 0.5))) * 2 + 1.5;
 
 		const Real bf = rangeMask(size - dist, 0, 0.1);
 		if (bf < 1e-7)
 			return;
 
-		const Vec3 baseColor = waterlily ? Vec3(0.1, 0.7, 0) : colorNoise->evaluate(cluster) < 0.1 ? Vec3(1, 0, 0.7) : Vec3(1, 0.8, 0);
+		const Vec3 baseColor = waterlily ? Vec3(0.1, 0.7, 0) : interpolateColor(Vec3(1, 0, 0.7), Vec3(1, 0.8, 0), sharpEdge(colorNoise->evaluate(cluster) + 0.4, 0.2));
 		const Vec3 color = colorHueShift(baseColor, hue1Noise->evaluate(tile.position) * 0.1 + hue2Noise->evaluate(tile.position) * 0.1);
-		const Real roughness = 0.5;
-		const Real metallic = waterlily ? 0.3 : 0; // signal to apply dynamic waves in the shader
+		const Real roughness = 0.8;
+		const Real metallic = waterlily ? 0.85 : 0; // signal to apply dynamic waves in the shader
 		const Real height = 0.7 + sqr(dist / size) * 0.2;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
 		tile.metallic = interpolate(tile.metallic, metallic, bf);
 		tile.height = interpolate(tile.height, height, bf);
+		tile.opacity = interpolate(tile.opacity, 1, bf);
 	}
 
 	void generateIce(Tile &tile)
 	{
+		static const uint32 seed = noiseSeed();
 		static const Holder<NoiseFunction> temperatureOffsetNoise = []()
 		{
 			NoiseFunctionCreateConfig cfg;
@@ -805,14 +734,26 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> scaleNoise = []()
+		static const Holder<NoiseFunction> freqNoise = []()
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Value;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 4;
-			cfg.frequency = 0.03;
+			cfg.octaves = 3;
+			cfg.frequency = 0.01;
 			cfg.seed = noiseSeed();
+			return newNoiseFunction(cfg);
+		}();
+		static const Holder<NoiseFunction> thicknessNoise = []()
+		{
+			NoiseFunctionCreateConfig cfg;
+			cfg.type = NoiseTypeEnum::Cellular;
+			cfg.distance = NoiseDistanceEnum::Hybrid;
+			cfg.operation = NoiseOperationEnum::Cell;
+			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
+			cfg.octaves = 2;
+			cfg.frequency = 0.05;
+			cfg.seed = seed;
 			return newNoiseFunction(cfg);
 		}();
 		static const Holder<NoiseFunction> cracksNoise = []()
@@ -822,9 +763,9 @@ namespace
 			cfg.distance = NoiseDistanceEnum::Hybrid;
 			cfg.operation = NoiseOperationEnum::Subtract;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
-			cfg.octaves = 3;
-			cfg.frequency = 0.1;
-			cfg.seed = noiseSeed();
+			cfg.octaves = 2;
+			cfg.frequency = 0.05;
+			cfg.seed = seed;
 			return newNoiseFunction(cfg);
 		}();
 
@@ -842,17 +783,20 @@ namespace
 		if (tile.meshPurpose == MeshPurposeEnum::Land)
 			return;
 
-		const Real scale = scaleNoise->evaluate(tile.position) * 0.02 + 0.5;
-		const Real crack = pow(cracksNoise->evaluate(tile.position * scale) * 0.5 + 0.5, 0.3);
-		const Vec3 color = Vec3(61, 81, 82) / 255 + crack * 0.3;
-		const Real roughness = (1 - crack) * 0.6 + 0.15;
-		const Real height = crack * 0.2 + 0.4;
+		const Real freq = freqNoise->evaluate(tile.position) * 0.08 + 1;
+		const Real thickness = sharpEdge(saturate(thicknessNoise->evaluate(tile.position * freq) * 0.5 + 0.8), 0.1) * 0.6 + 0.4; // 0.4 .. 1
+		const Real crack = 1 - pow(cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5, 0.3);
+		Vec3 color = max(Vec3(61, 81, 82) / 255 - crack * 0.3, 0);
+		color = interpolateColor(tile.albedo, color, thickness);
+		Real roughness = 0.15 + crack * 0.6;
+		roughness = interpolate(tile.roughness, roughness, thickness);
+		const Real height = thickness * 0.5 * (1 - crack * 0.8);
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
-		tile.metallic = interpolate(tile.metallic, 0, bf);
+		tile.metallic = interpolate(tile.metallic, 0, bf); // signal to apply dynamic waves in the shader
 		tile.height = interpolate(tile.height, height, bf);
-		tile.opacity = interpolate(tile.opacity, tile.opacity + 0.1, bf);
+		tile.opacity = interpolate(tile.opacity, tile.opacity * 0.9 + thickness * 0.5, bf);
 	}
 
 	void generateSnow(Tile &tile)
@@ -873,22 +817,22 @@ namespace
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
-		static const Holder<NoiseFunction> opacityNoise = []()
+		static const Holder<NoiseFunction> thicknessNoise = []()
 		{
 			NoiseFunctionCreateConfig cfg;
 			cfg.type = NoiseTypeEnum::Cubic;
 			cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 			cfg.octaves = 3;
-			cfg.frequency = 0.1;
+			cfg.frequency = 0.05;
 			cfg.seed = noiseSeed();
 			return newNoiseFunction(cfg);
 		}();
 
 		Real bf = sharpEdge(rangeMask(tile.temperature + tempOffsetNoise->evaluate(tile.position) * 1.5, 0, -2) * rangeMask(tile.precipitation, 10, 15) * steepnessMask(tile.slope, Degs(20 + slopeOffsetNoise->evaluate(tile.position) * 3), Degs(3)) * beachMask(tile));
+		const Real thickness = thicknessNoise->evaluate(tile.position) * 0.5 + 0.5;
+		bf *= saturate(thickness * 0.5 + 0.7);
 		if (bf < 1e-7)
 			return;
-		const Real factor = (opacityNoise->evaluate(tile.position) * 0.5 + 0.5) * 0.5 + 0.7;
-		bf *= saturate(factor);
 
 		if (bf > 0.2)
 		{
@@ -900,9 +844,9 @@ namespace
 			return;
 
 		const Vec3 color = Vec3(230) / 255;
-		const Real roughness = randomChance() * 0.3 + 0.2;
+		const Real roughness = thickness * 0.3 + 0.2;
 		const Real metallic = 0;
-		const Real height = tile.height * 0.1 + factor * 0.2 + 0.7;
+		const Real height = 0.6 + tile.height * 0.1 + thickness * 0.3;
 
 		tile.albedo = interpolate(tile.albedo, color, bf);
 		tile.roughness = interpolate(tile.roughness, roughness, bf);
@@ -977,7 +921,6 @@ void coloringDefault(Tile &tile)
 		generateSand(tile);
 		generateGrass(tile);
 		generateBoulders(tile);
-		generateTreeStumps(tile);
 	}
 	generateFlowers(tile);
 	generateIce(tile);

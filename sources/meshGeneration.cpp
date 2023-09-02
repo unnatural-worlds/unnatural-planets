@@ -133,9 +133,9 @@ void meshSimplifyCollider(Holder<Mesh> &mesh)
 
 	MeshSimplifyConfig cfg;
 	cfg.iterations = iterations;
-	cfg.minEdgeLength = 0.5 * tileSize;
-	cfg.maxEdgeLength = 10 * tileSize;
-	cfg.approximateError = 0.03 * tileSize;
+	cfg.minEdgeLength = 0.15 * tileSize;
+	cfg.maxEdgeLength = 3 * tileSize;
+	cfg.approximateError = 0.015 * tileSize;
 	Holder<Mesh> m = mesh->copy();
 	meshSimplify(+m, cfg);
 
@@ -151,9 +151,9 @@ void meshSimplifyRender(Holder<Mesh> &mesh)
 
 	MeshSimplifyConfig cfg;
 	cfg.iterations = iterations;
-	cfg.minEdgeLength = 0.2 * tileSize;
+	cfg.minEdgeLength = 0.15 * tileSize;
 	cfg.maxEdgeLength = 5 * tileSize;
-	cfg.approximateError = 0.01 * tileSize;
+	cfg.approximateError = 0.015 * tileSize;
 	Holder<Mesh> m = mesh->copy();
 	meshSimplify(+m, cfg);
 
@@ -166,20 +166,23 @@ void meshSimplifyRender(Holder<Mesh> &mesh)
 Holder<PointerRange<Holder<Mesh>>> meshSplit(const Holder<Mesh> &mesh)
 {
 	MeshChunkingConfig cfg;
-	cfg.maxSurfaceArea = 250000;
-	return meshChunking(+mesh, cfg);
+	cfg.maxSurfaceArea = 800000;
+	auto r = meshChunking(+mesh, cfg);
+	//for (auto &it : r)
+	//	meshMergePlanar(+it, {});
+	return r;
 }
 
 uint32 meshUnwrap(const Holder<Mesh> &mesh)
 {
 	MeshUnwrapConfig cfg;
 	cfg.maxChartIterations = 10;
-	cfg.maxChartBoundaryLength = 500;
+	cfg.maxChartBoundaryLength = 300;
 	cfg.chartRoundness = 0.3;
 #ifdef CAGE_DEBUG
 	cfg.texelsPerUnit = 0.3;
 #else
-	cfg.texelsPerUnit = 2.5;
+	cfg.texelsPerUnit = 1.35;
 #endif // CAGE_DEBUG
 	cfg.padding = 6;
 	return meshUnwrap(+mesh, cfg);
