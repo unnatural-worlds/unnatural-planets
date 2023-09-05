@@ -1,13 +1,13 @@
 #ifndef terrain_h_89w7ertuj
 #define terrain_h_89w7ertuj
 
-#include <cage-core/math.h>
+#include "planets.h"
 
-using namespace cage;
-
-enum class TerrainBiomeEnum : uint8
+namespace unnatural
 {
-	// clang-format off
+	enum class TerrainBiomeEnum : uint8
+	{
+		// clang-format off
 	// inspired by Whittaker diagram
 	//                        // temperature // precipitation // coverage // alternate names
 	//                        //    (°C)     //     (cm)      //   (%)    //
@@ -24,54 +24,53 @@ enum class TerrainBiomeEnum : uint8
 	TropicalRainForest,       //  20 .. 30   //  230 .. 440   //     6    //
 	Water,
 	_Total
-	// clang-format on
-};
+		// clang-format on
+	};
 
-enum class TerrainTypeEnum : uint8
-{
-	Road = 0,
-	Flat = 1,
-	Rough = 2,
-	SteepSlope = 3,
-	ShallowWater = 4,
-	DeepWater = 5,
-	_Total
-};
+	enum class TerrainTypeEnum : uint8
+	{
+		Road = 0,
+		Flat = 1,
+		Rough = 2,
+		SteepSlope = 3,
+		ShallowWater = 4,
+		DeepWater = 5,
+		_Total
+	};
 
-enum class MeshPurposeEnum : uint8
-{
-	Undefined = 0,
-	Land,
-	Water,
-	Navigation,
-};
+	enum class MeshPurposeEnum : uint8
+	{
+		Undefined = 0,
+		Land,
+		Water,
+		Navigation,
+	};
 
-Stringizer &operator+(Stringizer &str, const TerrainBiomeEnum &other);
-Stringizer &operator+(Stringizer &str, const TerrainTypeEnum &other);
+	Stringizer &operator+(Stringizer &str, const TerrainBiomeEnum &other);
+	Stringizer &operator+(Stringizer &str, const TerrainTypeEnum &other);
 
-struct Doodad;
+	struct Tile
+	{
+		Vec3 position;
+		Vec3 normal;
+		Vec3 albedo;
+		Real roughness;
+		Real metallic;
+		Real height;
+		Real elevation;
+		Rads slope;
+		Real temperature;
+		Real precipitation;
+		Real opacity = 1;
+		Real flatRadius;
+		const Doodad *doodad = nullptr;
+		TerrainBiomeEnum biome = TerrainBiomeEnum::_Total;
+		TerrainTypeEnum type = TerrainTypeEnum::_Total;
+		MeshPurposeEnum meshPurpose = MeshPurposeEnum::Undefined;
+		bool buildable = false;
+	};
 
-struct Tile
-{
-	Vec3 position;
-	Vec3 normal;
-	Vec3 albedo;
-	Real roughness;
-	Real metallic;
-	Real height;
-	Real elevation;
-	Rads slope;
-	Real temperature;
-	Real precipitation;
-	Real opacity = 1;
-	Real flatRadius;
-	const Doodad *doodad = nullptr;
-	TerrainBiomeEnum biome = TerrainBiomeEnum::_Total;
-	TerrainTypeEnum type = TerrainTypeEnum::_Total;
-	MeshPurposeEnum meshPurpose = MeshPurposeEnum::Undefined;
-	bool buildable = false;
-};
-
-void terrainTile(Tile &tile);
+	void terrainTile(Tile &tile);
+}
 
 #endif
