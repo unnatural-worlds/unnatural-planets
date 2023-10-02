@@ -15,10 +15,10 @@ namespace unnatural
 			Holder<Image> &albedo;
 			Holder<Image> &special;
 			Holder<Image> &heightMap;
-			const uint32 width;
-			const uint32 height;
+			const uint32 width = 0;
+			const uint32 height = 0;
 
-			Generator(const Holder<Mesh> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap) : mesh(mesh), width(width), height(height), albedo(albedo), special(special), heightMap(heightMap) {}
+			Generator(const Holder<Mesh> &mesh, uint32 width, uint32 height, Holder<Image> &albedo, Holder<Image> &special, Holder<Image> &heightMap) : mesh(mesh), albedo(albedo), special(special), heightMap(heightMap), width(width), height(height) {}
 
 			void pixel(const Vec2i &xy, const Vec3i &indices, const Vec3 &weights)
 			{

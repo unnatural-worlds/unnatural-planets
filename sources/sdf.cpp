@@ -249,13 +249,6 @@ namespace unnatural
 			return a;
 		}
 
-		Mat4 sin(Mat4 a)
-		{
-			for (uint32 i = 0; i < 16; i++)
-				a[i] = sin(Rads(a[i]));
-			return a;
-		}
-
 		Real sdfBunnyImpl(const Vec3 &p)
 		{
 			// https://www.shadertoy.com/view/wtVyWK
