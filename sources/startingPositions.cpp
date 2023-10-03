@@ -38,7 +38,7 @@ namespace unnatural
 					if (j > i)
 					{
 						const Real d = distance(tiles[i].position, tiles[j].position);
-						if (d < 250)
+						if (d < 300)
 							return -Real::Infinity(); // starting positions too close to each other
 						dists.push_back(d);
 					}
@@ -47,7 +47,13 @@ namespace unnatural
 			return meanMinusDeviation(dists);
 		}
 
-		Real scoreStartingResources(const std::vector<Tile> &tiles, PointerRange<const uint32> positions)
+		struct Candidate
+		{
+			uint32 pos = m;
+			Real maxResourceDist = 0;
+		};
+
+		std::vector<Candidate> makeCandidates(const std::vector<Tile> &tiles)
 		{
 			struct Dd
 			{
@@ -58,7 +64,6 @@ namespace unnatural
 			for (auto it : enumerate(tiles))
 				if (it->doodad && it->doodad->starting > 0)
 					dds[it->doodad].ps.push_back(numeric_cast<uint32>(it.index));
-			uint32 totalDoodads = 0;
 			for (auto &it : dds)
 			{
 				if (it.second.ps.size() < it.first->starting)
@@ -66,51 +71,41 @@ namespace unnatural
 					CAGE_LOG_THROW(Stringizer() + "doodad: " + it.first->name);
 					CAGE_THROW_ERROR(Exception, "insufficient number of doodads to generate starting positions");
 				}
-				totalDoodads += it.first->starting;
 			}
 
-			std::vector<Real> dists;
-			for (uint32 start : positions)
+			std::vector<Candidate> candidates;
+			for (const auto &it : dds)
 			{
-				Real score = 0;
-				for (auto &it : dds)
+				for (uint32 p : it.second.ps)
 				{
-					it.second.ds.clear();
-					for (uint32 d : it.second.ps)
-						it.second.ds.push_back(distance(tiles[d].position, tiles[start].position));
-					std::sort(it.second.ds.begin(), it.second.ds.end());
-					it.second.ds.resize(it.first->starting);
-					for (Real d : it.second.ds)
-						score += 500 - max(d - 500, 0);
+					Candidate c;
+					c.pos = p;
+					for (auto &d : dds)
+					{
+						CAGE_ASSERT(d.second.ps.size() >= d.first->starting);
+						d.second.ds.clear();
+						for (const auto &jt : d.second.ps)
+							d.second.ds.push_back(distance(tiles[jt].position, tiles[p].position));
+						std::sort(d.second.ds.begin(), d.second.ds.end());
+						c.maxResourceDist = max(c.maxResourceDist, d.second.ds[d.first->starting]);
+					}
+					candidates.push_back(c);
 				}
-				dists.push_back(score);
 			}
-			return meanMinusDeviation(dists);
-		}
 
-		Real calculateScore(const std::vector<Tile> &tiles, PointerRange<const uint32> positions)
-		{
-			const Real edp = scoreEquidistantPositions(tiles, positions);
-			if (edp == -Real::Infinity())
-				return edp;
-			const Real sr = scoreStartingResources(tiles, positions);
-			CAGE_LOG_DEBUG(SeverityEnum::Info, "generator", Stringizer() + "score edp: " + edp + ", sr: " + sr + ", count: " + positions.size());
-			return edp + sr;
-		}
+			std::sort(candidates.begin(), candidates.end(), [](const Candidate &a, const Candidate &b) { return a.maxResourceDist < b.maxResourceDist; });
+			if (candidates.size() > 100)
+				candidates.resize(100);
 
-		std::vector<uint32> pickRandomPositions(const std::vector<Tile> &tiles)
-		{
-			std::vector<uint32> candidates;
-			for (uint32 i = 0; i < tiles.size(); i++)
-				if (tiles[i].buildable)
-					candidates.push_back(i);
-			if (candidates.size() < 3)
-				CAGE_THROW_ERROR(Exception, "not enough candidates for starting positions");
-			std::shuffle(candidates.begin(), candidates.end(), std::mt19937(randomRange(uint32(0), uint32(m))));
-			uint32 count = randomRange(6, 15);
-			count = min(count, numeric_cast<uint32>(candidates.size()));
-			candidates.resize(count);
 			return candidates;
+		}
+
+		Real evaluateCandidates(const std::vector<Tile> &tiles, PointerRange<const Candidate> candidates)
+		{
+			std::vector<uint32> ps;
+			for (const Candidate &c : candidates)
+				ps.push_back(c.pos);
+			return scoreEquidistantPositions(tiles, ps);
 		}
 	}
 
@@ -120,38 +115,43 @@ namespace unnatural
 
 		CAGE_ASSERT(navMesh->verticesCount() == tiles.size());
 
-		std::vector<uint32> bestSolution;
-		Real bestScore = -Real::Infinity();
+		const std::vector<Candidate> allCandidates = makeCandidates(tiles);
 
-		for (uint32 attempt = 0; attempt < 1000; attempt++)
+		PointerRange<const Candidate> bestSolution;
+		Real bestScore = -Real::Infinity();
+		for (uint32 pc = 5; pc < 11; pc++)
 		{
-			std::vector<uint32> current = pickRandomPositions(tiles);
-			const Real score = calculateScore(tiles, current);
-			if (score > bestScore)
+			if (allCandidates.size() < pc)
+				break;
+			for (uint32 off = 0; off < allCandidates.size() - pc; off++)
 			{
-				std::swap(bestSolution, current);
-				bestScore = score;
+				PointerRange<const Candidate> pr = { allCandidates.data() + off, allCandidates.data() + off + pc };
+				const Real score = evaluateCandidates(tiles, pr);
+				if (score > bestScore)
+				{
+					bestSolution = pr;
+					bestScore = score;
+				}
 			}
 		}
-
 		if (bestSolution.empty())
 			CAGE_THROW_ERROR(Exception, "generated no starting positions");
 
 		{
 			Holder<File> f = writeFile(startsPath);
 			f->writeLine("[]");
-			for (uint32 position : bestSolution)
-				f->writeLine(Stringizer() + tiles[position].position);
+			for (const Candidate &c : bestSolution)
+				f->writeLine(Stringizer() + tiles[c.pos].position);
 			f->close();
 		}
 
 		{
 			Holder<Mesh> msh = newMesh();
 			msh->type(MeshTypeEnum::Lines);
-			for (uint32 p : bestSolution)
+			for (const Candidate &c : bestSolution)
 			{
-				const Vec3 a = tiles[p].position;
-				msh->addLine(makeSegment(a, a + tiles[p].normal * 100));
+				const Vec3 a = tiles[c.pos].position;
+				msh->addLine(makeSegment(a, a + tiles[c.pos].normal * 100));
 			}
 			msh->exportFile(startsPath + "-preview.obj");
 		}
