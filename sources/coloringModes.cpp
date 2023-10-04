@@ -16,6 +16,7 @@ namespace unnatural
 	namespace
 	{
 		const ConfigBool configPolesEnable("unnatural-planets/poles/enable");
+		const ConfigBool configFlowersEnable("unnatural-planets/flowers/enable");
 
 		// returns zero when the slope is at or above the threshold plus the smoothing,
 		// returns one when the slope is at or below the threshold minus the smoothing
@@ -264,7 +265,7 @@ namespace unnatural
 			const Real cracks = saturate(pow(cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5, 0.8));
 			const Real value = valueNoise->evaluate(tile.position * freq) * 0.5 + 0.6;
 			const Real saturation = saturationNoise->evaluate(tile.position) * 0.5 + 0.6;
-			const Vec3 hsv = Vec3(0.07, saturate(sharpEdge(saturation, 0.2)) * 0.7 + 0.1, (value * 0.4 + 0.1) * cracks);
+			const Vec3 hsv = Vec3(0.07, saturate(sharpEdge(saturation, 0.2)) * 0.7 + 0.1, (value * 0.2 + 0.3) * cracks);
 			tile.albedo = colorHsvToRgb(hsv);
 			tile.roughness = interpolate(0.9, value * 0.2 + 0.7, cracks);
 			tile.height = cracks * scale;
@@ -305,6 +306,9 @@ namespace unnatural
 				cfg.seed = noiseSeed();
 				return newNoiseFunction(cfg);
 			}();
+
+			if (!configFlowersEnable)
+				return;
 
 			const Real bf = saturate((maskNoise->evaluate(tile.position) - 0.98) * 10);
 			if (bf < 1e-7)
@@ -362,7 +366,7 @@ namespace unnatural
 			if (bf < 1e-7)
 				return;
 
-			Vec3 color = Vec3(84, 47, 14) / 255;
+			Vec3 color = Vec3(168, 94, 28) / 255;
 			{
 				Real saturation = rangeMask(tile.precipitation, 0, 50);
 				Vec3 hsv = colorRgbToHsv(color);
@@ -438,8 +442,8 @@ namespace unnatural
 			const Real height = (heightNoise->evaluate(tile.position * heightScale) * 0.2) * (rangeMask(tile.precipitation, 100, 50) * 0.4 + 0.6) + 0.5;
 			const Real colorShift = smootherstep(smootherstep(colorNoise->evaluate(tile.position) * 0.5 + 0.5));
 			const Real hueShift = hueNoise->evaluate(tile.position) * 0.1;
-			Vec3 color = colorHueShift(Vec3(172, 159, 139) / 255, hueShift);
-			color = interpolateColor(color, Vec3(170, 95, 46) / 255, colorShift);
+			Vec3 color = colorHueShift(Vec3(189, 174, 152) / 255, hueShift);
+			color = interpolateColor(color, Vec3(187, 104, 50) / 255, colorShift);
 			color = colorDeviation(color, 0.08);
 			color = colorHsvToRgb(colorRgbToHsv(color) * Vec3(1, 0.7, 0.8));
 			const Real roughness = (heightScale - 1) * 0.7 + 0.55 + hueShift;
@@ -503,11 +507,11 @@ namespace unnatural
 			const Real dryness = clamp(tile.temperature - (tile.precipitation + 100) * 30 / 400, 0, 5) / 5; // 0 .. 1
 			const Real hueShiftBase = hueNoise->evaluate(tile.position);
 			const Real hueShift = hueShiftBase * 0.09 - dryness * 0.1;
-			Vec3 color = Vec3(82, 134, 55) / 255;
+			Vec3 color = Vec3(114, 187, 77) / 255;
 			color = colorHueShift(color, hueShift);
 			const Real patchesMask = sharpEdge(patchesCellsNoise->evaluate(tile.position) * 0.5 + 0.2);
 			const Real patches = pow(patchesDistNoise->evaluate(tile.position) * 0.5 + 0.5, 0.5) * patchesMask * (1 - dryness * 0.8);
-			color *= 1 - patches * 0.12;
+			color *= 1 - patches * 0.09;
 			const Real scratches = saturate(scratchesNoise->evaluate(tile.position) - 0.2) * (1 - dryness * 0.5);
 			color *= 1 - scratches * 0.1;
 			const Real roughness = 0.6 + dryness * 0.1 + patches * 0.1 + scratches * 0.1 - hueShiftBase * 0.1;
@@ -571,6 +575,9 @@ namespace unnatural
 				return newNoiseFunction(cfg);
 			}();
 
+			if (!configFlowersEnable)
+				return;
+
 			if (thresholdNoise->evaluate(tile.position) < 0.15)
 				return;
 
@@ -585,7 +592,7 @@ namespace unnatural
 
 			const Real hueShift = hueNoise->evaluate(tile.position) * 0.12;
 			const Real valueShift = valueNoise->evaluate(tile.position) * 0.18;
-			Vec3 color = colorRgbToHsv(Vec3(0.6));
+			Vec3 color = colorRgbToHsv(Vec3(154) / 255);
 			color[0] = (color[0] + hueShift + 1) % 1;
 			color[2] = saturate(color[2] + valueShift);
 			color = colorHsvToRgb(color);
@@ -689,6 +696,9 @@ namespace unnatural
 				return newNoiseFunction(cfg);
 			}();
 
+			if (!configFlowersEnable)
+				return;
+
 			const bool waterlily = tile.meshPurpose != MeshPurposeEnum::Land;
 			if ((tile.biome == TerrainBiomeEnum::Water) != waterlily)
 				return;
@@ -712,7 +722,7 @@ namespace unnatural
 			if (bf < 1e-7)
 				return;
 
-			const Vec3 baseColor = waterlily ? Vec3(0.1, 0.7, 0) : interpolateColor(Vec3(1, 0, 0.7), Vec3(1, 0.8, 0), sharpEdge(colorNoise->evaluate(cluster) + 0.4, 0.2));
+			const Vec3 baseColor = waterlily ? Vec3(0.2, 0.14, 0) : interpolateColor(Vec3(0.5, 0, 0.35), Vec3(0.5, 0.4, 0), sharpEdge(colorNoise->evaluate(cluster) + 0.4, 0.2));
 			const Vec3 color = colorHueShift(baseColor, hue1Noise->evaluate(tile.position) * 0.1 + hue2Noise->evaluate(tile.position) * 0.1);
 			const Real roughness = 0.8;
 			const Real metallic = waterlily ? 0.85 : 0; // signal to apply dynamic waves in the shader
@@ -788,7 +798,7 @@ namespace unnatural
 			const Real freq = freqNoise->evaluate(tile.position) * 0.08 + 1;
 			const Real thickness = sharpEdge(saturate(thicknessNoise->evaluate(tile.position * freq) * 0.5 + 0.8), 0.1) * 0.6 + 0.4; // 0.4 .. 1
 			const Real crack = 1 - pow(cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5, 0.3);
-			Vec3 color = max(Vec3(61, 81, 82) / 255 - crack * 0.3, 0);
+			Vec3 color = max(Vec3(122, 162, 164) / 255 - crack * 0.3, 0);
 			color = interpolateColor(tile.albedo, color, thickness);
 			Real roughness = 0.15 + crack * 0.6;
 			roughness = interpolate(tile.roughness, roughness, thickness);

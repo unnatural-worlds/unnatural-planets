@@ -25,6 +25,7 @@ namespace unnatural
 		const ConfigString configElevationMode("unnatural-planets/elevation/mode");
 		const ConfigString configColoringMode("unnatural-planets/coloring/mode");
 		const ConfigBool configPolesEnable("unnatural-planets/poles/enable");
+		const ConfigBool configFlowersEnable("unnatural-planets/flowers/enable");
 
 		using TerrainFunctor = Real (*)(const Vec3 &);
 		TerrainFunctor terrainElevationFnc = 0;
@@ -280,6 +281,7 @@ namespace unnatural
 		chooseElevationFunction();
 		chooseColoringFunction();
 		CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "enable poles: " + !!configPolesEnable);
+		CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "enable flowers: " + !!configFlowersEnable);
 	}
 
 	void writeConfigurationDescription(File *f)

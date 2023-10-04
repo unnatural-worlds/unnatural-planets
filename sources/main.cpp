@@ -28,6 +28,9 @@ namespace unnatural
 			ConfigBool configPolesEnable("unnatural-planets/poles/enable", false);
 			configPolesEnable = cmd->cmdBool('p', "poles", configPolesEnable);
 
+			ConfigBool configFlowersEnable("unnatural-planets/flowers/enable", false);
+			configFlowersEnable = cmd->cmdBool('f', "flowers", configFlowersEnable);
+
 			terrainApplyConfig();
 
 			ConfigBool configNavmeshOptimize("unnatural-planets/navmesh/optimize", !CAGE_DEBUG_BOOL);
