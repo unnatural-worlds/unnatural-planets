@@ -213,11 +213,11 @@ namespace unnatural
 		void generateBedrock(Tile &tile)
 		{
 			static const uint32 seed = noiseSeed();
-			static const Holder<NoiseFunction> scaleNoise = []()
+			static const Holder<NoiseFunction> depthNoise = []()
 			{
 				NoiseFunctionCreateConfig cfg;
 				cfg.type = NoiseTypeEnum::Cubic;
-				cfg.frequency = 0.05;
+				cfg.frequency = 0.0031;
 				cfg.seed = noiseSeed();
 				return newNoiseFunction(cfg);
 			}();
@@ -225,7 +225,7 @@ namespace unnatural
 			{
 				NoiseFunctionCreateConfig cfg;
 				cfg.type = NoiseTypeEnum::Cubic;
-				cfg.frequency = 0.02;
+				cfg.frequency = 0.013;
 				cfg.seed = noiseSeed();
 				return newNoiseFunction(cfg);
 			}();
@@ -235,7 +235,7 @@ namespace unnatural
 				cfg.type = NoiseTypeEnum::Cellular;
 				cfg.distance = NoiseDistanceEnum::Hybrid;
 				cfg.operation = NoiseOperationEnum::Subtract;
-				cfg.frequency = 0.06;
+				cfg.frequency = 0.017;
 				cfg.seed = seed;
 				return newNoiseFunction(cfg);
 			}();
@@ -245,7 +245,7 @@ namespace unnatural
 				cfg.type = NoiseTypeEnum::Cellular;
 				cfg.distance = NoiseDistanceEnum::Hybrid;
 				cfg.operation = NoiseOperationEnum::Cell;
-				cfg.frequency = 0.06;
+				cfg.frequency = 0.017;
 				cfg.seed = seed;
 				return newNoiseFunction(cfg);
 			}();
@@ -255,20 +255,20 @@ namespace unnatural
 				cfg.type = NoiseTypeEnum::Cubic;
 				cfg.fractalType = NoiseFractalTypeEnum::Fbm;
 				cfg.octaves = 2;
-				cfg.frequency = 0.007;
+				cfg.frequency = 0.0022;
 				cfg.seed = noiseSeed();
 				return newNoiseFunction(cfg);
 			}();
 
-			const Real scale = sqr(scaleNoise->evaluate(tile.position) * 0.5 + 0.501) * 2;
+			const Real depth = sqr(depthNoise->evaluate(tile.position) * 0.5 + 0.501) * 2;
 			const Real freq = freqNoise->evaluate(tile.position) * 0.15 + 1;
-			const Real cracks = saturate(pow(cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5, 0.8));
-			const Real value = valueNoise->evaluate(tile.position * freq) * 0.5 + 0.6;
-			const Real saturation = saturationNoise->evaluate(tile.position) * 0.5 + 0.6;
-			const Vec3 hsv = Vec3(0.07, saturate(sharpEdge(saturation, 0.2)) * 0.7 + 0.1, (value * 0.2 + 0.3) * cracks);
+			const Real cracks = saturate(pow(cracksNoise->evaluate(tile.position * freq) * 0.5 + 0.5, 0.7)); // zero inside scratches, one on the flat
+			const Real value = valueNoise->evaluate(tile.position * freq);
+			const Real saturation = saturate(saturationNoise->evaluate(tile.position) * 0.35 + 0.3);
+			const Vec3 hsv = Vec3(0.07, saturation, saturate(value * 0.1 + 0.7) * (cracks * 0.4 + 0.6));
 			tile.albedo = colorHsvToRgb(hsv);
-			tile.roughness = interpolate(0.9, value * 0.2 + 0.7, cracks);
-			tile.height = cracks * scale;
+			tile.roughness = interpolate(0.9, value * -0.15 + 0.65, cracks);
+			tile.height = cracks * depth;
 		}
 
 		void generateCliffs(Tile &tile)
@@ -277,10 +277,12 @@ namespace unnatural
 			if (bf > 0.99999)
 				return;
 
-			Vec3 &color = tile.albedo;
-			Vec3 hsv = colorRgbToHsv(color);
-			hsv[1] *= bf;
-			color = colorHsvToRgb(hsv);
+			Vec3 hsv = colorRgbToHsv(tile.albedo);
+			hsv[0] = interpolate(155.0 / 255.0, hsv[0], sharpEdge(bf, 0.01));
+			hsv[1] *= bf * 0.4 + 0.6;
+			hsv[2] = interpolate(0.7, hsv[1], bf * 0.8 + 0.2);
+			tile.albedo = colorHsvToRgb(hsv);
+			tile.roughness *= bf * 0.2 + 0.8;
 		}
 
 		void generateMica(Tile &tile)
