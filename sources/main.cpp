@@ -8,10 +8,11 @@
 namespace unnatural
 {
 	void terrainApplyConfig();
+	extern String configOverrideOutputPath;
 
 	namespace
 	{
-		void applyConfiguration(const Holder<Ini> &cmd)
+		void applyConfiguration(const Holder<Ini>& cmd)
 		{
 			ConfigString configShapeMode("unnatural-planets/shape/mode", "random");
 			configShapeMode = cmd->cmdString('s', "shape", configShapeMode);
@@ -44,11 +45,15 @@ namespace unnatural
 			ConfigBool configPreviewEnable("unnatural-planets/preview/enable", false);
 			configPreviewEnable = cmd->cmdBool('r', "preview", configPreviewEnable);
 			CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "enable preview: " + !!configPreviewEnable);
+
+			// configOverrideOutputPath should not be stored in the ini file
+			configOverrideOutputPath = cmd->cmdString('v', "outputPathOverride", "");
+			CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "override output path: " + configOverrideOutputPath);
 		}
 	}
 }
 
-int main(int argc, const char *args[])
+int main(int argc, const char* args[])
 {
 	using namespace unnatural;
 

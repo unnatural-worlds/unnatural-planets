@@ -20,24 +20,28 @@
 namespace unnatural
 {
 	void terrainPreseed();
-	void writeConfigurationDescription(File *f);
+	void writeConfigurationDescription(File* f);
+	String configOverrideOutputPath;
 
 	namespace
 	{
-		String findOutputDirectory(const String &planetName)
+		String findOutputDirectory(String name)
 		{
 			String root;
 			try
 			{
 				root = pathSearchTowardsRoot("output", PathTypeFlags::Directory);
 			}
-			catch (const Exception &)
+			catch (const Exception&)
 			{
 				root = "output";
 			}
 
 			{
-				String name = pathReplaceInvalidCharacters(planetName);
+				if (!configOverrideOutputPath.empty())
+					name = configOverrideOutputPath;
+				else
+					name = pathReplaceInvalidCharacters(name);
 				name = replace(name, " ", "_");
 #ifdef CAGE_DEBUG
 				name += "_debug";
@@ -132,7 +136,7 @@ namespace unnatural
 
 				f->writeLine("[packages]");
 				f->writeLine("unnatural/base/base.pack");
-				for (const String &s : assetPackages)
+				for (const String& s : assetPackages)
 					f->writeLine(s);
 
 				f->writeLine("[camera]");
@@ -158,7 +162,7 @@ namespace unnatural
 			{ // object file
 				Holder<File> f = writeFile(pathJoin(assetsDirectory, "planet.object"));
 				f->writeLine("[]");
-				for (const Chunk &c : chunks)
+				for (const Chunk& c : chunks)
 					f->writeLine(c.mesh);
 				f->close();
 			}
@@ -173,7 +177,7 @@ namespace unnatural
 			{ // generate asset configuration
 				Holder<File> f = writeFile(pathJoin(assetsDirectory, "planet.assets"));
 				uint32 textureCounts[4] = {}; // opaque albedo, transparent albedo, special, normal
-				for (const Chunk &c : chunks)
+				for (const Chunk& c : chunks)
 				{
 					if (!c.albedo.empty())
 						textureCounts[c.transparency]++;
@@ -187,7 +191,7 @@ namespace unnatural
 					f->writeLine("[]");
 					f->writeLine("scheme = texture");
 					f->writeLine("srgb = true");
-					for (const Chunk &c : chunks)
+					for (const Chunk& c : chunks)
 						if (!c.albedo.empty() && !c.transparency)
 							f->writeLine(c.albedo);
 				}
@@ -197,7 +201,7 @@ namespace unnatural
 					f->writeLine("scheme = texture");
 					f->writeLine("srgb = true");
 					f->writeLine("premultiplyAlpha = true");
-					for (const Chunk &c : chunks)
+					for (const Chunk& c : chunks)
 						if (!c.albedo.empty() && c.transparency)
 							f->writeLine(c.albedo);
 				}
@@ -206,7 +210,7 @@ namespace unnatural
 					f->writeLine("[]");
 					f->writeLine("scheme = texture");
 					f->writeLine("convert = gltfToSpecial");
-					for (const Chunk &c : chunks)
+					for (const Chunk& c : chunks)
 						if (!c.pbr.empty())
 							f->writeLine(c.pbr);
 				}
@@ -215,13 +219,13 @@ namespace unnatural
 					f->writeLine("[]");
 					f->writeLine("scheme = texture");
 					f->writeLine("normal = true");
-					for (const Chunk &c : chunks)
+					for (const Chunk& c : chunks)
 						if (!c.normal.empty())
 							f->writeLine(c.normal);
 				}
 				f->writeLine("[]");
 				f->writeLine("scheme = model");
-				for (const Chunk &c : chunks)
+				for (const Chunk& c : chunks)
 					f->writeLine(c.mesh);
 				f->writeLine("[]");
 				f->writeLine("scheme = model");
@@ -248,7 +252,7 @@ def loadChunk(meshname):
 	bpy.ops.import_scene.gltf(filepath = meshname)
 
 )Python");
-				for (const Chunk &c : chunks)
+				for (const Chunk& c : chunks)
 					f->writeLine(Stringizer() + "loadChunk('" + c.mesh + "')");
 				f->write(R"Python(
 for a in bpy.data.window_managers[0].windows[0].screen.areas:
@@ -318,7 +322,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				c.albedo = Stringizer() + "land-" + index + "-albedo.png";
 				c.pbr = Stringizer() + "land-" + index + "-pbr.png";
 				c.normal = Stringizer() + "land-" + index + "-normal.png";
-				const auto &msh = split[index];
+				const auto& msh = split[index];
 				const uint32 resolution = meshUnwrap(msh);
 				meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh, c.transparency);
 				Holder<Image> albedo, special, heightMap;
@@ -369,7 +373,7 @@ bpy.ops.object.select_all(action='DESELECT')
 				c.pbr = Stringizer() + "water-" + index + "-pbr.png";
 				c.normal = Stringizer() + "water-" + index + "-normal.png";
 				c.transparency = true;
-				const auto &msh = split[index];
+				const auto& msh = split[index];
 				const uint32 resolution = meshUnwrap(msh);
 				meshSaveRender(pathJoin(assetsDirectory, c.mesh), msh, c.transparency);
 				Holder<Image> albedo, special, heightMap;
@@ -447,7 +451,7 @@ bpy.ops.object.select_all(action='DESELECT')
 						CAGE_LOG(SeverityEnum::Note, "blender", p->readLine());
 				}
 			}
-			catch (const ProcessPipeEof &)
+			catch (const ProcessPipeEof&)
 			{
 				// nothing
 			}
