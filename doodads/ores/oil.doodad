@@ -1,8 +1,8 @@
 [doodad]
 package = unnatural/base/ores/ores.pack
-prototype = unnatural/base/ores/gold-deposit.proto
+prototype = unnatural/base/ores/oil_deposit.proto
 
 [requirements]
 buildable = true
-probability = 0.0015
+probability = 0.001
 starting = 1

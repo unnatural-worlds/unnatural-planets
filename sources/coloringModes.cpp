@@ -196,7 +196,7 @@ namespace unnatural
 			else if (tile.elevation < 0)
 				tile.type = TerrainTypeEnum::ShallowWater;
 			else if (tile.slope > Degs(20))
-				tile.type = TerrainTypeEnum::SteepSlope;
+				tile.type = TerrainTypeEnum::Cliffs;
 			else
 				switch (tile.biome)
 				{
@@ -790,7 +790,7 @@ namespace unnatural
 
 			if (bf > 0.1)
 			{
-				if (tile.type != TerrainTypeEnum::SteepSlope)
+				if (tile.type != TerrainTypeEnum::Cliffs)
 					tile.type = TerrainTypeEnum::Rough;
 			}
 
@@ -850,7 +850,7 @@ namespace unnatural
 
 			if (bf > 0.2)
 			{
-				if (tile.type != TerrainTypeEnum::SteepSlope)
+				if (tile.type != TerrainTypeEnum::Cliffs)
 					tile.type = TerrainTypeEnum::Rough;
 			}
 

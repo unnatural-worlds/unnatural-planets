@@ -1,8 +1,8 @@
 [doodad]
 package = unnatural/base/ores/ores.pack
-prototype = unnatural/base/ores/iron-deposit.proto
+prototype = unnatural/base/ores/metal_deposit.proto
 
 [requirements]
 buildable = true
-probability = 0.0035
+probability = 0.003
 starting = 3

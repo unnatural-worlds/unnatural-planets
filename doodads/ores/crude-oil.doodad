@@ -1,8 +1,0 @@
-[doodad]
-package = unnatural/base/ores/ores.pack
-prototype = unnatural/base/ores/crude-oil-well.proto
-
-[requirements]
-buildable = true
-probability = 0.002
-starting = 1

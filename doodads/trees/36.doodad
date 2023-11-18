@@ -1,7 +1,0 @@
-[doodad]
-package = unnatural/package/trees/trees.pack
-prototype = unnatural/package/trees/36/tree_36.proto
-
-[requirements]
-temperature = 0, 5
-precipitation = 50, 150

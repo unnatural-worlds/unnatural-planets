@@ -83,7 +83,7 @@ namespace unnatural
 			{
 				if (d.ocean != (tile.biome == TerrainBiomeEnum::Water))
 					continue;
-				if (d.slope != (tile.type == TerrainTypeEnum::SteepSlope))
+				if (d.slope != (tile.type == TerrainTypeEnum::Cliffs))
 					continue;
 				if (d.buildable && !tile.buildable)
 					continue;

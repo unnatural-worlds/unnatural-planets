@@ -188,14 +188,14 @@ namespace unnatural
 			{
 				if (tiles[i].flatRadius < 40)
 					continue;
-				if (tiles[i].type >= TerrainTypeEnum::SteepSlope)
+				if (tiles[i].type >= TerrainTypeEnum::Cliffs)
 					continue;
 				tiles[i].buildable = true;
 				uint32 overlapped = 0;
 				spatQuery->intersection(Sphere(navMesh->position(i), 40));
 				for (uint32 j : spatQuery->result())
 				{
-					if (tiles[j].type >= TerrainTypeEnum::SteepSlope)
+					if (tiles[j].type >= TerrainTypeEnum::Cliffs)
 					{
 						tiles[i].buildable = false;
 						break;
@@ -216,7 +216,7 @@ namespace unnatural
 
 #if 0
 		{
-			ConfigString configShapeMode("unnatural-planets/shape/mode");
+			const ConfigString configShapeMode("unnatural-planets/shape/mode");
 			FileMode fm(false, true);
 			fm.append = true;
 			Holder<File> f = newFile("tileStats.csv", fm);

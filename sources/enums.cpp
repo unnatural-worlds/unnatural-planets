@@ -62,8 +62,8 @@ namespace unnatural
 			case TerrainTypeEnum::Rough:
 				str + "rough";
 				break;
-			case TerrainTypeEnum::SteepSlope:
-				str + "steep slope";
+			case TerrainTypeEnum::Cliffs:
+				str + "cliffs";
 				break;
 			case TerrainTypeEnum::ShallowWater:
 				str + "shallow water";

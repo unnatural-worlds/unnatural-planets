@@ -1,0 +1,8 @@
+[doodad]
+package = unnatural/base/ores/ores.pack
+prototype = unnatural/base/ores/crystals_deposit.proto
+
+[requirements]
+buildable = true
+probability = 0.0005
+starting = 0

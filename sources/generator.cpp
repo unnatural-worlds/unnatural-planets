@@ -146,7 +146,7 @@ namespace unnatural
 				f->writeLine("road");
 				f->writeLine("flat");
 				f->writeLine("rough");
-				f->writeLine("steepSlope");
+				f->writeLine("cliffs");
 				f->writeLine("shallowWater");
 				f->writeLine("deepWater");
 				f->close();

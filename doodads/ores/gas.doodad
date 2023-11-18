@@ -1,0 +1,8 @@
+[doodad]
+package = unnatural/base/ores/ores.pack
+prototype = unnatural/base/ores/gas_deposit.proto
+
+[requirements]
+buildable = true
+probability = 0.0003
+starting = 0
