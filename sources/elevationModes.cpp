@@ -1,4 +1,5 @@
 #include "math.h"
+#include "planets.h"
 #include "voronoi.h"
 
 #include <cage-core/noiseFunction.h>

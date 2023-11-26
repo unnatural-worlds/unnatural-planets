@@ -1,4 +1,4 @@
-#include "generator.h"
+#include "planets.h"
 
 #include <cage-core/config.h>
 #include <cage-core/ini.h>
@@ -8,11 +8,13 @@
 namespace unnatural
 {
 	void terrainApplyConfig();
-	extern String configOverrideOutputPath;
+	void generateEntry(const String &overrideOutputPath);
 
 	namespace
 	{
-		void applyConfiguration(const Holder<Ini>& cmd)
+		String configOverrideOutputPath;
+
+		void applyConfiguration(const Holder<Ini> &cmd)
 		{
 			ConfigString configShapeMode("unnatural-planets/shape/mode", "random");
 			configShapeMode = cmd->cmdString('s', "shape", configShapeMode);
@@ -53,7 +55,7 @@ namespace unnatural
 	}
 }
 
-int main(int argc, const char* args[])
+int main(int argc, const char *args[])
 {
 	using namespace unnatural;
 
@@ -70,7 +72,7 @@ int main(int argc, const char* args[])
 			cmd->checkUnusedWithHelp();
 		}
 
-		generateEntry();
+		generateEntry(configOverrideOutputPath);
 		return 0;
 	}
 	catch (...)

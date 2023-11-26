@@ -1,8 +1,6 @@
 #include <queue>
-#include <vector>
 
-#include "generator.h"
-#include "tile.h"
+#include "planets.h"
 
 #include <cage-core/config.h>
 #include <cage-core/files.h>
@@ -15,6 +13,8 @@
 
 namespace unnatural
 {
+	void terrainTile(Tile &tile);
+
 	namespace
 	{
 		void statistics(const String &name, uint32 current, uint32 maxc, uint32 total)
@@ -227,13 +227,13 @@ namespace unnatural
 		}
 	}
 
-	void generateTileProperties(const Holder<Mesh> &navMesh, std::vector<Tile> &tiles, const String &statsLogPath)
+	void generateTileProperties(const Holder<Mesh> &navMesh)
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "generating tile properties");
 
 		CAGE_ASSERT(tiles.empty());
 
-		Holder<LoggerOutputFile> loggerFile = newLoggerOutputFile(statsLogPath, false); // the file must be destroyed after the logger
+		Holder<LoggerOutputFile> loggerFile = newLoggerOutputFile(pathJoin(baseDirectory, "tiles-stats.log"), false); // the file must be destroyed after the logger
 		Holder<Logger> logger = newLogger();
 		logger->filter.bind<&logFilterSameThread>();
 		logger->output.bind<LoggerOutputFile, &LoggerOutputFile::output>(+loggerFile);

@@ -1,12 +1,12 @@
 #ifndef sdf_h_wefdzwdf
 #define sdf_h_wefdzwdf
 
-#include "planets.h"
-
 #include <cage-core/signedDistanceFunctions.h>
 
 namespace unnatural
 {
+	using namespace cage;
+
 	Real sdfHexagon(const Vec3 &pos);
 	Real sdfSquare(const Vec3 &pos);
 	Real sdfSphere(const Vec3 &pos);

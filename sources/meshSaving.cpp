@@ -1,13 +1,11 @@
-#include "mesh.h"
-#include "tile.h"
+#include "planets.h"
 
 #include <cage-core/files.h>
-#include <cage-core/mesh.h>
 #include <cage-core/meshExport.h>
 
 namespace unnatural
 {
-	void meshSaveDebug(const String &path, const Holder<Mesh> &mesh)
+	void meshSaveDebug(const Holder<Mesh> &mesh, const String &path)
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "saving debug mesh: " + path);
 
@@ -17,7 +15,7 @@ namespace unnatural
 		meshExportFiles(path, cfg);
 	}
 
-	void meshSaveRender(const String &path, const Holder<Mesh> &mesh, bool transparency)
+	void meshSaveRender(const Holder<Mesh> &mesh, const String &path, bool transparency)
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "saving render mesh: " + path);
 
@@ -34,8 +32,9 @@ namespace unnatural
 		meshExportFiles(path, cfg);
 	}
 
-	void meshSaveNavigation(const String &path, const Holder<Mesh> &mesh, const std::vector<Tile> &tiles)
+	void meshSaveNavigation(const Holder<Mesh> &mesh)
 	{
+		const String path = pathJoin(assetsDirectory, "navmesh.obj");
 		CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "saving navigation mesh: " + path);
 
 		CAGE_ASSERT(mesh->normals().size() == mesh->verticesCount());
@@ -56,8 +55,9 @@ namespace unnatural
 		meshExportFiles(path, cfg);
 	}
 
-	void meshSaveCollider(const String &path, const Holder<Mesh> &mesh)
+	void meshSaveCollider(const Holder<Mesh> &mesh)
 	{
+		const String path = pathJoin(assetsDirectory, "collider.glb");
 		CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "saving collider: " + path);
 
 		Holder<Mesh> m = mesh->copy();

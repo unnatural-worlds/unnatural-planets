@@ -1,10 +1,8 @@
 #include <algorithm>
-#include <map>
-#include <random>
+#include <unordered_map>
 
-#include "doodads.h"
-#include "generator.h"
-#include "tile.h"
+#include "math.h"
+#include "planets.h"
 
 #include <cage-core/enumerate.h>
 #include <cage-core/files.h>
@@ -60,7 +58,7 @@ namespace unnatural
 				std::vector<uint32> ps; // positions
 				std::vector<Real> ds; // distances
 			};
-			std::map<const Doodad *, Dd> dds;
+			std::unordered_map<const DoodadDefinition *, Dd> dds;
 			for (auto it : enumerate(tiles))
 				if (it->doodad && it->doodad->starting > 0)
 					dds[it->doodad].ps.push_back(numeric_cast<uint32>(it.index));
@@ -109,11 +107,9 @@ namespace unnatural
 		}
 	}
 
-	void generateStartingPositions(const Holder<Mesh> &navMesh, const std::vector<Tile> &tiles, const String &startsPath)
+	void generateStartingPositions()
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "generating starting positions");
-
-		CAGE_ASSERT(navMesh->verticesCount() == tiles.size());
 
 		const std::vector<Candidate> allCandidates = makeCandidates(tiles);
 
@@ -138,7 +134,7 @@ namespace unnatural
 			CAGE_THROW_ERROR(Exception, "generated no starting positions");
 
 		{
-			Holder<File> f = writeFile(startsPath);
+			Holder<File> f = writeFile(pathJoin(baseDirectory, "starts.ini"));
 			f->writeLine("[]");
 			for (const Candidate &c : bestSolution)
 				f->writeLine(Stringizer() + tiles[c.pos].position);
@@ -147,13 +143,21 @@ namespace unnatural
 
 		{
 			Holder<Mesh> msh = newMesh();
-			msh->type(MeshTypeEnum::Lines);
-			for (const Candidate &c : bestSolution)
+			for (const Candidate &h : bestSolution)
 			{
-				const Vec3 a = tiles[c.pos].position;
-				msh->addLine(makeSegment(a, a + tiles[c.pos].normal * 100));
+				const Vec3 o = tiles[h.pos].position;
+				const Vec3 u = tiles[h.pos].normal;
+				const Vec3 s = anyPerpendicular(u);
+				const Vec3 t = cross(s, u);
+				const Vec3 a = o + u * 200 + s * 31;
+				const Vec3 b = o + u * 200 - s * 20 + t * 30;
+				const Vec3 c = o + u * 200 - s * 20 - t * 30;
+				msh->addTriangle(Triangle(o, a, b));
+				msh->addTriangle(Triangle(o, b, c));
+				msh->addTriangle(Triangle(o, c, a));
+				msh->addTriangle(Triangle(a, c, b));
 			}
-			msh->exportFile(startsPath + "-preview.obj");
+			msh->exportFile(pathJoin(baseDirectory, "starts-preview.obj"));
 		}
 
 		CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "generated " + bestSolution.size() + " starting positions");

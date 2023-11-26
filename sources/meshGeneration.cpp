@@ -1,6 +1,4 @@
-#include <initializer_list>
-
-#include "mesh.h"
+#include "planets.h"
 
 #include <cage-core/config.h>
 #include <cage-core/geometry.h>

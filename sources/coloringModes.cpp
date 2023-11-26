@@ -1,5 +1,5 @@
 #include "math.h"
-#include "tile.h"
+#include "planets.h"
 #include "voronoi.h"
 
 #include <cage-core/color.h>

@@ -1,11 +1,12 @@
-#include "generator.h"
-#include "tile.h"
+#include "planets.h"
 
 #include <cage-core/imageAlgorithms.h>
 #include <cage-core/meshAlgorithms.h>
 
 namespace unnatural
 {
+	void terrainTile(Tile &tile);
+
 	namespace
 	{
 		template<bool Water>

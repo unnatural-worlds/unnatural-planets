@@ -1,10 +1,9 @@
 #include "math.h"
+#include "planets.h"
 #include "sdf.h"
-#include "tile.h"
 
 #include <cage-core/config.h>
 #include <cage-core/files.h>
-#include <cage-core/noiseFunction.h>
 
 namespace unnatural
 {
@@ -248,6 +247,13 @@ namespace unnatural
 		return result;
 	}
 
+	void terrainTile(Tile &tile)
+	{
+		CAGE_ASSERT(coloringFnc != nullptr);
+		CAGE_ASSERT(isUnit(tile.normal));
+		coloringFnc(tile);
+	}
+
 	void terrainPreseed()
 	{
 		{
@@ -266,13 +272,6 @@ namespace unnatural
 			tile.meshPurpose = MeshPurposeEnum::Water;
 			terrainTile(tile);
 		}
-	}
-
-	void terrainTile(Tile &tile)
-	{
-		CAGE_ASSERT(coloringFnc != nullptr);
-		CAGE_ASSERT(isUnit(tile.normal));
-		coloringFnc(tile);
 	}
 
 	void terrainApplyConfig()

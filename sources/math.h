@@ -1,10 +1,12 @@
 #ifndef math_h_e6t4hjdr
 #define math_h_e6t4hjdr
 
-#include "planets.h"
+#include <cage-core/math.h>
 
 namespace unnatural
 {
+	using namespace cage;
+
 	Real rescale(Real v, Real ia, Real ib, Real oa, Real ob);
 	Real sharpEdge(Real v, Real p = 0.05);
 	Real terrace(Real x, Real steepness);

@@ -146,7 +146,7 @@ namespace unnatural
 			"IX",
 			"X",
 		};
-#define PICK(NAMES) NAMES[randomRange(std::size_t(0), sizeof(NAMES) / sizeof(NAMES[0]))]
+#define PICK(NAMES) NAMES[randomRange(std::size_t(0), array_size(NAMES))]
 
 		String generateNameImpl()
 		{

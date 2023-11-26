@@ -4,5 +4,5 @@ prototype = unnatural/base/ores/crystals_deposit.proto
 
 [requirements]
 buildable = true
-probability = 0.0005
+probability = 0.0004
 starting = 0
