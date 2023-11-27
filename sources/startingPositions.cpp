@@ -1,19 +1,20 @@
-#include <algorithm>
-#include <unordered_map>
-
-#include "math.h"
+#include "math.h" // anyPerpendicular
 #include "planets.h"
 
 #include <cage-core/enumerate.h>
 #include <cage-core/files.h>
+#include <cage-core/flatSet.h>
 #include <cage-core/geometry.h>
 #include <cage-core/mesh.h>
+#include <cage-core/spatialStructure.h>
 
 namespace unnatural
 {
+	void filterStartingPositionsByDoodads(std::vector<uint32> &positions);
+
 	namespace
 	{
-		Real meanMinusDeviation(PointerRange<const Real> values)
+		std::pair<Real, Real> findMeanAndDev(PointerRange<const Real> values)
 		{
 			Real avg = 0;
 			for (Real s : values)
@@ -23,87 +24,77 @@ namespace unnatural
 			for (Real s : values)
 				dev += abs(s - avg);
 			dev /= values.size();
-			return avg - dev;
+			return { avg, dev };
 		}
 
-		Real scoreEquidistantPositions(const std::vector<Tile> &tiles, PointerRange<const uint32> positions)
+		Real scorePositionsEquidistance(PointerRange<const uint32> positions)
 		{
 			std::vector<Real> dists;
+			dists.reserve((positions.size() + 1) * positions.size() / 2);
 			for (uint32 i : positions)
-			{
 				for (uint32 j : positions)
-				{
 					if (j > i)
-					{
-						const Real d = distance(tiles[i].position, tiles[j].position);
-						if (d < 300)
-							return -Real::Infinity(); // starting positions too close to each other
-						dists.push_back(d);
-					}
-				}
-			}
-			return meanMinusDeviation(dists);
+						dists.push_back(distance(tiles[i].position, tiles[j].position));
+			const auto mad = findMeanAndDev(dists);
+			const Real score = (positions.size() + 1) * (mad.first + 100) / (mad.second + 200);
+			CAGE_LOG_DEBUG(SeverityEnum::Info, "generator", Stringizer() + "count: " + positions.size() + ", avg: " + mad.first + ", dev: " + mad.second + ", score: " + score);
+			return score;
 		}
 
-		struct Candidate
+		void filterPositionsByBuildableRadius(std::vector<uint32> &positions)
 		{
-			uint32 pos = m;
-			Real maxResourceDist = 0;
-		};
-
-		std::vector<Candidate> makeCandidates(const std::vector<Tile> &tiles)
-		{
-			struct Dd
-			{
-				std::vector<uint32> ps; // positions
-				std::vector<Real> ds; // distances
-			};
-			std::unordered_map<const DoodadDefinition *, Dd> dds;
+			Holder<SpatialStructure> spatStruct = newSpatialStructure({});
 			for (auto it : enumerate(tiles))
-				if (it->doodad && it->doodad->starting > 0)
-					dds[it->doodad].ps.push_back(numeric_cast<uint32>(it.index));
-			for (auto &it : dds)
-			{
-				if (it.second.ps.size() < it.first->starting)
+				spatStruct->update(it.index, it->position);
+			spatStruct->rebuild();
+			Holder<SpatialQuery> spatQuery = newSpatialQuery(spatStruct.share());
+
+			std::erase_if(positions,
+				[&](uint32 i)
 				{
-					CAGE_LOG_THROW(Stringizer() + "doodad: " + it.first->name);
-					CAGE_THROW_ERROR(Exception, "insufficient number of doodads to generate starting positions");
-				}
-			}
+					spatQuery->intersection(Sphere(tiles[i].position, 300));
+					uint32 b = 0;
+					for (uint32 i : spatQuery->result())
+						if (tiles[i].buildable)
+							b++;
+					return b < spatQuery->result().size() * 65 / 100; // eliminate candidates that have buildable less than 65 % surrounding area
+				});
+		}
 
-			std::vector<Candidate> candidates;
-			for (const auto &it : dds)
-			{
-				for (uint32 p : it.second.ps)
-				{
-					Candidate c;
-					c.pos = p;
-					for (auto &d : dds)
-					{
-						CAGE_ASSERT(d.second.ps.size() >= d.first->starting);
-						d.second.ds.clear();
-						for (const auto &jt : d.second.ps)
-							d.second.ds.push_back(distance(tiles[jt].position, tiles[p].position));
-						std::sort(d.second.ds.begin(), d.second.ds.end());
-						c.maxResourceDist = max(c.maxResourceDist, d.second.ds[d.first->starting]);
-					}
-					candidates.push_back(c);
-				}
-			}
-
-			std::sort(candidates.begin(), candidates.end(), [](const Candidate &a, const Candidate &b) { return a.maxResourceDist < b.maxResourceDist; });
-			if (candidates.size() > 100)
-				candidates.resize(100);
-
+		std::vector<uint32> generateCadidates()
+		{
+			std::vector<uint32> candidates;
+			candidates.reserve(tiles.size() / 2);
+			for (auto it : enumerate(tiles))
+				if (it->buildable)
+					candidates.push_back(it.index);
+			const uint32 a = numeric_cast<uint32>(candidates.size());
+			filterPositionsByBuildableRadius(candidates);
+			const uint32 b = numeric_cast<uint32>(candidates.size());
+			CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "remaining " + b + " candidates, after eliminating " + (a - b) + " due to insufficient buildable neighbors");
+			filterStartingPositionsByDoodads(candidates);
+			const uint32 c = numeric_cast<uint32>(candidates.size());
+			CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "remaining " + c + " candidates, after eliminating " + (b - c) + " due to doodads");
 			return candidates;
 		}
 
-		Real evaluateCandidates(const std::vector<Tile> &tiles, PointerRange<const Candidate> candidates)
+		std::vector<uint32> proposeSolution(const std::vector<uint32> &candidates)
 		{
-			std::vector<uint32> ps;
-			for (const Candidate &c : candidates)
-				ps.push_back(c.pos);
-			return scoreEquidistantPositions(tiles, ps);
+			const uint32 cnt = min(randomRange(5u, 20u), numeric_cast<uint32>(candidates.size()));
+			FlatSet<uint32> proposal;
+			proposal.reserve(cnt);
+			uint32 attempt = 0;
+			while (proposal.size() < cnt && attempt++ < 1000)
+			{
+				const uint32 p = candidates[randomRange(std::size_t{}, candidates.size())];
+				bool valid = true;
+				for (uint32 a : proposal)
+					if (distance(tiles[p].position, tiles[a].position) < 600)
+						valid = false; // starting positions too close to each other
+				if (valid)
+					proposal.insert(p);
+			}
+			return std::move(proposal.unsafeData());
 		}
 	}
 
@@ -111,23 +102,21 @@ namespace unnatural
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "generating starting positions");
 
-		const std::vector<Candidate> allCandidates = makeCandidates(tiles);
+		const std::vector<uint32> allCandidates = generateCadidates();
 
-		PointerRange<const Candidate> bestSolution;
+		std::vector<uint32> bestSolution;
 		Real bestScore = -Real::Infinity();
-		for (uint32 pc = 5; pc < 11; pc++)
+		static constexpr uint32 Limit = 100000 / (CAGE_DEBUG_BOOL ? 100 : 1);
+		for (uint32 attempt = 0; attempt < Limit; attempt++)
 		{
-			if (allCandidates.size() < pc)
-				break;
-			for (uint32 off = 0; off < allCandidates.size() - pc; off++)
+			std::vector<uint32> proposal = proposeSolution(allCandidates);
+			if (proposal.size() < 3)
+				continue;
+			const Real score = scorePositionsEquidistance(proposal);
+			if (score > bestScore)
 			{
-				PointerRange<const Candidate> pr = { allCandidates.data() + off, allCandidates.data() + off + pc };
-				const Real score = evaluateCandidates(tiles, pr);
-				if (score > bestScore)
-				{
-					bestSolution = pr;
-					bestScore = score;
-				}
+				bestSolution = proposal;
+				bestScore = score;
 			}
 		}
 		if (bestSolution.empty())
@@ -136,17 +125,17 @@ namespace unnatural
 		{
 			Holder<File> f = writeFile(pathJoin(baseDirectory, "starts.ini"));
 			f->writeLine("[]");
-			for (const Candidate &c : bestSolution)
-				f->writeLine(Stringizer() + tiles[c.pos].position);
+			for (uint32 c : bestSolution)
+				f->writeLine(Stringizer() + tiles[c].position);
 			f->close();
 		}
 
 		{
 			Holder<Mesh> msh = newMesh();
-			for (const Candidate &h : bestSolution)
+			for (uint32 h : bestSolution)
 			{
-				const Vec3 o = tiles[h.pos].position;
-				const Vec3 u = tiles[h.pos].normal;
+				const Vec3 o = tiles[h].position;
+				const Vec3 u = tiles[h].normal;
 				const Vec3 s = anyPerpendicular(u);
 				const Vec3 t = cross(s, u);
 				const Vec3 a = o + u * 200 + s * 31;

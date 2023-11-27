@@ -63,6 +63,7 @@ namespace unnatural
 
 	struct Tile
 	{
+		std::vector<uint32> neighbors;
 		Vec3 position;
 		Vec3 normal;
 		Vec3 albedo;
@@ -85,18 +86,22 @@ namespace unnatural
 	struct DoodadDefinition
 	{
 		String name;
-		uint32 instances = 0;
-
 		String package;
 		String proto;
+		uint32 instances = 0; // how many have actually been placed
+
+		// generating
+		Real priority;
+		uint32 targetCount = 0;
 
 		// requirements
 		Vec2 temperature = Vec2(-Real::Infinity(), Real::Infinity());
-		Vec2 precipitation = Vec2(-Real::Infinity(), Real::Infinity());
-		Real probability;
-		uint32 starting = 0; // number of instances of the doodad that must be near every starting position
-		bool ocean = false;
-		bool slope = false;
+		Vec2 precipitation = Vec2(0, Real::Infinity());
+		Vec2 elevation = Vec2(-Real::Infinity(), Real::Infinity());
+		Vec2 slope = Vec2(0, Real::Infinity()); // degs in file, rads in memory
+		Vec2 startsDistance = Vec2(0, Real::Infinity());
+		Vec2i startsCount = Vec2i(0, m);
+		Real radius = 5; // distance in which to prevent overlapping with other doodads
 		bool buildable = false;
 	};
 

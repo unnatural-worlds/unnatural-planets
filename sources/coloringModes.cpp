@@ -121,7 +121,7 @@ namespace unnatural
 
 		void generateSlope(Tile &tile)
 		{
-			constexpr Real radius = 0.5;
+			static constexpr Real radius = 0.5;
 			Vec3 a = anyPerpendicular(tile.normal);
 			Vec3 b = cross(tile.normal, a);
 			a *= radius;
@@ -198,16 +198,7 @@ namespace unnatural
 			else if (tile.slope > Degs(20))
 				tile.type = TerrainTypeEnum::Cliffs;
 			else
-				switch (tile.biome)
-				{
-					case TerrainBiomeEnum::Bare:
-					case TerrainBiomeEnum::Tundra:
-						tile.type = TerrainTypeEnum::Rough;
-						break;
-					default:
-						tile.type = TerrainTypeEnum::Flat;
-						break;
-				}
+				tile.type = TerrainTypeEnum::Flat;
 		}
 
 		void generateBedrock(Tile &tile)
@@ -784,7 +775,7 @@ namespace unnatural
 			}();
 
 			const Real tempOff = temperatureOffsetNoise->evaluate(tile.position) * 1.5;
-			const Real bf = sharpEdge(rangeMask(tile.temperature + tempOff, 0, -3));
+			const Real bf = sharpEdge(rangeMask(tile.temperature + tempOff, 0, -3)) * (1 - beachMask(tile));
 			if (bf < 1e-7)
 				return;
 
@@ -793,9 +784,6 @@ namespace unnatural
 				if (tile.type != TerrainTypeEnum::Cliffs)
 					tile.type = TerrainTypeEnum::Rough;
 			}
-
-			if (tile.meshPurpose == MeshPurposeEnum::Land)
-				return;
 
 			const Real freq = freqNoise->evaluate(tile.position) * 0.08 + 1;
 			const Real thickness = sharpEdge(saturate(thicknessNoise->evaluate(tile.position * freq) * 0.5 + 0.8), 0.1) * 0.6 + 0.4; // 0.4 .. 1
@@ -846,15 +834,6 @@ namespace unnatural
 			const Real thickness = thicknessNoise->evaluate(tile.position) * 0.5 + 0.5;
 			bf *= saturate(thickness * 0.5 + 0.7);
 			if (bf < 1e-7)
-				return;
-
-			if (bf > 0.2)
-			{
-				if (tile.type != TerrainTypeEnum::Cliffs)
-					tile.type = TerrainTypeEnum::Rough;
-			}
-
-			if (tile.meshPurpose == MeshPurposeEnum::Water)
 				return;
 
 			const Vec3 color = Vec3(230) / 255;
@@ -938,7 +917,8 @@ namespace unnatural
 		}
 		generateFlowers(tile);
 		generateIce(tile);
-		generateSnow(tile);
+		if (tile.meshPurpose != MeshPurposeEnum::Water)
+			generateSnow(tile);
 		generateFinalization(tile);
 	}
 
@@ -955,7 +935,7 @@ namespace unnatural
 		else
 		{
 			tile.biome = TerrainBiomeEnum::Bare;
-			tile.type = TerrainTypeEnum::Rough;
+			tile.type = TerrainTypeEnum::Flat;
 			generateBedrock(tile);
 			generateCliffs(tile);
 			generateMica(tile);

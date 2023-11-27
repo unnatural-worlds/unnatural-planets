@@ -2,7 +2,14 @@
 package = unnatural/base/ores/ores.pack
 prototype = unnatural/base/ores/gas_deposit.proto
 
+[generating]
+count = 3
+priority = 15
+
 [requirements]
+radius = 40
 buildable = true
-probability = 0.0004
-starting = 0
+
+[starting]
+distance = 200, 200
+count = 0, 0

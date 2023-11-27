@@ -89,7 +89,7 @@ namespace unnatural
 			return info.createThreadId == info.currentThreadId;
 		}
 
-		void computeFlatAreas(const Holder<Mesh> &navMesh, std::vector<Tile> &tiles)
+		void computeNeighbors(const Holder<Mesh> &navMesh)
 		{
 			CAGE_ASSERT(navMesh->indicesCount());
 			const uint32 cnt = navMesh->verticesCount();
@@ -113,8 +113,8 @@ namespace unnatural
 						ns[c].insert(a);
 						ns[c].insert(b);
 					}
+					break;
 				}
-				break;
 				case MeshTypeEnum::Lines:
 				{
 					const uint32 lines = navMesh->facesCount();
@@ -126,13 +126,18 @@ namespace unnatural
 						ns[a].insert(b);
 						ns[b].insert(a);
 					}
+					break;
 				}
-				break;
 				default:
 					CAGE_THROW_CRITICAL(Exception, "invalid navmesh type");
 			}
+			for (uint32 i = 0; i < cnt; i++)
+				tiles[i].neighbors = std::move(ns[i].unsafeData());
+		}
 
-			// flat areas
+		void computeFlatAreas()
+		{
+			const uint32 cnt = numeric_cast<uint32>(tiles.size());
 			for (uint32 i = 0; i < cnt; i++)
 			{
 				struct Node
@@ -145,8 +150,8 @@ namespace unnatural
 				std::priority_queue<Node> open;
 				FlatSet<uint32> closed;
 				open.push({ Real(), i });
-				const Vec3 p = navMesh->position(i);
-				const Vec3 n = navMesh->normal(i);
+				const Vec3 p = tiles[i].position;
+				const Vec3 n = tiles[i].normal;
 				while (!open.empty())
 				{
 					const uint32 j = open.top().id;
@@ -154,11 +159,11 @@ namespace unnatural
 					if (closed.count(j))
 						continue;
 					closed.insert(j);
-					const Vec3 v = navMesh->position(j);
+					const Vec3 v = tiles[j].position;
 					if (abs(dot(v - p, n)) < 1.5)
 					{
-						for (uint32 k : ns[j])
-							open.push({ distanceSquared(p, navMesh->position(k)), k });
+						for (uint32 k : tiles[j].neighbors)
+							open.push({ distanceSquared(p, tiles[k].position), k });
 					}
 					else
 					{
@@ -175,27 +180,30 @@ namespace unnatural
 				CAGE_LOG(SeverityEnum::Info, "tileStats", "flat areas radiuses (m):");
 				flatsCounts.print();
 			}
+		}
 
-			// buildable
+		void computeBuildable()
+		{
+			const uint32 cnt = numeric_cast<uint32>(tiles.size());
 			uint32 totalBuildable = 0;
 			uint64 totalOverlapped = 0;
 			Holder<SpatialStructure> spatStruct = newSpatialStructure({});
 			for (uint32 i = 0; i < cnt; i++)
-				spatStruct->update(i, navMesh->position(i));
+				spatStruct->update(i, tiles[i].position);
 			spatStruct->rebuild();
 			Holder<SpatialQuery> spatQuery = newSpatialQuery(spatStruct.share());
 			for (uint32 i = 0; i < cnt; i++)
 			{
 				if (tiles[i].flatRadius < 40)
 					continue;
-				if (tiles[i].type >= TerrainTypeEnum::Cliffs)
+				if (tiles[i].type >= TerrainTypeEnum::Rough)
 					continue;
 				tiles[i].buildable = true;
 				uint32 overlapped = 0;
-				spatQuery->intersection(Sphere(navMesh->position(i), 40));
+				spatQuery->intersection(Sphere(tiles[i].position, 40));
 				for (uint32 j : spatQuery->result())
 				{
-					if (tiles[j].type >= TerrainTypeEnum::Cliffs)
+					if (tiles[j].type >= TerrainTypeEnum::Rough)
 					{
 						tiles[i].buildable = false;
 						break;
@@ -215,14 +223,14 @@ namespace unnatural
 			CAGE_LOG(SeverityEnum::Info, "tileStats", "");
 
 #if 0
-		{
-			const ConfigString configShapeMode("unnatural-planets/shape/mode");
-			FileMode fm(false, true);
-			fm.append = true;
-			Holder<File> f = newFile("tileStats.csv", fm);
-			f->writeLine(Stringizer() + String(configShapeMode) + "," + tiles.size() + "," + totalBuildings);
-			f->close();
-		}
+			{
+				const ConfigString configShapeMode("unnatural-planets/shape/mode");
+				FileMode fm(false, true);
+				fm.append = true;
+				Holder<File> f = newFile("tiles-stats.csv", fm);
+				f->writeLine(Stringizer() + String(configShapeMode) + "," + tiles.size() + "," + totalBuildings);
+				f->close();
+			}
 #endif
 		}
 	}
@@ -267,16 +275,12 @@ namespace unnatural
 
 		CAGE_LOG(SeverityEnum::Info, "tileStats", "elevations (m):");
 		elevations.print();
-
 		CAGE_LOG(SeverityEnum::Info, "tileStats", "slopes (°):");
 		slopes.print();
-
 		CAGE_LOG(SeverityEnum::Info, "tileStats", "temperatures (°C):");
 		temperatures.print();
-
 		CAGE_LOG(SeverityEnum::Info, "tileStats", "precipitations (mm):");
 		precipitations.print();
-
 		CAGE_LOG(SeverityEnum::Info, "tileStats", "biomes:");
 		for (uint32 i = 0; i < (uint32)TerrainBiomeEnum::_Total; i++)
 		{
@@ -284,7 +288,6 @@ namespace unnatural
 			statistics(Stringizer() + b, biomesCounts.counts[i], biomesCounts.maxc, biomesCounts.total);
 		}
 		CAGE_LOG(SeverityEnum::Info, "tileStats", "");
-
 		CAGE_LOG(SeverityEnum::Info, "tileStats", "terrain types:");
 		for (uint32 i = 0; i < (uint32)TerrainTypeEnum::_Total; i++)
 		{
@@ -293,6 +296,8 @@ namespace unnatural
 		}
 		CAGE_LOG(SeverityEnum::Info, "tileStats", "");
 
-		computeFlatAreas(navMesh, tiles);
+		computeNeighbors(navMesh);
+		computeFlatAreas();
+		computeBuildable();
 	}
 }
