@@ -20,7 +20,7 @@ namespace unnatural
 
 		// returns zero when the slope is at or above the threshold plus the smoothing,
 		// returns one when the slope is at or below the threshold minus the smoothing
-		Real steepnessMask(Degs slope, Degs threshold, Degs smoothing = Degs(10))
+		Real steepnessMask(Degs slope, Degs threshold, Degs smoothing)
 		{
 			Degs r = (threshold + smoothing - slope) / (2 * smoothing);
 			return saturate(r.value);
@@ -45,7 +45,7 @@ namespace unnatural
 			if (tile.biome == TerrainBiomeEnum::Water)
 				return 0;
 
-			return rangeMask(tile.elevation + beachNoise->evaluate(tile.elevation) * 20, 15, 20);
+			return rangeMask(tile.elevation + beachNoise->evaluate(tile.elevation) * 20, 10, 15);
 		}
 
 		void generateElevation(Tile &tile)
@@ -264,16 +264,34 @@ namespace unnatural
 
 		void generateCliffs(Tile &tile)
 		{
-			const Real bf = steepnessMask(tile.slope, Degs(30), Degs(6));
+			static const Holder<NoiseFunction> cracksNoise = []()
+			{
+				NoiseFunctionCreateConfig cfg;
+				cfg.type = NoiseTypeEnum::SimplexReduced;
+				cfg.fractalType = NoiseFractalTypeEnum::Ridged;
+				cfg.octaves = 2;
+				cfg.frequency = 0.047;
+				cfg.seed = noiseSeed();
+				return newNoiseFunction(cfg);
+			}();
+
+			const Real bf = steepnessMask(tile.slope, Degs(19), Degs(4));
 			if (bf > 0.99999)
 				return;
 
 			Vec3 hsv = colorRgbToHsv(tile.albedo);
-			hsv[0] = interpolate(155.0 / 255.0, hsv[0], sharpEdge(bf, 0.01));
+			hsv[0] = interpolate(155.0 / 255.0, hsv[0], sharpEdge(bf, 0.005));
 			hsv[1] *= bf * 0.4 + 0.6;
 			hsv[2] = interpolate(0.7, hsv[1], bf * 0.8 + 0.2);
 			tile.albedo = colorHsvToRgb(hsv);
 			tile.roughness *= bf * 0.2 + 0.8;
+
+			{ // cracks
+				Real cracks = sharpEdge(saturate(cracksNoise->evaluate(tile.position) * 2 - 1.1), 0.2);
+				tile.height *= interpolate(1.0, 0.8, cracks);
+				tile.albedo *= interpolate(1.0, 0.9, cracks);
+				tile.roughness = interpolate(tile.roughness, 0.9, cracks);
+			}
 		}
 
 		void generateMica(Tile &tile)
@@ -355,7 +373,7 @@ namespace unnatural
 			}();
 
 			Real height = heightNoise->evaluate(tile.position) * 0.2 + 0.5;
-			Real bf = sharpEdge(saturate(height - tile.height + 0.4)) * steepnessMask(tile.slope, Degs(20));
+			Real bf = sharpEdge(saturate(height - tile.height + 0.4)) * steepnessMask(tile.slope, Degs(20), Degs(5));
 			if (bf < 1e-7)
 				return;
 
@@ -427,7 +445,7 @@ namespace unnatural
 				return newNoiseFunction(cfg);
 			}();
 
-			const Real bf = rangeMask(tile.temperature, 24, 28) * steepnessMask(tile.slope, Degs(19));
+			const Real bf = rangeMask(tile.temperature, 24, 28) * steepnessMask(tile.slope, Degs(19), Degs(10));
 			if (bf < 1e-7)
 				return;
 
@@ -492,8 +510,7 @@ namespace unnatural
 				return newNoiseFunction(cfg);
 			}();
 
-			const Real threshold = rangeMask(tile.temperature, 35, 25) * rangeMask(tile.precipitation, 15, 35) * steepnessMask(tile.slope, Degs(24), Degs(5));
-			Real bf = rangeMask(threshold, 0.45, 0.55) * beachMask(tile);
+			Real bf = rangeMask(tile.temperature, 35, 25) * rangeMask(tile.precipitation, 15, 35) * steepnessMask(tile.slope, Degs(22), Degs(3)) * beachMask(tile);
 			if (bf < 1e-7)
 				return;
 
@@ -625,7 +642,7 @@ namespace unnatural
 			{
 				const Real colorSwitch = colorSwitchNoise->evaluate(tile.position) * 0.5 + 0.5;
 				const Real hueShift = hueShiftNoise->evaluate(tile.position) * 0.09;
-				tile.albedo = colorHueShift(interpolateColor(Vec3(54, 54, 97) / 255, Vec3(26, 102, 125) / 255, colorSwitch), hueShift);
+				tile.albedo = colorHueShift(interpolateColor(Vec3(40, 63, 168) / 255, Vec3(39, 154, 186) / 255, colorSwitch), hueShift);
 			}
 
 			{
@@ -811,14 +828,6 @@ namespace unnatural
 				cfg.seed = noiseSeed();
 				return newNoiseFunction(cfg);
 			}();
-			static const Holder<NoiseFunction> slopeOffsetNoise = []()
-			{
-				NoiseFunctionCreateConfig cfg;
-				cfg.type = NoiseTypeEnum::Value;
-				cfg.frequency = 0.11;
-				cfg.seed = noiseSeed();
-				return newNoiseFunction(cfg);
-			}();
 			static const Holder<NoiseFunction> thicknessNoise = []()
 			{
 				NoiseFunctionCreateConfig cfg;
@@ -830,7 +839,7 @@ namespace unnatural
 				return newNoiseFunction(cfg);
 			}();
 
-			Real bf = sharpEdge(rangeMask(tile.temperature + tempOffsetNoise->evaluate(tile.position) * 1.5, 0, -2) * rangeMask(tile.precipitation, 10, 15) * steepnessMask(tile.slope, Degs(20 + slopeOffsetNoise->evaluate(tile.position) * 3), Degs(3)) * beachMask(tile));
+			Real bf = sharpEdge(rangeMask(tile.temperature + tempOffsetNoise->evaluate(tile.position) * 1.5, 0, -2) * rangeMask(tile.precipitation, 10, 15) * steepnessMask(tile.slope, Degs(25), Degs(3)) * beachMask(tile));
 			const Real thickness = thicknessNoise->evaluate(tile.position) * 0.5 + 0.5;
 			bf *= saturate(thickness * 0.5 + 0.7);
 			if (bf < 1e-7)
