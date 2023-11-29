@@ -25,8 +25,9 @@ namespace unnatural
 			d.package = ini->getString("doodad", "package");
 			d.proto = ini->getString("doodad", "prototype");
 
-			d.targetCount = ini->getUint32("generating", "count");
 			d.priority = ini->getFloat("generating", "priority", d.priority.value);
+			d.maxCount = ini->getUint32("generating", "count", d.maxCount);
+			d.chance = ini->getFloat("generating", "chance", d.chance.value);
 
 			if (ini->itemExists("requirements", "temperature"))
 				d.temperature = Vec2::parse(ini->getString("requirements", "temperature"));
@@ -129,8 +130,10 @@ namespace unnatural
 			// place doodads
 			for (uint32 c : candidates)
 			{
-				if (doodad.instances >= doodad.targetCount)
+				if (doodad.instances >= doodad.maxCount)
 					break;
+				if (randomChance() > doodad.chance)
+					continue;
 				Tile &t = tiles[c];
 				spatialQuery->intersection(Sphere(t.position, doodad.radius));
 				if (!spatialQuery->result().empty())
@@ -205,7 +208,7 @@ namespace unnatural
 		loadDoodads(root, root);
 		CAGE_LOG(SeverityEnum::Info, "doodads", Stringizer() + "found " + doodadsDefinitions.size() + " doodads definitions");
 
-		std::sort(doodadsDefinitions.begin(), doodadsDefinitions.end(), [](const DoodadDefinition &a, const DoodadDefinition &b) { return std::pair{ -a.priority, a.targetCount } < std::pair{ -b.priority, b.targetCount }; });
+		std::sort(doodadsDefinitions.begin(), doodadsDefinitions.end(), [](const DoodadDefinition &a, const DoodadDefinition &b) { return std::tuple{ -a.priority, a.maxCount, a.chance } < std::tuple{ -b.priority, b.maxCount, a.chance }; });
 		for (DoodadDefinition &doodad : doodadsDefinitions)
 			placeDoodads(doodad);
 

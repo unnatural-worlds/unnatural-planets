@@ -91,8 +91,9 @@ namespace unnatural
 		uint32 instances = 0; // how many have actually been placed
 
 		// generating
-		Real priority;
-		uint32 targetCount = 0;
+		Real priority; // determines which doodads should be placed first
+		uint32 maxCount = m;
+		Real chance = 1; // chance to place a doodad on a valid tile
 
 		// requirements
 		Vec2 temperature = Vec2(-Real::Infinity(), Real::Infinity());

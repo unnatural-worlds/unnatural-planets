@@ -57,7 +57,7 @@ namespace unnatural
 					for (uint32 i : spatQuery->result())
 						if (tiles[i].buildable)
 							b++;
-					return b < spatQuery->result().size() * 65 / 100; // eliminate candidates that have buildable less than 65 % surrounding area
+					return b < spatQuery->result().size() * 60 / 100; // eliminate candidates that have buildable less than 60 % surrounding area
 				});
 		}
 

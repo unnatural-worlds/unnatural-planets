@@ -1,0 +1,18 @@
+[doodad]
+package = unnatural/doodads/vegetation/vegetation.pack
+prototype = unnatural/doodads/vegetation/plant_6.proto
+
+[generating]
+chance = 0.003
+
+[requirements]
+radius = 10
+temperature = 0, 30
+precipitation = 20, 300
+elevation = 150, 600
+slope = 0, 20
+# grass / high-altitude
+
+[starting]
+distance = 50, 50
+count = 0, 0
