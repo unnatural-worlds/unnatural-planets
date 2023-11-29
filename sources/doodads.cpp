@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <tuple>
 
 #include "planets.h"
 
@@ -208,7 +209,13 @@ namespace unnatural
 		loadDoodads(root, root);
 		CAGE_LOG(SeverityEnum::Info, "doodads", Stringizer() + "found " + doodadsDefinitions.size() + " doodads definitions");
 
-		std::sort(doodadsDefinitions.begin(), doodadsDefinitions.end(), [](const DoodadDefinition &a, const DoodadDefinition &b) { return std::tuple{ -a.priority, a.maxCount, a.chance } < std::tuple{ -b.priority, b.maxCount, a.chance }; });
+		std::sort(doodadsDefinitions.begin(), doodadsDefinitions.end(),
+			[](const DoodadDefinition &a, const DoodadDefinition &b)
+			{
+				const auto aa = std::tuple(-a.priority, a.maxCount, a.chance);
+				const auto bb = std::tuple(-b.priority, b.maxCount, a.chance);
+				return aa < bb;
+			});
 		for (DoodadDefinition &doodad : doodadsDefinitions)
 			placeDoodads(doodad);
 
