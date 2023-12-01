@@ -110,7 +110,7 @@ namespace unnatural
 		for (uint32 attempt = 0; attempt < Limit; attempt++)
 		{
 			std::vector<uint32> proposal = proposeSolution(allCandidates);
-			if (proposal.size() < 3)
+			if (proposal.size() < 2)
 				continue;
 			const Real score = scorePositionsEquidistance(proposal);
 			if (score > bestScore)
