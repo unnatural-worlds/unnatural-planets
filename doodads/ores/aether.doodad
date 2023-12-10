@@ -1,6 +1,6 @@
 [doodad]
 package = unnatural/base/ores/ores.pack
-prototype = unnatural/base/ores/gas_deposit.proto
+prototype = unnatural/base/ores/aether_deposit.proto
 
 [generating]
 count = 3
