@@ -9,11 +9,14 @@
 #include <cage-core/ini.h>
 #include <cage-core/logger.h>
 #include <cage-core/math.h>
+#include <cage-core/mesh.h>
 #include <cage-core/spatialStructure.h>
 #include <cage-core/string.h>
 
 namespace unnatural
 {
+	void previewMeshAddPoint(Mesh *msh, Vec3 pos, Vec3 up, Real height);
+
 	namespace
 	{
 		void loadDoodad(const String &root, const String &path)
@@ -48,6 +51,9 @@ namespace unnatural
 				d.startsCount = Vec2i::parse(ini->getString("starting", "count"));
 			d.radius = ini->getFloat("requirements", "radius", d.radius.value);
 			d.buildable = ini->getBool("requirements", "buildable", false);
+
+			if (ini->itemExists("preview", "height"))
+				d.previewHeight = ini->getFloat("preview", "height");
 
 			ini->checkUnused();
 			if (!(d.temperature[0] < d.temperature[1]))
@@ -105,10 +111,56 @@ namespace unnatural
 
 		void placeDoodads(DoodadDefinition &doodad)
 		{
-			std::vector<uint32> candidates;
-			candidates.reserve(tiles.size() / 10);
+			std::vector<uint32> spCounts; // count doodads for each starting position
+			spCounts.resize(startingPositions.size(), 0);
+
+			const auto &tryPlace = [&doodad, &spCounts](uint32 c) -> bool
+			{
+				if (doodad.startsDistance[0] > 0)
+				{
+					for (uint32 s : startingPositions)
+						if (distance(tiles[s].position, tiles[c].position) < doodad.startsDistance[0])
+							return false; // doodad too close to a starting position
+				}
+
+				if (doodad.startsDistance[1] > 0)
+				{
+					for (auto ss : enumerate(startingPositions))
+					{
+						if (distance(tiles[*ss].position, tiles[c].position) > doodad.startsDistance[1])
+							continue;
+						if (spCounts[ss.index] >= doodad.startsCount[1])
+							return false; // too many doodads close to a starting position
+					}
+				}
+
+				Tile &t = tiles[c];
+				spatialQuery->intersection(Sphere(t.position, doodad.radius));
+				if (!spatialQuery->result().empty())
+					return false; // would overlap with already existing doodad
+
+				t.buildable = false;
+				t.doodad = &doodad;
+				doodad.instances++;
+				spatialStructure->update(c, Sphere(t.position, doodad.radius));
+				spatialStructure->rebuild();
+
+				if (doodad.startsDistance[1] > 0)
+				{
+					for (auto ss : enumerate(startingPositions))
+					{
+						if (distance(tiles[*ss].position, tiles[c].position) > doodad.startsDistance[1])
+							continue;
+						spCounts[ss.index]++;
+					}
+				}
+
+				return true;
+			};
 
 			// generate initial candidates
+			std::vector<uint32> candidates;
+			candidates.reserve(tiles.size() / 10);
 			for (auto it : enumerate(tiles))
 			{
 				if (it->doodad)
@@ -125,8 +177,12 @@ namespace unnatural
 			}
 
 			// shuffle the candidates
-			for (uint32 &c : candidates)
-				std::swap(c, candidates[randomRange(0u, numeric_cast<uint32>(candidates.size()))]);
+			const auto &shuffle = [&candidates]()
+			{
+				for (uint32 &c : candidates)
+					std::swap(c, candidates[randomRange(0u, numeric_cast<uint32>(candidates.size()))]);
+			};
+			shuffle();
 
 			// place doodads
 			for (uint32 c : candidates)
@@ -135,32 +191,59 @@ namespace unnatural
 					break;
 				if (randomChance() > doodad.chance)
 					continue;
-				Tile &t = tiles[c];
-				spatialQuery->intersection(Sphere(t.position, doodad.radius));
-				if (!spatialQuery->result().empty())
-					continue; // would overlap with already existing doodad
-				t.buildable = false;
-				t.doodad = &doodad;
-				doodad.instances++;
-				spatialStructure->update(c, Sphere(t.position, doodad.radius));
-				spatialStructure->rebuild();
+				tryPlace(c);
+			}
+			std::erase_if(candidates, [](uint32 c) { return !!tiles[c].doodad; });
+
+			// place additional doodads to meet minimum requirements for starting positions
+			for (uint32 player = 0; player < startingPositions.size(); player++)
+			{
+				uint32 &myCount = spCounts[player];
+				if (myCount >= doodad.startsCount[0])
+					continue;
+				shuffle();
+				const Vec3 myPos = tiles[startingPositions[player]].position;
+				for (uint32 c : candidates)
+				{
+					const Real dist = distance(tiles[c].position, myPos);
+					if (dist < doodad.startsDistance[0] || dist > doodad.startsDistance[1])
+						continue;
+					tryPlace(c);
+					if (myCount >= doodad.startsCount[0])
+						break;
+				}
 			}
 		}
 
 		void writeDoodads()
 		{
-			Holder<File> f = writeFile(pathJoin(baseDirectory, "doodads.ini"));
-			for (Tile &t : tiles)
 			{
-				if (!t.doodad)
-					continue;
-				assetPackages.push_back(t.doodad->package);
-				f->writeLine("[]");
-				f->writeLine(Stringizer() + "prototype = " + t.doodad->proto);
-				f->writeLine(Stringizer() + "position = " + t.position);
-				f->writeLine("");
+				Holder<File> f = writeFile(pathJoin(baseDirectory, "doodads.ini"));
+				for (Tile &t : tiles)
+				{
+					if (!t.doodad)
+						continue;
+					assetPackages.push_back(t.doodad->package);
+					f->writeLine("[]");
+					f->writeLine(Stringizer() + "prototype = " + t.doodad->proto);
+					f->writeLine(Stringizer() + "position = " + t.position);
+					f->writeLine("");
+				}
+				f->close();
 			}
-			f->close();
+
+			{
+				Holder<Mesh> msh = newMesh();
+				for (Tile &t : tiles)
+				{
+					if (!t.doodad)
+						continue;
+					if (!valid(t.doodad->previewHeight))
+						continue;
+					previewMeshAddPoint(+msh, t.position, t.normal, t.doodad->previewHeight);
+				}
+				msh->exportFile(pathJoin(baseDirectory, "doodads-preview.obj"));
+			}
 		}
 
 		bool logFilterSameThread(const detail::LoggerInfo &info)
@@ -219,57 +302,7 @@ namespace unnatural
 		for (DoodadDefinition &doodad : doodadsDefinitions)
 			placeDoodads(doodad);
 
-		for (DoodadDefinition &doodad : doodadsDefinitions)
-		{
-			if (doodad.instances < doodad.startsCount[0])
-			{
-				CAGE_LOG_THROW(doodad.name);
-				CAGE_THROW_ERROR(Exception, "doodad minimum starting count cannot be satisfied");
-			}
-		}
-
 		writeDoodads();
 		printStatistics();
-	}
-
-	void filterStartingPositionsByDoodads(std::vector<uint32> &positions)
-	{
-		// filter by minimum distances
-		{
-			Holder<SpatialStructure> spatStruct = newSpatialStructure({});
-			for (auto it : enumerate(tiles))
-				if (it->doodad)
-					spatStruct->update(it.index, Sphere(it->position, max(it->doodad->radius, it->doodad->startsDistance[0])));
-			spatStruct->rebuild();
-			Holder<SpatialQuery> spatQuery = newSpatialQuery(spatStruct.share());
-
-			std::erase_if(positions,
-				[&](uint32 i)
-				{
-					spatQuery->intersection(tiles[i].position);
-					return !spatQuery->result().empty();
-				});
-		}
-
-		// filter by starting counts
-		for (const DoodadDefinition &doodad : doodadsDefinitions)
-		{
-			if (doodad.startsCount[1] == m || doodad.startsDistance[1] == Real::Infinity())
-				continue;
-
-			Holder<SpatialStructure> spatStruct = newSpatialStructure({});
-			for (auto it : enumerate(tiles))
-				if (it->doodad == &doodad)
-					spatStruct->update(it.index, Sphere(it->position, it->doodad->startsDistance[1]));
-			spatStruct->rebuild();
-			Holder<SpatialQuery> spatQuery = newSpatialQuery(spatStruct.share());
-
-			std::erase_if(positions,
-				[&](uint32 i)
-				{
-					spatQuery->intersection(tiles[i].position);
-					return spatQuery->result().size() < doodad.startsCount[0] || spatQuery->result().size() > doodad.startsCount[1];
-				});
-		}
 	}
 }

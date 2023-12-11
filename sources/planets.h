@@ -104,11 +104,14 @@ namespace unnatural
 		Vec2i startsCount = Vec2i(0, m);
 		Real radius = 5; // distance in which to prevent overlapping with other doodads
 		bool buildable = false;
+
+		Real previewHeight = Real::Nan();
 	};
 
 	extern std::vector<Tile> tiles;
 	extern std::vector<DoodadDefinition> doodadsDefinitions;
 	extern std::vector<String> assetPackages;
+	extern std::vector<uint32> startingPositions;
 
 	extern const String baseDirectory;
 	extern const String assetsDirectory;

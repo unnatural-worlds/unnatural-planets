@@ -47,6 +47,7 @@ namespace unnatural
 	std::vector<Tile> tiles;
 	std::vector<DoodadDefinition> doodadsDefinitions;
 	std::vector<String> assetPackages;
+	std::vector<uint32> startingPositions;
 	const String baseDirectory = findTmpDirectory();
 	const String assetsDirectory = pathJoin(baseDirectory, "data");
 	const String debugDirectory = pathJoin(baseDirectory, "intermediate");
@@ -98,8 +99,8 @@ namespace unnatural
 				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "navmesh tiles: " + navmesh->verticesCount());
 				generateTileProperties(navmesh);
 				meshSaveNavigation(navmesh);
-				generateDoodads();
 				generateStartingPositions();
+				generateDoodads();
 			}
 
 			void taskCollider(uint32)
@@ -382,6 +383,7 @@ import bpy
 				for (const Chunk &c : chunks)
 					f->writeLine(Stringizer() + "bpy.ops.import_scene.gltf(filepath = '" + c.mesh + "')");
 				f->writeLine(Stringizer() + "bpy.ops.import_scene.obj(filepath = '../starts-preview.obj')");
+				f->writeLine(Stringizer() + "bpy.ops.import_scene.obj(filepath = '../doodads-preview.obj')");
 				f->write(R"Python(
 for a in bpy.data.window_managers[0].windows[0].screen.areas:
 	if a.type == 'VIEW_3D':

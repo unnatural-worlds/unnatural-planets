@@ -1,3 +1,4 @@
+#include "math.h"
 #include "planets.h"
 
 #include <cage-core/config.h>
@@ -186,5 +187,18 @@ namespace unnatural
 #endif // CAGE_DEBUG
 		cfg.padding = 6;
 		return meshUnwrap(+mesh, cfg);
+	}
+
+	void previewMeshAddPoint(Mesh *msh, Vec3 pos, Vec3 up, Real height)
+	{
+		const Vec3 s = anyPerpendicular(up);
+		const Vec3 t = cross(s, up);
+		const Vec3 a = pos + up * height + s * (height * 31 / 200);
+		const Vec3 b = pos + up * height - s * (height * 20 / 200) + t * (height * 30 / 200);
+		const Vec3 c = pos + up * height - s * (height * 20 / 200) - t * (height * 30 / 200);
+		msh->addTriangle(Triangle(pos, a, b));
+		msh->addTriangle(Triangle(pos, b, c));
+		msh->addTriangle(Triangle(pos, c, a));
+		msh->addTriangle(Triangle(a, c, b));
 	}
 }
