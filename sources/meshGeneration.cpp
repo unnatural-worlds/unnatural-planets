@@ -168,6 +168,7 @@ namespace unnatural
 	{
 		MeshChunkingConfig cfg;
 		cfg.maxSurfaceArea = 800000;
+		cfg.parallelize = true;
 		auto r = meshChunking(+mesh, cfg);
 		//for (auto &it : r)
 		//	meshMergePlanar(+it, {});

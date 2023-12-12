@@ -3,7 +3,7 @@ package = unnatural/base/ores/ores.pack
 prototype = unnatural/base/ores/crystals_deposit.proto
 
 [generating]
-count = 10
+count = 5
 priority = 14
 
 [requirements]
@@ -11,8 +11,8 @@ radius = 40
 buildable = true
 
 [starting]
-distance = 500, 500
-count = 0, 0
+distance = 400, 500
+count = 1, 1
 
 [preview]
 height = 100

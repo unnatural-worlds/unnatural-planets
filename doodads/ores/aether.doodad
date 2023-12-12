@@ -11,7 +11,7 @@ radius = 40
 buildable = true
 
 [starting]
-distance = 500, 500
+distance = 600, 600
 count = 0, 0
 
 [preview]

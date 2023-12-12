@@ -14,14 +14,15 @@ namespace unnatural
 
 	namespace
 	{
-		Real minimumDistance(const std::vector<uint32> &candidates)
+		Real minimumDistance(PointerRange<const uint32> positions)
 		{
-			const uint32 n = candidates.size();
-			CAGE_ASSERT(n > 0);
+			const uint32 n = positions.size();
+			if (n < 2)
+				return 0;
 			Real score = Real::Infinity();
 			for (uint32 i = 0; i < n - 1; i++)
 				for (uint32 j = i + 1; j < n; j++)
-					score = min(score, distance(tiles[candidates[i]].position, tiles[candidates[j]].position));
+					score = min(score, distance(tiles[positions[i]].position, tiles[positions[j]].position));
 			return score;
 		}
 
@@ -54,7 +55,7 @@ namespace unnatural
 				if (it->buildable)
 					candidates.push_back(it.index);
 			filterPositionsByBuildableRadius(candidates);
-			CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "starting position candidates: " + candidates.size() + " (after eliminating due to insufficient builable neighbors)");
+			CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "starting position candidates: " + candidates.size() + " (after eliminating due to insufficient buildable neighbors)");
 			return candidates;
 		}
 
