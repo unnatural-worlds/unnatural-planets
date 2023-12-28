@@ -16,6 +16,7 @@
 namespace unnatural
 {
 	void terrainPreseed();
+	bool terrainDoublesided();
 	Holder<Mesh> meshGenerateBaseLand();
 	Holder<Mesh> meshGenerateBaseWater();
 	Holder<Mesh> meshGenerateBaseNavigation();
@@ -74,13 +75,14 @@ namespace unnatural
 					f->writeLine(Stringizer() + "special = " + pbr);
 				if (!normal.empty())
 					f->writeLine(Stringizer() + "normal = " + normal);
+				f->writeLine("[render]");
 				if (transparency)
-				{
-					f->writeLine("[render]");
 					f->writeLine("shader = /unnatural/core/shaders/water.glsl");
-					f->writeLine("[flags]");
+				f->writeLine("[flags]");
+				if (transparency)
 					f->writeLine("transparent");
-				}
+				else if (terrainDoublesided())
+					f->writeLine("twoSided");
 				f->close();
 			}
 		};

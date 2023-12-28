@@ -33,6 +33,8 @@ namespace unnatural
 		using ColoringFunctor = void (*)(Tile &tile);
 		ColoringFunctor coloringFnc = 0;
 
+		bool doubleSided = false;
+
 		void chooseShapeFunction()
 		{
 			static constexpr TerrainFunctor shapeModeFunctions[] = {
@@ -127,6 +129,23 @@ namespace unnatural
 				}
 				CAGE_LOG(SeverityEnum::Info, "configuration", Stringizer() + "using shape mode: '" + name + "'");
 			}
+
+			doubleSided = [&]() -> bool
+			{
+				if (name == "hexagon")
+					return true;
+				if (name == "square")
+					return true;
+				if (name == "tube")
+					return true;
+				if (name == "bowl")
+					return true;
+				if (name == "insidecube")
+					return true;
+				if (name == "twistedplane")
+					return true;
+				return false;
+			}();
 		}
 
 		void chooseElevationFunction()
@@ -289,5 +308,10 @@ namespace unnatural
 		f->writeLine(Stringizer() + "elevations: " + (String)configElevationMode);
 		f->writeLine(Stringizer() + "coloring: " + (String)configColoringMode);
 		f->writeLine(Stringizer() + "poles: " + (bool)configPolesEnable);
+	}
+
+	bool terrainDoublesided()
+	{
+		return doubleSided;
 	}
 }
