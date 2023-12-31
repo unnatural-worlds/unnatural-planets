@@ -440,6 +440,7 @@ bpy.ops.object.select_all(action='DESELECT')
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "planet name: '" + planetName + "'");
 		CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "tmp directory: " + baseDirectory);
+		pathRemove(baseDirectory);
 
 		terrainPreseed();
 
@@ -456,6 +457,7 @@ bpy.ops.object.select_all(action='DESELECT')
 
 		const String outDirectory = findOutputDirectory(overrideOutputPath);
 		CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "output directory: " + outDirectory);
+		CAGE_ASSERT(!pathIsDirectory(outDirectory) && !pathIsFile(outDirectory));
 		pathMove(baseDirectory, outDirectory);
 
 		if (configPreviewEnable)
