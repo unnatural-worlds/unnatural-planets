@@ -21,8 +21,15 @@ namespace unnatural
 				return 0;
 			Real score = Real::Infinity();
 			for (uint32 i = 0; i < n - 1; i++)
+			{
 				for (uint32 j = i + 1; j < n; j++)
-					score = min(score, distance(tiles[positions[i]].position, tiles[positions[j]].position));
+				{
+					const Real c = distance(tiles[positions[i]].position, tiles[positions[j]].position);
+					//score = min(score, c); // this causes a crash when compiled with visual studio 2022 msvc with optimizations
+					if (c < score)
+						score = c;
+				}
+			}
 			return score;
 		}
 
