@@ -22,7 +22,7 @@ namespace unnatural
 			const String c = Stringizer() + current;
 			const String r = Stringizer() + 100 * Real(current) / total;
 			const String g = maxc > 0 ? fill(String(), 30 * current / maxc, '#') : String();
-			CAGE_LOG_CONTINUE(SeverityEnum::Info, "tileStats", Stringizer() + fill(name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 12)) + " % " + g);
+			CAGE_LOG_CONTINUE(SeverityEnum::Info, "tileStats", Stringizer() + fill(name, 28) + reverse(fill(reverse(c), 6)) + " ~ " + reverse(fill(reverse(r), 13)) + " % " + g);
 		}
 
 		template<uint32 Bins = 30>
@@ -194,13 +194,13 @@ namespace unnatural
 			Holder<SpatialQuery> spatQuery = newSpatialQuery(spatStruct.share());
 			for (uint32 i = 0; i < cnt; i++)
 			{
-				if (tiles[i].flatRadius < 40)
+				static constexpr Real Radius = 35;
+				if (tiles[i].flatRadius < Radius)
 					continue;
 				if (tiles[i].type >= TerrainTypeEnum::Rough)
 					continue;
 				tiles[i].buildable = true;
-				uint32 overlapped = 0;
-				spatQuery->intersection(Sphere(tiles[i].position, 40));
+				spatQuery->intersection(Sphere(tiles[i].position, Radius));
 				for (uint32 j : spatQuery->result())
 				{
 					if (tiles[j].type >= TerrainTypeEnum::Rough)
@@ -208,12 +208,11 @@ namespace unnatural
 						tiles[i].buildable = false;
 						break;
 					}
-					overlapped++;
 				}
 				if (tiles[i].buildable)
 				{
 					totalBuildable++;
-					totalOverlapped += overlapped;
+					totalOverlapped += spatQuery->result().size();
 				}
 			}
 			const uint32 totalBuildings = totalOverlapped ? numeric_cast<uint32>(uint64(totalBuildable) * totalBuildable / totalOverlapped) : 0;

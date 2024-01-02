@@ -49,7 +49,7 @@ namespace unnatural
 					for (uint32 i : spatQuery->result())
 						if (tiles[i].buildable)
 							b++;
-					static constexpr uint32 Threshold = CAGE_DEBUG_BOOL ? 400 : 2000;
+					static constexpr uint32 Threshold = CAGE_DEBUG_BOOL ? 400 : 2500;
 					return b < Threshold;
 				});
 		}
@@ -92,6 +92,8 @@ namespace unnatural
 		CAGE_LOG(SeverityEnum::Info, "generator", "generating starting positions");
 
 		const std::vector<uint32> allCandidates = generateCadidates();
+		if (allCandidates.empty())
+			CAGE_THROW_ERROR(Exception, "no starting positions candidates");
 
 		Real bestScore = 0;
 		static constexpr uint32 Limit = 100000 / (CAGE_DEBUG_BOOL ? 100 : 1);
