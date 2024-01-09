@@ -371,4 +371,12 @@ namespace unnatural
 		const Rads angle = Degs(sign(p[2]) * rot * 35);
 		return p[1] * cos(angle) + p[0] * sin(angle);
 	}
+
+	Real sdfBelt(const Vec3 &p)
+	{
+		static constexpr Real Radius = 1800;
+		if (p[0] > 0)
+			return sdfCylinder(Vec3(p[0], p[2], p[1]), 10000, Radius) * -1;
+		return Radius - abs(p[2]);
+	}
 }

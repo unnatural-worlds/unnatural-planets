@@ -38,72 +38,74 @@ namespace unnatural
 		void chooseShapeFunction()
 		{
 			static constexpr TerrainFunctor shapeModeFunctions[] = {
-				&sdfHexagon,
-				&sdfSquare,
-				&sdfSphere,
-				&sdfTorus,
-				&sdfTube,
-				&sdfDisk,
-				&sdfCapsule,
+				&sdfAsteroid,
+				&sdfBelt,
+				&sdfBowl,
 				&sdfBox,
+				&sdfBunny,
+				&sdfCapsule,
 				&sdfCube,
-				&sdfTetrahedron,
-				&sdfOctahedron,
-				&sdfKnot,
-				&sdfMobiusStrip,
+				&sdfDisk,
+				&sdfDoubleTorus,
 				&sdfFibers,
+				&sdfGear,
 				&sdfH2O,
 				&sdfH3O,
 				&sdfH4O,
-				&sdfTriangularPrism,
+				&sdfHexagon,
 				&sdfHexagonalPrism,
-				&sdfGear,
-				&sdfMandelbulb,
-				&sdfTwistedHexagonalPrism,
-				&sdfBunny,
-				&sdfMonkeyHead,
-				&sdfDoubleTorus,
-				&sdfTorusCross,
-				&sdfBowl,
 				&sdfInsideCube,
-				&sdfAsteroid,
+				&sdfKnot,
+				&sdfMandelbulb,
+				&sdfMobiusStrip,
+				&sdfMonkeyHead,
+				&sdfOctahedron,
 				&sdfPipe,
+				&sdfSphere,
+				&sdfSquare,
+				&sdfTetrahedron,
+				&sdfTorus,
+				&sdfTorusCross,
+				&sdfTriangularPrism,
+				&sdfTube,
+				&sdfTwistedHexagonalPrism,
 				&sdfTwistedPlane,
 			};
 
 			static constexpr uint32 shapeModesCount = sizeof(shapeModeFunctions) / sizeof(shapeModeFunctions[0]);
 
 			static constexpr const char *const shapeModeNames[] = {
-				"hexagon",
-				"square",
-				"sphere",
-				"torus",
-				"tube",
-				"disk",
-				"capsule",
+				"asteroid",
+				"belt",
+				"bowl",
 				"box",
+				"bunny",
+				"capsule",
 				"cube",
-				"tetrahedron",
-				"octahedron",
-				"knot",
-				"mobiusstrip",
+				"disk",
+				"doubletorus",
 				"fibers",
+				"gear",
 				"h2o",
 				"h3o",
 				"h4o",
-				"triangularprism",
+				"hexagon",
 				"hexagonalprism",
-				"gear",
-				"mandelbulb",
-				"twistedhexagonalprism",
-				"bunny",
-				"monkeyhead",
-				"doubletorus",
-				"toruscross",
-				"bowl",
 				"insidecube",
-				"asteroid",
+				"knot",
+				"mandelbulb",
+				"mobiusstrip",
+				"monkeyhead",
+				"octahedron",
 				"pipe",
+				"sphere",
+				"square",
+				"tetrahedron",
+				"torus",
+				"toruscross",
+				"triangularprism",
+				"tube",
+				"twistedhexagonalprism",
 				"twistedplane",
 			};
 
@@ -132,15 +134,17 @@ namespace unnatural
 
 			doubleSided = [&]() -> bool
 			{
+				if (name == "belt")
+					return true;
+				if (name == "bowl")
+					return true;
 				if (name == "hexagon")
+					return true;
+				if (name == "insidecube")
 					return true;
 				if (name == "square")
 					return true;
 				if (name == "tube")
-					return true;
-				if (name == "bowl")
-					return true;
-				if (name == "insidecube")
 					return true;
 				if (name == "twistedplane")
 					return true;

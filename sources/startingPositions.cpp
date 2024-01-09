@@ -49,7 +49,7 @@ namespace unnatural
 					for (uint32 i : spatQuery->result())
 						if (tiles[i].buildable)
 							b++;
-					static constexpr uint32 Threshold = CAGE_DEBUG_BOOL ? 400 : 2500;
+					static constexpr uint32 Threshold = CAGE_DEBUG_BOOL ? 400 : 2000;
 					return b < Threshold;
 				});
 		}
