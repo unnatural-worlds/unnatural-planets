@@ -117,13 +117,13 @@ namespace unnatural
 				base = meshGenerateBaseNavigation();
 				if (configDebugSaveIntermediate)
 					meshSaveDebug(base, pathJoin(debugDirectory, "navMeshBase.glb"));
-				Holder<AsyncTask> tn = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskNavmesh>(this), 1);
-				Holder<AsyncTask> tc = tasksRunAsync("collider", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskCollider>(this), 1);
+				Holder<AsyncTask> tn = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskNavmesh>(this));
+				Holder<AsyncTask> tc = tasksRunAsync("collider", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskCollider>(this));
 				tn->wait();
 				tc->wait();
 			}
 
-			NavmeshProcessor() { taskRef = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::processEntry>(this), 1, 30); }
+			NavmeshProcessor() { taskRef = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::processEntry>(this)); }
 
 			void wait() { taskRef->wait(); }
 		};
@@ -173,7 +173,7 @@ namespace unnatural
 				tasksRunBlocking("land chunk", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 			}
 
-			LandProcessor() { taskRef = tasksRunAsync("land", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::processEntry>(this), 1, 20); }
+			LandProcessor() { taskRef = tasksRunAsync("land", Delegate<void(uint32)>().bind<LandProcessor, &LandProcessor::processEntry>(this)); }
 
 			void wait() { taskRef->wait(); }
 		};
@@ -229,7 +229,7 @@ namespace unnatural
 				tasksRunBlocking("water chunk", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::chunkEntry>(this), numeric_cast<uint32>(split.size()));
 			}
 
-			WaterProcessor() { taskRef = tasksRunAsync("water", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::processEntry>(this), 1, 10); }
+			WaterProcessor() { taskRef = tasksRunAsync("water", Delegate<void(uint32)>().bind<WaterProcessor, &WaterProcessor::processEntry>(this)); }
 
 			void wait() { taskRef->wait(); }
 		};
