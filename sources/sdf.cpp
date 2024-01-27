@@ -379,4 +379,20 @@ namespace unnatural
 			return sdfCylinder(Vec3(p[0], p[2], p[1]), 10000, Radius) * -1;
 		return Radius - abs(p[2]);
 	}
+
+	Real sdfHemispheres(const Vec3 &p_)
+	{
+		const Vec3 p = Vec3(abs(p_[0]), abs(p_[1]), p_[2]);
+		const auto &rotate = [](Vec3 p) -> Vec3
+		{
+			static constexpr Real s = 0.707106781186547524400844362104; // sin(45)
+			return Vec3((p[0] - p[1]) * s, (p[0] + p[1]) * s, p[2]);
+		};
+		const Vec3 q = rotate(p + Vec3(-2000, 0, 0));
+		const Real c = sdfCylinder(Vec3(q[1], q[2], q[0]), 10000, 200);
+		const Real s1 = sdfSphere(q, 1000);
+		const Real s2 = sdfSphere(rotate(p + Vec3(0, -2000, 0)), 1000);
+		const Real s = min(s1, s2);
+		return smoothMin(c, s, 100);
+	}
 }

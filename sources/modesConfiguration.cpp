@@ -52,6 +52,7 @@ namespace unnatural
 				&sdfH2O,
 				&sdfH3O,
 				&sdfH4O,
+				&sdfHemispheres,
 				&sdfHexagon,
 				&sdfHexagonalPrism,
 				&sdfInsideCube,
@@ -89,6 +90,7 @@ namespace unnatural
 				"h2o",
 				"h3o",
 				"h4o",
+				"hemispheres",
 				"hexagon",
 				"hexagonalprism",
 				"insidecube",
@@ -137,6 +139,8 @@ namespace unnatural
 				if (name == "belt")
 					return true;
 				if (name == "bowl")
+					return true;
+				if (name == "hemispheres")
 					return true;
 				if (name == "hexagon")
 					return true;

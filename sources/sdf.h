@@ -21,6 +21,7 @@ namespace unnatural
 	Real sdfH2O(const Vec3 &pos);
 	Real sdfH3O(const Vec3 &pos);
 	Real sdfH4O(const Vec3 &pos);
+	Real sdfHemispheres(const Vec3 &p);
 	Real sdfHexagon(const Vec3 &pos);
 	Real sdfHexagonalPrism(const Vec3 &pos);
 	Real sdfInsideCube(const Vec3 &p);
