@@ -6,7 +6,7 @@ prototype = unnatural/doodads/vegetation/tree_4.proto
 chance = 0.003
 
 [requirements]
-radius = 10
+radius = 30
 temperature = -30, 40
 precipitation = 0, 300
 elevation = 5, 600
