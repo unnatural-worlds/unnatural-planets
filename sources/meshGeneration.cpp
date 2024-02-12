@@ -106,28 +106,6 @@ namespace unnatural
 		return poly;
 	}
 
-	void meshSimplifyNavmesh(Holder<Mesh> &mesh)
-	{
-		CAGE_LOG(SeverityEnum::Info, "generator", "regularizing navigation mesh");
-
-		if (configNavmeshOptimize)
-		{
-			unnatural::NavmeshOptimizeConfig cfg;
-#ifdef CAGE_DEBUG
-			cfg.iterations = 1;
-#endif
-			cfg.tileSize = tileSize;
-			mesh = unnatural::navmeshOptimize(std::move(mesh), cfg);
-		}
-		else
-		{
-			MeshRegularizeConfig cfg;
-			cfg.iterations = iterations;
-			cfg.targetEdgeLength = tileSize;
-			meshRegularize(+mesh, cfg);
-		}
-	}
-
 	void meshSimplifyCollider(Holder<Mesh> &mesh)
 	{
 		CAGE_LOG(SeverityEnum::Info, "generator", "simplifying collider mesh");
@@ -144,6 +122,34 @@ namespace unnatural
 			mesh = std::move(m);
 		else
 			CAGE_LOG(SeverityEnum::Warning, "generator", Stringizer() + "the simplified collider mesh has more triangles than the original");
+	}
+
+	void meshSimplifyNavmesh(Holder<Mesh> &mesh, const Mesh *collider)
+	{
+		CAGE_LOG(SeverityEnum::Info, "generator", "regularizing navigation mesh");
+
+		if (configNavmeshOptimize)
+		{
+			unnatural::NavmeshOptimizeConfig cfg;
+			cfg.navigation = +mesh;
+			Holder<Collider> c = newCollider();
+			c->importMesh(collider);
+			c->optimize();
+			c->rebuild();
+			cfg.collider = +c;
+#ifdef CAGE_DEBUG
+			cfg.iterations = 1;
+#endif
+			cfg.tileSize = tileSize;
+			mesh = unnatural::navmeshOptimize(cfg);
+		}
+		else
+		{
+			MeshRegularizeConfig cfg;
+			cfg.iterations = iterations;
+			cfg.targetEdgeLength = tileSize;
+			meshRegularize(+mesh, cfg);
+		}
 	}
 
 	void meshSimplifyRender(Holder<Mesh> &mesh)

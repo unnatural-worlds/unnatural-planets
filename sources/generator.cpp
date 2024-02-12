@@ -21,8 +21,8 @@ namespace unnatural
 	Holder<Mesh> meshGenerateBaseWater();
 	Holder<Mesh> meshGenerateBaseNavigation();
 	Holder<PointerRange<Holder<Mesh>>> meshSplit(const Holder<Mesh> &mesh);
-	void meshSimplifyNavmesh(Holder<Mesh> &mesh);
 	void meshSimplifyCollider(Holder<Mesh> &mesh);
+	void meshSimplifyNavmesh(Holder<Mesh> &mesh, const Mesh *collider);
 	void meshSimplifyRender(Holder<Mesh> &mesh);
 	uint32 meshUnwrap(const Holder<Mesh> &mesh);
 	void meshSaveDebug(const Holder<Mesh> &mesh, const String &path);
@@ -92,35 +92,21 @@ namespace unnatural
 		struct NavmeshProcessor
 		{
 			Holder<AsyncTask> taskRef;
-			Holder<Mesh> base;
 
-			void taskNavmesh(uint32)
+			void processEntry(uint32)
 			{
-				Holder<Mesh> navmesh = base->copy();
-				meshSimplifyNavmesh(navmesh);
+				Holder<Mesh> navmesh = meshGenerateBaseNavigation();
+				if (configDebugSaveIntermediate)
+					meshSaveDebug(navmesh, pathJoin(debugDirectory, "navMeshBase.glb"));
+				Holder<Mesh> collider = navmesh->copy();
+				meshSimplifyCollider(collider);
+				meshSaveCollider(collider);
+				meshSimplifyNavmesh(navmesh, +collider);
 				CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "navmesh tiles: " + navmesh->verticesCount());
 				generateTileProperties(navmesh);
 				meshSaveNavigation(navmesh);
 				generateStartingPositions();
 				generateDoodads();
-			}
-
-			void taskCollider(uint32)
-			{
-				Holder<Mesh> collider = base->copy();
-				meshSimplifyCollider(collider);
-				meshSaveCollider(collider);
-			}
-
-			void processEntry(uint32)
-			{
-				base = meshGenerateBaseNavigation();
-				if (configDebugSaveIntermediate)
-					meshSaveDebug(base, pathJoin(debugDirectory, "navMeshBase.glb"));
-				Holder<AsyncTask> tn = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskNavmesh>(this));
-				Holder<AsyncTask> tc = tasksRunAsync("collider", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::taskCollider>(this));
-				tn->wait();
-				tc->wait();
 			}
 
 			NavmeshProcessor() { taskRef = tasksRunAsync("navmesh", Delegate<void(uint32)>().bind<NavmeshProcessor, &NavmeshProcessor::processEntry>(this)); }
