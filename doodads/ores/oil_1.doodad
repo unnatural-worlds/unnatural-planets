@@ -1,0 +1,18 @@
+[doodad]
+package = unnatural/base/ores/ores.pack
+prototype = unnatural/base/ores/oil_deposit.proto
+
+[generating]
+count = 0
+priority = 12
+
+[requirements]
+radius = 60
+buildable = true
+
+[starting]
+distance = 300, 400
+count = 1, 1
+
+[preview]
+height = 100

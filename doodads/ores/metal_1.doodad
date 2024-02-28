@@ -1,18 +1,18 @@
 [doodad]
 package = unnatural/base/ores/ores.pack
-prototype = unnatural/base/ores/crystals_deposit.proto
+prototype = unnatural/base/ores/metal_deposit.proto
 
 [generating]
-count = 5
-priority = 14
+count = 0
+priority = 10
 
 [requirements]
-radius = 40
+radius = 60
 buildable = true
 
 [starting]
-distance = 400, 500
+distance = 100, 200
 count = 1, 1
 
 [preview]
-height = 100
+height = 50

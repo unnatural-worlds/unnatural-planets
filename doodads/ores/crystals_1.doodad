@@ -1,13 +1,13 @@
 [doodad]
 package = unnatural/base/ores/ores.pack
-prototype = unnatural/base/ores/oil_deposit.proto
+prototype = unnatural/base/ores/crystals_deposit.proto
 
 [generating]
-count = 10
-priority = 12
+count = 0
+priority = 14
 
 [requirements]
-radius = 40
+radius = 60
 buildable = true
 
 [starting]

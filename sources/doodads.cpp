@@ -295,8 +295,8 @@ namespace unnatural
 		std::sort(doodadsDefinitions.begin(), doodadsDefinitions.end(),
 			[](const DoodadDefinition &a, const DoodadDefinition &b)
 			{
-				const auto aa = std::tuple(-a.priority, a.maxCount, a.chance);
-				const auto bb = std::tuple(-b.priority, b.maxCount, a.chance);
+				const auto aa = std::tuple(-a.priority, a.maxCount, a.chance, a.startsDistance[0]);
+				const auto bb = std::tuple(-b.priority, b.maxCount, b.chance, b.startsDistance[0]);
 				return aa < bb;
 			});
 		for (DoodadDefinition &doodad : doodadsDefinitions)

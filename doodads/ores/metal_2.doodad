@@ -3,16 +3,16 @@ package = unnatural/base/ores/ores.pack
 prototype = unnatural/base/ores/metal_deposit.proto
 
 [generating]
-count = 20
+count = 0
 priority = 10
 
 [requirements]
-radius = 40
+radius = 60
 buildable = true
 
 [starting]
-distance = 150, 250
-count = 2, 2
+distance = 200, 300
+count = 1, 1
 
 [preview]
 height = 50

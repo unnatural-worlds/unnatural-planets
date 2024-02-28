@@ -114,7 +114,7 @@ namespace unnatural
 		cfg.iterations = iterations;
 		cfg.minEdgeLength = 0.15 * tileSize;
 		cfg.maxEdgeLength = 3 * tileSize;
-		cfg.approximateError = 0.015 * tileSize;
+		cfg.approximateError = 0.01 * tileSize;
 		Holder<Mesh> m = mesh->copy();
 		meshSimplify(+m, cfg);
 
@@ -160,7 +160,7 @@ namespace unnatural
 		cfg.iterations = iterations;
 		cfg.minEdgeLength = 0.15 * tileSize;
 		cfg.maxEdgeLength = 5 * tileSize;
-		cfg.approximateError = 0.015 * tileSize;
+		cfg.approximateError = 0.01 * tileSize;
 		Holder<Mesh> m = mesh->copy();
 		meshSimplify(+m, cfg);
 

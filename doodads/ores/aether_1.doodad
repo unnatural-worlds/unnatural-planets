@@ -3,16 +3,16 @@ package = unnatural/base/ores/ores.pack
 prototype = unnatural/base/ores/aether_deposit.proto
 
 [generating]
-count = 5
+count = 0
 priority = 15
 
 [requirements]
-radius = 40
+radius = 60
 buildable = true
 
 [starting]
-distance = 600, 600
-count = 0, 0
+distance = 500, 600
+count = 1, 1
 
 [preview]
 height = 100

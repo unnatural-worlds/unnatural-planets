@@ -3,7 +3,7 @@ package = unnatural/doodads/vegetation/vegetation.pack
 prototype = unnatural/doodads/vegetation/plant_4.proto
 
 [generating]
-chance = 0.003
+chance = 0.001
 
 [requirements]
 radius = 10

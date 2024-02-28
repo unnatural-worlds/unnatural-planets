@@ -1,0 +1,18 @@
+[doodad]
+package = unnatural/base/ores/ores.pack
+prototype = unnatural/base/ores/metal_deposit.proto
+
+[generating]
+count = 0
+priority = 10
+
+[requirements]
+radius = 60
+buildable = true
+
+[starting]
+distance = 400, 500
+count = 0, 1
+
+[preview]
+height = 50
