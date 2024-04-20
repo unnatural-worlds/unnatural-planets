@@ -4,15 +4,15 @@ prototype = unnatural/base/ores/metal_deposit.proto
 
 [generating]
 count = 0
-priority = 10
+priority = 12
 
 [requirements]
 radius = 60
 buildable = true
 
 [starting]
-distance = 400, 500
-count = 0, 1
+distance = 200, 250
+count = 1, 1
 
 [preview]
 height = 50
