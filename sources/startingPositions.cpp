@@ -25,9 +25,7 @@ namespace unnatural
 				for (uint32 j = i + 1; j < n; j++)
 				{
 					const Real c = distance(tiles[positions[i]].position, tiles[positions[j]].position);
-					//score = min(score, c); // this causes a crash when compiled with visual studio 2022 msvc with optimizations
-					if (c < score)
-						score = c;
+					score = min(score, c);
 				}
 			}
 			return score;
@@ -54,6 +52,69 @@ namespace unnatural
 				});
 		}
 
+		void filterPositionsByLargestConnectedWalkableComponent(std::vector<uint32> &positions)
+		{
+			const auto &walkable = [](uint32 i) -> bool
+			{
+				switch (tiles[i].type)
+				{
+					case TerrainTypeEnum::Road:
+					case TerrainTypeEnum::Flat:
+					case TerrainTypeEnum::Rough:
+						return true;
+					default:
+						return false;
+				}
+			};
+
+			const uint32 cnt = tiles.size();
+			std::vector<uint32> component;
+			component.resize(cnt, m);
+
+			uint32 largestSize = 0;
+			uint32 largestIndex = m;
+
+			const auto &floodfill = [&](const uint32 start)
+			{
+				const uint32 index = component[start];
+				uint32 size = 1;
+				std::vector<uint32> open;
+				open.reserve(cnt / 10);
+				open.push_back(start);
+				while (!open.empty())
+				{
+					const uint32 i = open.back();
+					open.pop_back();
+					CAGE_ASSERT(component[i] == index);
+					for (uint32 j : tiles[i].neighbors)
+					{
+						if (component[j] != m || !walkable(j))
+							continue;
+						component[j] = index;
+						size++;
+						open.push_back(j);
+					}
+				}
+				if (size > largestSize)
+				{
+					largestSize = size;
+					largestIndex = index;
+				}
+			};
+
+			uint32 next = 0;
+			for (uint32 i = 0; i < cnt; i++)
+			{
+				if (component[i] != m || !walkable(i))
+					continue;
+				component[i] = next;
+				floodfill(i);
+				next++;
+			}
+
+			std::erase_if(positions, [&](uint32 i) { return component[i] != largestIndex; });
+		}
+
 		std::vector<uint32> generateCadidates()
 		{
 			std::vector<uint32> candidates;
@@ -62,7 +123,8 @@ namespace unnatural
 				if (it->buildable)
 					candidates.push_back(it.index);
 			filterPositionsByBuildableRadius(candidates);
-			CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "starting position candidates: " + candidates.size() + " (after eliminating due to insufficient buildable neighbors)");
+			filterPositionsByLargestConnectedWalkableComponent(candidates);
+			CAGE_LOG(SeverityEnum::Info, "generator", Stringizer() + "starting position candidates: " + candidates.size());
 			return candidates;
 		}
 
