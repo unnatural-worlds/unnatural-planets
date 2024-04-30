@@ -820,11 +820,11 @@ namespace unnatural
 
 		void generateSnow(Tile &tile)
 		{
-			static const Holder<NoiseFunction> tempOffsetNoise = []()
+			static const Holder<NoiseFunction> elevOffsetNoise = []()
 			{
 				NoiseFunctionCreateConfig cfg;
 				cfg.type = NoiseTypeEnum::Value;
-				cfg.frequency = 0.015;
+				cfg.frequency = 0.055;
 				cfg.seed = noiseSeed();
 				return newNoiseFunction(cfg);
 			}();
@@ -839,7 +839,7 @@ namespace unnatural
 				return newNoiseFunction(cfg);
 			}();
 
-			Real bf = sharpEdge(rangeMask(tile.temperature + tempOffsetNoise->evaluate(tile.position) * 1.5, 0, -2) * rangeMask(tile.precipitation, 10, 15) * steepnessMask(tile.slope, Degs(25), Degs(3)) * beachMask(tile));
+			Real bf = sharpEdge(rangeMask(tile.elevation + elevOffsetNoise->evaluate(tile.position) * 20, 220, 240) * steepnessMask(tile.slope, Degs(25), Degs(5)));
 			const Real thickness = thicknessNoise->evaluate(tile.position) * 0.5 + 0.5;
 			bf *= saturate(thickness * 0.5 + 0.7);
 			if (bf < 1e-7)
