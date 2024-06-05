@@ -1,16 +1,16 @@
 [doodad]
-package = unnatural/doodads/vegetation/vegetation.pack
+package = unnatural/doodads/doodads.pack
 prototype = unnatural/doodads/vegetation/tree_4.proto
 
 [generating]
-chance = 0.003
+chance = 0.001
 
 [requirements]
 radius = 30
-temperature = -30, 40
-precipitation = 0, 300
-elevation = 5, 600
-slope = 23, 50
+temperature = 15, 40
+precipitation = 0, 100
+elevation = 20, 400
+slope = 0, 20
 # cliff
 
 [starting]

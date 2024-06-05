@@ -1,5 +1,5 @@
 [doodad]
-package = unnatural/doodads/vegetation/vegetation.pack
+package = unnatural/doodads/doodads.pack
 prototype = unnatural/doodads/vegetation/plant_2.proto
 
 [generating]
