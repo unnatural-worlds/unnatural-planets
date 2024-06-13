@@ -40,6 +40,7 @@ namespace unnatural
 	Real sdfTube(const Vec3 &pos);
 	Real sdfTwistedHexagonalPrism(const Vec3 &pos);
 	Real sdfTwistedPlane(const Vec3 &p);
+	Real sdfWormhole(const Vec3 &p);
 }
 
 #endif

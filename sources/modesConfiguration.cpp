@@ -71,6 +71,7 @@ namespace unnatural
 				&sdfTube,
 				&sdfTwistedHexagonalPrism,
 				&sdfTwistedPlane,
+				&sdfWormhole,
 			};
 
 			static constexpr uint32 shapeModesCount = sizeof(shapeModeFunctions) / sizeof(shapeModeFunctions[0]);
@@ -109,6 +110,7 @@ namespace unnatural
 				"tube",
 				"twistedhexagonalprism",
 				"twistedplane",
+				"wormhole",
 			};
 
 			static_assert(shapeModesCount == sizeof(shapeModeNames) / sizeof(shapeModeNames[0]), "number of functions and names must match");
@@ -151,6 +153,8 @@ namespace unnatural
 				if (name == "tube")
 					return true;
 				if (name == "twistedplane")
+					return true;
+				if (name == "wormhole")
 					return true;
 				return false;
 			}();

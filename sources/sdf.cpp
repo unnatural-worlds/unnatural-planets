@@ -395,4 +395,11 @@ namespace unnatural
 		const Real s = min(s1, s2);
 		return smoothMin(c, s, 100);
 	}
+
+	Real sdfWormhole(const Vec3 &p)
+	{
+		const Real x = min(length(Vec2(p[0], p[2])) - 1400, 0);
+		const Real y = p[1];
+		return 700 - length(Vec2(x, y));
+	}
 }
