@@ -43,8 +43,7 @@ namespace unnatural
 		Flat = 1,
 		Rough = 2,
 		Cliffs = 3,
-		ShallowWater = 4,
-		DeepWater = 5,
+		Water = 4,
 		_Total
 	};
 

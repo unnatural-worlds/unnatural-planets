@@ -266,8 +266,7 @@ namespace unnatural
 				f->writeLine("flat");
 				f->writeLine("rough");
 				f->writeLine("cliffs");
-				f->writeLine("shallow_water");
-				f->writeLine("deep_water");
+				f->writeLine("water");
 				f->close();
 			}
 

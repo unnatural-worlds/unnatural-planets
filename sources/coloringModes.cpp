@@ -191,10 +191,8 @@ namespace unnatural
 
 		void generateType(Tile &tile)
 		{
-			if (tile.elevation < -20)
-				tile.type = TerrainTypeEnum::DeepWater;
-			else if (tile.elevation < 0)
-				tile.type = TerrainTypeEnum::ShallowWater;
+			if (tile.elevation < 0)
+				tile.type = TerrainTypeEnum::Water;
 			else if (tile.slope > Degs(20))
 				tile.type = TerrainTypeEnum::Cliffs;
 			else
@@ -938,7 +936,7 @@ namespace unnatural
 		if (tile.meshPurpose == MeshPurposeEnum::Water)
 		{
 			tile.biome = TerrainBiomeEnum::Water;
-			tile.type = TerrainTypeEnum::ShallowWater;
+			tile.type = TerrainTypeEnum::Water;
 			generateWater(tile);
 		}
 		else
