@@ -47,7 +47,7 @@ namespace unnatural
 					for (uint32 i : spatQuery->result())
 						if (tiles[i].buildable)
 							b++;
-					static constexpr uint32 Threshold = CAGE_DEBUG_BOOL ? 400 : 2000;
+					static constexpr uint32 Threshold = CAGE_DEBUG_BOOL ? 200 : 2000;
 					return b < Threshold;
 				});
 		}
@@ -142,7 +142,7 @@ namespace unnatural
 				if (!valid)
 					continue;
 				proposal.insert(p);
-				if (proposal.size() >= 10)
+				if (proposal.size() >= 20)
 					break;
 			}
 			return std::move(proposal.unsafeData());
@@ -162,7 +162,7 @@ namespace unnatural
 		for (uint32 attempt = 0; attempt < Limit; attempt++)
 		{
 			std::vector<uint32> proposal = proposeSolution(allCandidates);
-			if (proposal.size() < 3)
+			if (proposal.size() < 2)
 				continue;
 			if (proposal.size() < startingPositions.size())
 				continue;

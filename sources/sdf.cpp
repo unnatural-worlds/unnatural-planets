@@ -34,7 +34,7 @@ namespace unnatural
 
 	Real sdfDisk(const Vec3 &pos)
 	{
-		return sdfCylinder(pos, 250, 1100) - 200;
+		return sdfCylinder(pos, 200, 600) - 100;
 	}
 
 	Real sdfBox(const Vec3 &pos)
@@ -44,17 +44,17 @@ namespace unnatural
 
 	Real sdfCube(const Vec3 &pos)
 	{
-		return sdfBox(pos, Vec3(650)) - 200;
+		return sdfBox(pos, Vec3(450)) - 100;
 	}
 
 	Real sdfTetrahedron(const Vec3 &pos)
 	{
-		return sdfTetrahedron(pos, 1000) - 200;
+		return sdfTetrahedron(pos, 600) - 100;
 	}
 
 	Real sdfOctahedron(const Vec3 &pos)
 	{
-		return sdfOctahedron(pos, 1400) - 200;
+		return sdfOctahedron(pos, 800) - 100;
 	}
 
 	namespace
@@ -70,12 +70,12 @@ namespace unnatural
 
 	Real sdfTriangularPrism(const Vec3 &pos)
 	{
-		return sdfTriangularPrismImpl(Vec3(pos[0], pos[2], pos[1]), 1700, 1000) - 200;
+		return sdfTriangularPrismImpl(Vec3(pos[0], pos[2], pos[1]), 300, 900) - 100;
 	}
 
 	Real sdfHexagonalPrism(const Vec3 &pos)
 	{
-		return sdfHexagonalPrism(Vec3(pos[0], pos[2], pos[1]), 900, 650) - 200;
+		return sdfHexagonalPrism(Vec3(pos[0], pos[2], pos[1]), 300, 400) - 100;
 	}
 
 	Real sdfTorus(const Vec3 &pos)
@@ -237,7 +237,7 @@ namespace unnatural
 		Vec3 p = Vec3(pos[0], pos[2], 0);
 		p = Quat(Rads(), Rads(), angle) * p;
 		p = Vec3(p[0], pos[1], p[1]);
-		return sdfHexagonalPrism(p);
+		return sdfHexagonalPrism(Vec3(p[0], p[2], p[1]), 900, 650) - 200;
 	}
 
 	namespace
@@ -327,7 +327,7 @@ namespace unnatural
 
 	Real sdfInsideCube(const Vec3 &p)
 	{
-		return -sdfCube(p);
+		return -(sdfBox(p, Vec3(1300)) - 200);
 	}
 
 	Real sdfAsteroid(const Vec3 &p)
